@@ -1,0 +1,45 @@
+{
+  "common": {
+    "brand": "AI 語音實驗室"
+  },
+  "navbar": {
+    "explore": "探索",
+    "pricing": "定價",
+    "faq": "常見問題",
+    "blog": "部落格",
+    "myVoiceModels": "我的語音模型",
+    "generationHistory": "生成歷史",
+    "login": "登入"
+  },
+  "login": {
+    "title": "AI 語音實驗室",
+    "welcome": "歡迎",
+    "welcomeBack": "歡迎回來",
+    "signInWithGoogle": "使用 Google 登入",
+    "signInWithApple": "使用 Apple 登入",
+    "signInWithX": "使用 X 登入",
+    "signInWithSSO": "使用 SSO 登入",
+    "termsPrefix": "繼續即表示您同意我們的",
+    "terms": "服務條款",
+    "termsAnd": "和",
+    "privacy": "隱私政策"
+  },
+  "home": {
+    "heroTitle": "創造你的聲音，",
+    "heroTitleHighlight": "分享你的音色",
+    "heroDescription": "使用 AI 驅動的語音建模技術轉換你的聲音。在幾分鐘內創建、定製和分享獨特的語音模型。",
+    "exploreVoices": "探索語音",
+    "viewPricing": "查看定價",
+    "whyChoose": "為什麼選擇 AI 語音實驗室？",
+    "getStarted": "開始使用",
+    "learnMore": "了解更多",
+    "readyTitle": "準備好開始了嗎？",
+    "readyDescription": "加入成千上萬的用戶，使用 AI 語音實驗室創建精彩的語音內容。",
+    "startCreating": "立即開始創建"
+  },
+  "language": {
+    "en": "English",
+    "zhCN": "简体中文",
+    "zhTW": "繁體中文"
+  }
+}

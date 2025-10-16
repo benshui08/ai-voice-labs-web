@@ -1,0 +1,45 @@
+{
+  "common": {
+    "brand": "AI 语音实验室"
+  },
+  "navbar": {
+    "explore": "探索",
+    "pricing": "定价",
+    "faq": "常见问题",
+    "blog": "博客",
+    "myVoiceModels": "我的语音模型",
+    "generationHistory": "生成历史",
+    "login": "登录"
+  },
+  "login": {
+    "title": "AI 语音实验室",
+    "welcome": "欢迎",
+    "welcomeBack": "欢迎回来",
+    "signInWithGoogle": "使用 Google 登录",
+    "signInWithApple": "使用 Apple 登录",
+    "signInWithX": "使用 X 登录",
+    "signInWithSSO": "使用 SSO 登录",
+    "termsPrefix": "继续即表示您同意我们的",
+    "terms": "服务条款",
+    "termsAnd": "和",
+    "privacy": "隐私政策"
+  },
+  "home": {
+    "heroTitle": "创造你的声音，",
+    "heroTitleHighlight": "分享你的音色",
+    "heroDescription": "使用 AI 驱动的语音建模技术转换你的声音。在几分钟内创建、定制和分享独特的语音模型。",
+    "exploreVoices": "探索语音",
+    "viewPricing": "查看定价",
+    "whyChoose": "为什么选择 AI 语音实验室？",
+    "getStarted": "开始使用",
+    "learnMore": "了解更多",
+    "readyTitle": "准备好开始了吗？",
+    "readyDescription": "加入成千上万的用户，使用 AI 语音实验室创建精彩的语音内容。",
+    "startCreating": "立即开始创建"
+  },
+  "language": {
+    "en": "English",
+    "zhCN": "简体中文",
+    "zhTW": "繁體中文"
+  }
+}

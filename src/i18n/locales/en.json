@@ -1,0 +1,45 @@
+{
+  "common": {
+    "brand": "AI Voice Labs"
+  },
+  "navbar": {
+    "explore": "Explore",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "blog": "Blog",
+    "myVoiceModels": "My Voice Models",
+    "generationHistory": "Generation History",
+    "login": "Login"
+  },
+  "login": {
+    "title": "AI Voice Labs",
+    "welcome": "Welcome",
+    "welcomeBack": "Welcome back",
+    "signInWithGoogle": "Sign in with Google",
+    "signInWithApple": "Sign in with Apple",
+    "signInWithX": "Sign in with X",
+    "signInWithSSO": "Sign in with SSO",
+    "termsPrefix": "By continuing, you agree to our",
+    "terms": "Terms of Service",
+    "termsAnd": "and",
+    "privacy": "Privacy Policy"
+  },
+  "home": {
+    "heroTitle": "Create Your Voice,",
+    "heroTitleHighlight": "Share Your Sound",
+    "heroDescription": "Transform your voice with AI-powered voice modeling technology. Create, customize, and share unique voice models in minutes.",
+    "exploreVoices": "Explore Voices",
+    "viewPricing": "View Pricing",
+    "whyChoose": "Why Choose AI Voice Labs?",
+    "getStarted": "Get Started",
+    "learnMore": "Learn More",
+    "readyTitle": "Ready to Get Started?",
+    "readyDescription": "Join thousands of users creating amazing voice content with AI Voice Labs.",
+    "startCreating": "Start Creating Now"
+  },
+  "language": {
+    "en": "English",
+    "zhCN": "简体中文",
+    "zhTW": "繁體中文"
+  }
+}
