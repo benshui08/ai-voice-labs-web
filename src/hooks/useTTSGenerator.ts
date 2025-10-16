@@ -1,15 +1,25 @@
 import { useState } from 'react';
 
 /**
- * 语音模型接口
+ * 语音模型接口 - 匹配后端 Voice Schema
  */
 export interface VoiceModel {
   id: string;
   name: string;
-  description: string;
-  avatar: string;
-  language: string;
-  isPro?: boolean;
+  display_name: Record<string, string>;
+  provider: string;
+  locale: string;
+  country: string;
+  role: string;
+  avatar_url: string;
+  voice_sample_url: string;
+  gender: string;
+  tags: string[];
+  style_list: string[];
+  is_active: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 /**

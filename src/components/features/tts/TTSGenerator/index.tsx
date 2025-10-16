@@ -35,36 +35,33 @@ export default function TTSGenerator({
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-      {/* 背景容器 */}
+      {/* 错误提示 */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-xl">
+          <p className="text-red-600 font-medium">{error}</p>
+        </div>
+      )}
+
+      {/* 语音选择区域 - 独立背景容器 */}
+      <div className="bg-gradient-to-br from-gray-50 to-purple-50 rounded-3xl p-6 md:p-8 lg:p-10 shadow-lg mb-6">
+        <VoiceSelector
+          selectedVoice={selectedVoice}
+          onSelect={handleVoiceSelect}
+          disabled={isGenerating}
+        />
+      </div>
+
+      {/* 主背景容器 */}
       <div className="bg-gradient-to-br from-gray-50 to-purple-50 rounded-3xl p-6 md:p-8 lg:p-10 shadow-lg">
-        {/* 错误提示 */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-xl">
-            <p className="text-red-600 font-medium">{error}</p>
-          </div>
-        )}
-
-        {/* 上部：文本输入 + 语音选择 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 mb-8">
-          {/* 左侧：文本输入（桌面端占 2/3） */}
-          <div className="lg:col-span-2">
-            <TextInput
-              value={text}
-              onChange={handleTextChange}
-              maxCharacters={maxCharacters}
-              availableCharacters={availableCharacters}
-              disabled={isGenerating}
-            />
-          </div>
-
-          {/* 右侧：语音选择（桌面端占 1/3） */}
-          <div className="lg:col-span-1">
-            <VoiceSelector
-              selectedVoice={selectedVoice}
-              onSelect={handleVoiceSelect}
-              disabled={isGenerating}
-            />
-          </div>
+        {/* 文本输入区域 */}
+        <div className="mb-8">
+          <TextInput
+            value={text}
+            onChange={handleTextChange}
+            maxCharacters={maxCharacters}
+            availableCharacters={availableCharacters}
+            disabled={isGenerating}
+          />
         </div>
 
         {/* 下部：生成按钮（全宽） */}

@@ -124,11 +124,18 @@ export const userAPI = {
   },
 };
 
-// 语音相关 API（示例）
+// 语音相关 API
 export const voiceAPI = {
   // 获取语音列表
-  getVoices: () => {
-    return apiClient.get('/api/v1/voices');
+  getVoices: (params?: {
+    provider?: string;
+    country?: string;
+    role?: string;
+    gender?: string;
+    is_active?: boolean;
+    limit?: number;
+  }) => {
+    return apiClient.get('/api/v1/voices', { params });
   },
 
   // 创建语音模型
@@ -147,5 +154,13 @@ export const subscriptionAPI = {
   // 创建订阅
   createSubscription: (data: unknown) => {
     return apiClient.post('/api/v1/subscriptions', data);
+  },
+};
+
+// 枚举值 API
+export const enumsAPI = {
+  // 获取国家代码列表
+  getCountries: () => {
+    return apiClient.get<Array<{ value: string; label: string }>>('/api/v1/enums/countries');
   },
 };
