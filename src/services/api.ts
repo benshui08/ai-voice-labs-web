@@ -144,7 +144,7 @@ export const voiceAPI = {
   },
 };
 
-// 订阅相关 API（示例）
+// 订阅相关 API
 export const subscriptionAPI = {
   // 获取订阅信息
   getSubscription: () => {
@@ -154,6 +154,14 @@ export const subscriptionAPI = {
   // 创建订阅
   createSubscription: (data: unknown) => {
     return apiClient.post('/api/v1/subscriptions', data);
+  },
+
+  // 获取订阅计划列表
+  getPlans: (params?: {
+    platform?: 'google' | 'apple' | 'stripe' | 'creem';
+    active_only?: boolean;
+  }) => {
+    return apiClient.get('/api/v1/subscriptions/plans', { params });
   },
 };
 
