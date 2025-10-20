@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { subscriptionAPI } from '@/services/api';
+import { subscriptionAPI } from '@/lib/api';
 import { SubscriptionStatus, type CreemVerifyRequest, type CreemVerifyResponse } from '@/types/subscription';
 
 type PaymentStatus = 'verifying' | 'success' | 'pending' | 'failed';

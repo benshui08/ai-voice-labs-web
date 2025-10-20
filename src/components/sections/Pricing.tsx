@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { subscriptionAPI } from '@/services/api';
+import { subscriptionAPI } from '@/lib/api';
 import { SubscriptionPlanWithPrice } from '@/types/subscription';
 import PricingCard from './PricingCard';
 

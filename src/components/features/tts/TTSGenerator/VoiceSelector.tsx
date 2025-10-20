@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import type { VoiceModel } from '@/hooks/useTTSGenerator';
-import { voiceAPI, enumsAPI } from '@/services/api';
+import { voiceAPI, enumsAPI } from '@/lib/api';
 
 interface VoiceSelectorProps {
   selectedVoice: VoiceModel | null;

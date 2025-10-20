@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
-import { userAPI } from '@/services/api';
+import { userAPI } from '@/lib/api';
 import type { UserProfile } from '@/types/user';
 
 interface UserContextType {

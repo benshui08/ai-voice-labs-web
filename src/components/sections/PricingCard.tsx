@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { SubscriptionPlanWithPrice } from '@/types/subscription';
 import { useAuth } from '@/contexts/AuthContext';
-import { subscriptionAPI } from '@/services/api';
+import { subscriptionAPI } from '@/lib/api';
 
 interface PricingCardProps {
   plan: SubscriptionPlanWithPrice;
