@@ -1,5 +1,5 @@
 import Hero from '@/components/sections/Hero';
-import TTSGenerator from '@/components/features/tts/TTSGenerator';
+import TTSGenerator from '@/components/features/studio/TTSGenerator';
 import Pricing from '@/components/sections/Pricing';
 import FAQ from '@/components/sections/FAQ';
 
@@ -14,11 +14,6 @@ export default function Home() {
         primaryButtonText="Get Started"
         secondaryButtonText="Learn More"
       />
-
-      {/* TTS Generator Section */}
-      <section className="py-20 px-4 bg-white">
-        <TTSGenerator />
-      </section>
 
       {/* Pricing Section */}
       <section id="pricing" className="py-20 px-4 bg-white">

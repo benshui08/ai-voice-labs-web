@@ -1,4 +1,4 @@
-import TTSGenerator from '@/components/features/tts/TTSGenerator';
+import TTSGenerator from '@/components/features/studio/TTSGenerator';
 
 export default function StudioPage() {
   return (
