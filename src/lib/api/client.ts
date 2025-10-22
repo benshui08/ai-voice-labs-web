@@ -1,13 +1,15 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { auth } from '@/lib/firebase';
+import { getDeviceFingerprint } from '@/lib/utils/fingerprint';
 
 /**
  * API 客户端配置
  *
  * 特点：
- * 1. 自动添加 Firebase ID Token 到请求头
- * 2. 统一错误处理
- * 3. 请求/响应拦截器
+ * 1. 自动添加 Firebase ID Token 到请求头（已登录用户）
+ * 2. 自动添加设备指纹到请求头（匿名用户）
+ * 3. 统一错误处理
+ * 4. 请求/响应拦截器
  */
 class APIClient {
   private client: AxiosInstance;
@@ -25,14 +27,27 @@ class APIClient {
   }
 
   private setupInterceptors() {
-    // 请求拦截器：自动添加认证 Token
+    // 请求拦截器：自动添加认证信息
     this.client.interceptors.request.use(
       async (config) => {
         const user = auth.currentUser;
+
         if (user) {
+          // 已登录用户：添加 Authorization token
           const token = await user.getIdToken();
           config.headers.Authorization = `Bearer ${token}`;
+          console.log('🔑 已登录用户请求，使用 Authorization token');
+        } else {
+          // 匿名用户：添加设备指纹
+          try {
+            const fingerprint = await getDeviceFingerprint();
+            config.headers['X-Device-Fingerprint'] = fingerprint;
+            console.log('📱 匿名用户请求，使用设备指纹:', fingerprint.substring(0, 16) + '...');
+          } catch (error) {
+            console.error('❌ 获取设备指纹失败:', error);
+          }
         }
+
         return config;
       },
       (error) => {
@@ -49,20 +64,31 @@ class APIClient {
           const { status, data } = error.response;
 
           if (status === 401) {
-            // 未授权：清除登录状态并跳转到登录页
-            console.error('Unauthorized - redirecting to login');
-            if (typeof window !== 'undefined') {
-              window.location.href = '/login';
+            // 未授权：检查是否为已登录用户的 token 过期
+            const user = auth.currentUser;
+            if (user) {
+              // 已登录用户的 token 过期，清除登录状态并跳转到登录页
+              console.error('🔑 Token 已过期，跳转到登录页');
+              if (typeof window !== 'undefined') {
+                window.location.href = '/login';
+              }
+            } else {
+              // 匿名用户收到 401，可能是设备指纹问题，不跳转登录页
+              console.warn('📱 匿名用户认证失败（可能是设备指纹问题）');
             }
           }
 
-          console.error('API Error:', data);
+          console.error('❌ API Error:', {
+            status,
+            url: error.config?.url,
+            data,
+          });
         } else if (error.request) {
           // 请求已发出但未收到响应
-          console.error('Network Error:', error.request);
+          console.error('❌ Network Error:', error.request);
         } else {
           // 其他错误
-          console.error('Error:', error.message);
+          console.error('❌ Error:', error.message);
         }
 
         return Promise.reject(error);

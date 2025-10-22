@@ -32,24 +32,20 @@ const detectBrowserLanguage = (): Locale => {
 };
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(() => {
-    if (typeof window === 'undefined') return 'en';
-
-    const savedLocale = localStorage.getItem('locale') as Locale;
-    if (savedLocale && ['en', 'zh-CN', 'zh-TW'].includes(savedLocale)) {
-      return savedLocale;
-    }
-
-    // 如果没有保存的语言设置，检测浏览器语言
-    return detectBrowserLanguage();
-  });
+  // 初始状态始终为 'en'，避免 hydration 不匹配
+  const [locale, setLocaleState] = useState<Locale>('en');
   const [messages, setMessages] = useState<Record<string, MessageValue>>({});
 
-  // 从 localStorage 加载语言设置
+  // 在客户端检测语言设置
   useEffect(() => {
     const savedLocale = localStorage.getItem('locale') as Locale;
     if (savedLocale && ['en', 'zh-CN', 'zh-TW'].includes(savedLocale)) {
+      // 优先使用保存的语言
       setLocaleState(savedLocale);
+    } else {
+      // 如果没有保存的语言，检测浏览器语言
+      const detectedLocale = detectBrowserLanguage();
+      setLocaleState(detectedLocale);
     }
   }, []);
 

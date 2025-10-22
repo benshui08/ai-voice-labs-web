@@ -79,7 +79,6 @@ export default function TextInput({
             value={speed}
             onChange={(e) => onSpeedChange?.(parseFloat(e.target.value))}
             disabled={disabled}
-            defaultValue="1.0"
             className="px-2 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="0.5">0.5x</option>
