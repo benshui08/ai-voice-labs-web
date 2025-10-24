@@ -34,21 +34,70 @@ export function usePricing() {
 
         // 如果是 Stripe，需要额外查询价格信息
         if (paymentProvider === 'stripe') {
+          // 检测用户所在地区的货币偏好
+          const getUserCurrency = (): string => {
+            try {
+              // 尝试从浏览器获取用户的地区和货币偏好
+              const userLocale = navigator.language || 'en-US';
+              const regionCurrencyMap: Record<string, string> = {
+                'zh-CN': 'cny',
+                'zh-TW': 'cny',
+                'zh-HK': 'cny',
+                'en-US': 'usd',
+                'en-GB': 'gbp',
+                'de': 'eur',
+                'fr': 'eur',
+                'es': 'eur',
+                'it': 'eur',
+              };
+
+              // 检查完整匹配
+              if (regionCurrencyMap[userLocale]) {
+                return regionCurrencyMap[userLocale];
+              }
+
+              // 检查语言前缀匹配
+              const languagePrefix = userLocale.split('-')[0];
+              for (const [locale, currency] of Object.entries(regionCurrencyMap)) {
+                if (locale.startsWith(languagePrefix)) {
+                  return currency;
+                }
+              }
+
+              // 默认使用 USD
+              return 'usd';
+            } catch (err) {
+              console.warn('Failed to detect user currency, defaulting to USD:', err);
+              return 'usd';
+            }
+          };
+
+          const preferredCurrency = getUserCurrency();
+          console.log('Preferred currency:', preferredCurrency);
+
           const plansWithPrices = await Promise.all(
             data.map(async (plan: SubscriptionPlanWithPrice) => {
               try {
                 const prices = await subscriptionAPI.getStripePrices(plan.product_id);
                 console.log(`Prices for ${plan.product_id}:`, prices);
 
-                // 找到匹配当前周期的价格
-                const activePrice = prices.find(p => p.active);
-                if (activePrice) {
+                // 先尝试找到匹配用户偏好货币的激活价格
+                let selectedPrice = prices.find(
+                  p => p.active && p.currency.toLowerCase() === preferredCurrency
+                );
+
+                // 如果没有找到匹配的货币，使用第一个激活的价格
+                if (!selectedPrice) {
+                  selectedPrice = prices.find(p => p.active);
+                }
+
+                if (selectedPrice) {
                   return {
                     ...plan,
-                    price: activePrice.unit_amount,
-                    currency: activePrice.currency,
-                    billing_type: activePrice.billing_type,
-                    billing_period: activePrice.billing_period === 'month' ? 'every-month' : 'every-year',
+                    price: selectedPrice.unit_amount,
+                    currency: selectedPrice.currency,
+                    billing_type: selectedPrice.billing_type,
+                    billing_period: selectedPrice.billing_period === 'month' ? 'every-month' : 'every-year',
                   } as SubscriptionPlanWithPrice;
                 }
                 return plan as SubscriptionPlanWithPrice;

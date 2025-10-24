@@ -172,7 +172,7 @@ export default function PricingCard({ plan, isRecommended = false, cycle }: Pric
             {plan.price && (
               <div className="text-sm text-gray-500 mt-1">
                 Renewal at {getCurrencySymbol(plan.currency)}
-                {((plan.price * 1.6) / 100).toFixed(2)}
+                {priceInfo.display}
               </div>
             )}
           </>
