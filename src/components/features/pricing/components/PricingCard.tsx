@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { SubscriptionPlanWithPrice } from '@/types/subscription';
+import { PricingPlan } from '@/types/subscription';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscriptionAPI } from '@/lib/api';
 import { BillingCycle } from '../hooks/usePricing';
+import { getCurrencySymbol } from '@/config/currency';
 
 interface PricingCardProps {
-  plan: SubscriptionPlanWithPrice;
+  plan: PricingPlan;
   isRecommended?: boolean;
   cycle: BillingCycle;
 }
@@ -34,32 +35,18 @@ export default function PricingCard({ plan, isRecommended = false, cycle }: Pric
 
   // 格式化价格显示
   const formatPrice = () => {
-    if (!plan.price || !plan.currency) return null;
+    if (!plan.priceInfo?.price || !plan.priceInfo?.currency) return null;
 
-    const price = plan.price / 100; // 从分转换为元
+    const price = plan.priceInfo.price / 100; // 从分转换为元
     const formattedPrice = price.toFixed(2);
 
     return {
       display: formattedPrice,
-      currency: plan.currency,
+      currency: plan.priceInfo.currency,
     };
   };
 
   const priceInfo = formatPrice();
-
-  // 获取货币符号
-  const getCurrencySymbol = (currency?: string) => {
-    switch (currency) {
-      case 'USD':
-        return '$';
-      case 'EUR':
-        return '€';
-      case 'CNY':
-        return '¥';
-      default:
-        return '';
-    }
-  };
 
   // 获取计划名称
   const getPlanName = () => {
@@ -165,13 +152,13 @@ export default function PricingCard({ plan, isRecommended = false, cycle }: Pric
         ) : priceInfo ? (
           <>
             <div className="text-3xl font-bold text-gray-900">
-              {getCurrencySymbol(plan.currency)}
+              {getCurrencySymbol(priceInfo.currency)}
               {priceInfo.display}
               <span className="text-lg font-normal text-gray-600">/Month</span>
             </div>
-            {plan.price && (
+            {plan.priceInfo && (
               <div className="text-sm text-gray-500 mt-1">
-                Renewal at {getCurrencySymbol(plan.currency)}
+                Renewal at {getCurrencySymbol(priceInfo.currency)}
                 {priceInfo.display}
               </div>
             )}

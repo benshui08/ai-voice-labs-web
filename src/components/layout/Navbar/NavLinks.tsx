@@ -3,18 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { MouseEvent } from 'react';
-
-interface NavLink {
-  href: string;
-  label: string;
-}
-
-const navLinks: NavLink[] = [
-  { href: '/studio/tts', label: 'Studio' },
-  { href: '/pricing', label: 'Pricing' },
-  { href: '/#faq', label: 'FAQ' },
-  { href: '/generation-history', label: 'Generation History' },
-];
+import { NAV_LINKS } from '@/config/navigation';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface NavLinksProps {
   mobile?: boolean;
@@ -23,14 +13,17 @@ interface NavLinksProps {
 
 export default function NavLinks({ mobile = false, onLinkClick }: NavLinksProps = {}) {
   const pathname = usePathname();
+  const { t } = useLanguage();
 
-  const handleSectionClick = (sectionId: string) => (e: MouseEvent<HTMLAnchorElement>) => {
-    if (pathname === '/') {
-      e.preventDefault();
+  const handleSectionClick = (sectionId?: string) => (e: MouseEvent<HTMLAnchorElement>) => {
+    if (pathname === '/' && sectionId) {
       const el = document.getElementById(sectionId);
       if (el) {
+        // 只有当元素存在时才阻止默认行为并滚动
+        e.preventDefault();
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+      // 如果元素不存在，允许正常导航到对应页面
     }
     onLinkClick?.();
   };
@@ -39,23 +32,22 @@ export default function NavLinks({ mobile = false, onLinkClick }: NavLinksProps 
     onLinkClick?.();
   };
 
-  const getClickHandler = (label: string) => {
-    if (label === 'Pricing') return handleSectionClick('pricing');
-    if (label === 'FAQ') return handleSectionClick('faq');
+  const getClickHandler = (type?: string, sectionId?: string) => {
+    if (type === 'section') return handleSectionClick(sectionId);
     return handleClick;
   };
 
   if (mobile) {
     return (
       <div className="flex flex-col space-y-3">
-        {navLinks.map((link) => (
+        {NAV_LINKS.map((link) => (
           <Link
             key={link.href}
             href={link.href}
-            onClick={getClickHandler(link.label)}
+            onClick={getClickHandler(link.type, link.sectionId)}
             className="text-gray-700 hover:text-purple-600 transition-colors font-medium py-2"
           >
-            {link.label}
+            {t(link.labelKey)}
           </Link>
         ))}
       </div>
@@ -64,14 +56,14 @@ export default function NavLinks({ mobile = false, onLinkClick }: NavLinksProps 
 
   return (
     <div className="hidden md:flex items-center space-x-8">
-      {navLinks.map((link) => (
+      {NAV_LINKS.map((link) => (
         <Link
           key={link.href}
           href={link.href}
-          onClick={getClickHandler(link.label)}
+          onClick={getClickHandler(link.type, link.sectionId)}
           className="text-gray-700 hover:text-purple-600 transition-colors font-medium"
         >
-          {link.label}
+          {t(link.labelKey)}
         </Link>
       ))}
     </div>

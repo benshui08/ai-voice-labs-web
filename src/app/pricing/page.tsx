@@ -17,10 +17,10 @@ export default function PricingPage() {
       <div className="bg-white border-b border-gray-200 pt-20">
         <div className="max-w-7xl mx-auto px-4 py-12 text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Plans & Pricing of TopMediai
+            Plans & Pricing of AI-Voice-Labs
           </h1>
           <p className="text-lg md:text-xl text-gray-600">
-            TopMediai offers a variety of purchase plans to better meet your needs.
+            AI-Voice-Labs offers a variety of purchase plans to better meet your needs.
           </p>
         </div>
       </div>

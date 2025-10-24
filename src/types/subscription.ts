@@ -23,12 +23,17 @@ export interface SubscriptionPlan {
   updated_at?: string;
 }
 
-// 带价格信息的订阅计划（API 响应）
-export interface SubscriptionPlanWithPrice extends SubscriptionPlan {
-  price?: number; // 价格（分）
-  currency?: string; // 货币代码 (EUR, USD, CNY)
-  billing_type?: string; // 计费类型 (recurring, one-time)
-  billing_period?: string; // 计费周期 (every-month, every-year)
+// 价格信息
+export interface PriceInfo {
+  price: number; // 价格（分）
+  currency: string; // 货币代码 (USD, CNY, EUR, GBP)
+  billing_type: string; // 计费类型 (recurring, one-time)
+  billing_period: string; // 计费周期 (every-month, every-year)
+}
+
+// 前端使用的计划展示类型（包含价格信息）
+export interface PricingPlan extends SubscriptionPlan {
+  priceInfo?: PriceInfo; // 价格信息（可选，Free 计划没有价格）
 }
 
 // 计费周期类型

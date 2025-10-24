@@ -1,0 +1,55 @@
+/**
+ * Navigation configuration
+ * Centralized navigation links and routing configuration
+ */
+
+export interface NavLink {
+  href: string;
+  labelKey: string; // i18n key for translation
+  type?: 'page' | 'section'; // 'page' for route navigation, 'section' for scroll to section
+  sectionId?: string; // section id for scroll behavior (only when type is 'section')
+}
+
+/**
+ * Main navigation links
+ * These appear in the header navigation bar
+ */
+export const NAV_LINKS: NavLink[] = [
+  {
+    href: '/studio/tts',
+    labelKey: 'nav.studio',
+    type: 'page',
+  },
+  {
+    href: '/pricing',
+    labelKey: 'nav.pricing',
+    type: 'section', // Can scroll to section on homepage if exists, otherwise navigates to page
+    sectionId: 'pricing',
+  },
+  {
+    href: '/#faq',
+    labelKey: 'nav.faq',
+    type: 'section',
+    sectionId: 'faq',
+  },
+  {
+    href: '/generation-history',
+    labelKey: 'nav.generationHistory',
+    type: 'page',
+  },
+];
+
+/**
+ * Footer navigation sections
+ * Can be extended for footer links organization
+ */
+export const FOOTER_LINKS = {
+  product: [
+    { href: '/studio/tts', labelKey: 'nav.studio' },
+    { href: '/pricing', labelKey: 'nav.pricing' },
+  ],
+  resources: [
+    { href: '/#faq', labelKey: 'nav.faq' },
+    { href: '/generation-history', labelKey: 'nav.generationHistory' },
+  ],
+};

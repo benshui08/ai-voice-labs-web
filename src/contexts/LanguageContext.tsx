@@ -8,6 +8,7 @@ interface LanguageContextType {
   locale: Locale;
   setLocale: (locale: Locale) => void;
   t: (key: string) => string;
+  isReady: boolean; // 添加就绪状态
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -35,6 +36,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   // 初始状态始终为 'en'，避免 hydration 不匹配
   const [locale, setLocaleState] = useState<Locale>('en');
   const [messages, setMessages] = useState<Record<string, MessageValue>>({});
+  const [isReady, setIsReady] = useState(false);
 
   // 在客户端检测语言设置
   useEffect(() => {
@@ -47,6 +49,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       const detectedLocale = detectBrowserLanguage();
       setLocaleState(detectedLocale);
     }
+    // 标记为已就绪
+    setIsReady(true);
   }, []);
 
   // 加载语言文件
@@ -84,7 +88,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <LanguageContext.Provider value={{ locale, setLocale, t }}>
+    <LanguageContext.Provider value={{ locale, setLocale, t, isReady }}>
       {children}
     </LanguageContext.Provider>
   );

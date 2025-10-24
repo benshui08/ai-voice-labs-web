@@ -1,12 +1,12 @@
 'use client';
 
-import BillingCycleToggle from './components/BillingCycleToggle';
 import PlansGrid from './components/PlansGrid';
-import { SubscriptionPlanWithPrice } from '@/types/subscription';
+import { PricingPlan } from '@/types/subscription';
 import { BillingCycle } from './hooks/usePricing';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface PricingPlansProps {
-  plans: SubscriptionPlanWithPrice[];
+  plans: PricingPlan[];
   cycle: BillingCycle;
   loading?: boolean;
   error?: string | null;
@@ -28,11 +28,17 @@ export default function PricingPlans({
   error = null,
   onCycleChange,
 }: PricingPlansProps) {
+  const { t } = useLanguage();
+
   // Loading state
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
-        <div className="animate-pulse text-gray-500">Loading pricing plans...</div>
+        <div className="flex flex-col items-center gap-3">
+          {/* Spinning loader */}
+          <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+          <div className="text-gray-500">{t('pricing.loading')}</div>
+        </div>
       </div>
     );
   }
@@ -41,12 +47,12 @@ export default function PricingPlans({
   if (error) {
     return (
       <div className="text-center py-20">
-        <div className="text-red-600 mb-4">{error}</div>
+        <div className="text-red-600 mb-4">{t('pricing.error')}</div>
         <button
           onClick={() => window.location.reload()}
-          className="text-purple-600 hover:text-purple-700 font-medium"
+          className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
         >
-          Retry
+          {t('pricing.retry')}
         </button>
       </div>
     );

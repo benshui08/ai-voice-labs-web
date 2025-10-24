@@ -1,11 +1,11 @@
 'use client';
 
-import { SubscriptionPlanWithPrice } from '@/types/subscription';
+import { PricingPlan } from '@/types/subscription';
 import PricingCard from './PricingCard';
 import { BillingCycle } from '../hooks/usePricing';
 
 interface PlansGridProps {
-  plans: SubscriptionPlanWithPrice[];
+  plans: PricingPlan[];
   cycle: BillingCycle;
   onCycleChange: (cycle: BillingCycle) => void;
 }

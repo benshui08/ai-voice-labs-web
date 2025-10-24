@@ -13,6 +13,17 @@
     "login": "Login",
     "logout": "Logout"
   },
+  "nav": {
+    "studio": "Studio",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "generationHistory": "Generation History"
+  },
+  "pricing": {
+    "loading": "Loading pricing plans...",
+    "error": "Failed to load pricing plans. Please try again later.",
+    "retry": "Retry"
+  },
   "login": {
     "title": "AI Voice Labs",
     "welcome": "Welcome",
