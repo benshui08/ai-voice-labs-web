@@ -52,7 +52,7 @@ export default function StudioSidebar({ variant = 'desktop' }: StudioSidebarProp
   return (
     <nav
       className={`
-        fixed left-0 top-[124px] h-[calc(100vh-124px)] bg-white border-r border-gray-200
+        fixed left-0 top-[60px] h-[calc(100vh-60px)] bg-white border-r border-gray-200
         transition-all duration-300 ease-in-out overflow-y-auto z-20
         ${isExpanded ? 'w-64' : 'w-16'}
       `}
