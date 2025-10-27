@@ -66,6 +66,14 @@
   },
   "settings": {
     "title": "设置",
+    "menu": {
+      "home": "首页",
+      "myBenefits": "我的权益",
+      "myAccount": "我的账户",
+      "orderList": "订单列表",
+      "myCoupon": "我的优惠券",
+      "messageCenter": "消息中心"
+    },
     "basicInfo": {
       "title": "基本信息",
       "nameSurname": "姓名",

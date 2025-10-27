@@ -66,6 +66,14 @@
   },
   "settings": {
     "title": "Settings",
+    "menu": {
+      "home": "Home",
+      "myBenefits": "My Benefits",
+      "myAccount": "My Account",
+      "orderList": "Order List",
+      "myCoupon": "My Coupon",
+      "messageCenter": "Message Center"
+    },
     "basicInfo": {
       "title": "Basic Info",
       "nameSurname": "Name & Surname",

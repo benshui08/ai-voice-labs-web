@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import UserMenuItem from './UserMenuItem';
+import { userMenuItems } from '@/config/userMenuConfig';
 
 /**
  * 用户菜单组件
@@ -30,14 +32,19 @@ export default function UserMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 处理登出
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      setIsOpen(false);
-      router.push('/');
-    } catch (error) {
-      console.error('Sign out error:', error);
+  // 处理菜单项点击
+  const handleMenuItemClick = async (item: typeof userMenuItems[0]) => {
+    setIsOpen(false);
+
+    if (item.action === 'signout') {
+      try {
+        await signOut();
+        router.push('/');
+      } catch (error) {
+        console.error('Sign out error:', error);
+      }
+    } else if (item.href) {
+      router.push(item.href);
     }
   };
 
@@ -98,62 +105,15 @@ export default function UserMenu() {
 
           {/* 菜单项 */}
           <div className="py-1">
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                router.push('/subscription');
-              }}
-              className="w-full flex items-center gap-3 px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                />
-              </svg>
-              {t('navbar.subscription')}
-            </button>
-
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                router.push('/settings');
-              }}
-              className="w-full flex items-center gap-3 px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-{t('settings.title')}
-            </button>
-
-            <button
-              onClick={handleSignOut}
-              className="w-full flex items-center gap-3 px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                />
-              </svg>
-{t('navbar.logout')}
-            </button>
+            {userMenuItems.map((item) => (
+              <UserMenuItem
+                key={item.id}
+                icon={item.icon}
+                label={t(item.labelKey)}
+                onClick={() => handleMenuItemClick(item)}
+                variant={item.variant}
+              />
+            ))}
           </div>
         </div>
       )}

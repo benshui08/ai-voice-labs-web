@@ -66,6 +66,14 @@
   },
   "settings": {
     "title": "設定",
+    "menu": {
+      "home": "首頁",
+      "myBenefits": "我的權益",
+      "myAccount": "我的帳戶",
+      "orderList": "訂單列表",
+      "myCoupon": "我的優惠券",
+      "messageCenter": "訊息中心"
+    },
     "basicInfo": {
       "title": "基本資訊",
       "nameSurname": "姓名",
