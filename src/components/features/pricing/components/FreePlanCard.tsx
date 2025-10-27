@@ -32,7 +32,7 @@ export default function FreePlanCard({ plan }: FreePlanCardProps) {
   // 处理 Try it Free 按钮点击
   const handleTryFree = () => {
     // 从 plan 数据中获取 product_type，使用配置文件获取对应路由
-    const productType = (plan as any).product_type;
+    const productType = (plan as PricingPlan & { product_type?: string }).product_type;
     const route = getProductRoute(productType);
     router.push(route);
   };

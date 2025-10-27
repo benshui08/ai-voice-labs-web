@@ -57,7 +57,7 @@ export function useVoices({ locale, enabled = true }: UseVoicesOptions = {}): Us
       const response = await voiceAPI.getVoices(params);
 
       // API 返回的数据结构可能是 { data: Voice[] } 或直接是 Voice[]
-      const voiceList = Array.isArray(response) ? response : (response as any).data || [];
+      const voiceList = Array.isArray(response) ? response : (response as { data?: Voice[] }).data || [];
 
       setVoices(voiceList);
       console.log(`✅ 成功加载 ${voiceList.length} 个语音`);

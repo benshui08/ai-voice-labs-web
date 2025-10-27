@@ -53,11 +53,11 @@ export default function TTSSamples() {
         {/* Section Header */}
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-            AI Voice Labs's{' '}
+            AI Voice Labs&apos;s{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
               Star Product
             </span>{' '}
-            You Can't Miss 👍
+            You Can&apos;t Miss 👍
           </h2>
         </div>
 

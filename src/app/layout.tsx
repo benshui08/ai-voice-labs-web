@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
-import FloatingActions from "@/components/layout/FloatingActions";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { UserProvider } from "@/contexts/UserContext";
@@ -38,10 +35,7 @@ export default function RootLayout({
           <UserProvider>
             <LanguageProvider>
               <CreditsProvider>
-                <Navbar />
                 {children}
-                <Footer />
-                <FloatingActions />
               </CreditsProvider>
             </LanguageProvider>
           </UserProvider>

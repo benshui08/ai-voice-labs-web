@@ -7,7 +7,6 @@ import {
   SubscriptionStatus,
   type CreemVerifyResponse,
   type StripeVerifyResponse,
-  type StripeVerifyRequest
 } from '@/types/subscription';
 import { getCurrencySymbol } from '@/config/currency';
 
@@ -152,13 +151,11 @@ function PaymentSuccessContent() {
 
         // 等待认证状态稳定（最多等待 5 秒）
         await new Promise<void>((resolve) => {
-          let timeoutId: NodeJS.Timeout;
-
           const unsubscribe = auth.onAuthStateChanged((user) => {
             console.log('🔔 [支付验证] Auth 状态变化:', user ? `已登录 (${user.uid})` : '未登录');
 
             // 清除超时定时器
-            if (timeoutId) clearTimeout(timeoutId);
+            clearTimeout(timeoutHandle);
 
             // 用户状态已确定（不管是登录还是未登录）
             unsubscribe();
@@ -166,7 +163,7 @@ function PaymentSuccessContent() {
           });
 
           // 5秒后超时
-          timeoutId = setTimeout(() => {
+          const timeoutHandle = setTimeout(() => {
             console.warn('⚠️ [支付验证] Auth 初始化超时');
             unsubscribe();
             resolve();
