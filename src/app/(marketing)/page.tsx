@@ -2,10 +2,15 @@
 
 import { useRouter } from 'next/navigation';
 import { Mic } from 'lucide-react';
-import Hero from '@/components/sections/Hero';
+import Hero from '@/components/sections/index-hero';
 import TTSSamples from '@/components/sections/tts-samples';
 import FAQ from '@/components/sections/faq';
 import CTA from '@/components/sections/CTA';
+
+// Hero Configuration
+const HERO_CONFIG = {
+  backgroundVideo: 'https://pub-dc353f0aede3432493780267c47faff7.r2.dev/voice-labs-assets/banner.mp4',
+};
 
 // Hero Action Buttons Configuration
 const HERO_ACTIONS = [
@@ -38,8 +43,7 @@ export default function Home() {
         highlight="Speech & Cloned Voice"
         description="Everything you need to create high-quality videos with music and voiceovers in one place. No technical skills required. Bring your best ideas to life in TopMediAi now."
         actionButtons={actionButtons}
-        // backgroundVideo="/videos/hero-background.mp4" // 如果有视频可以添加
-        // backgroundImage="/images/hero-bg.jpg" // 或者使用图片
+        backgroundVideo={HERO_CONFIG.backgroundVideo}
       />
 
       {/* TTS Samples Section */}

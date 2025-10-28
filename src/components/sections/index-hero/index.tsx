@@ -1,3 +1,8 @@
+'use client';
+
+import { useState, useRef } from 'react';
+import { Volume2, VolumeX } from 'lucide-react';
+
 interface ActionButton {
   text: string;
   icon?: React.ReactNode;
@@ -28,19 +33,45 @@ export default function Hero({
   backgroundVideo,
   backgroundImage,
 }: HeroProps) {
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Video or Image */}
       {backgroundVideo ? (
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-        >
-          <source src={backgroundVideo} type="video/mp4" />
-        </video>
+        <>
+          <video
+            ref={videoRef}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          >
+            <source src={backgroundVideo} type="video/mp4" />
+          </video>
+
+          {/* Mute/Unmute Toggle Button */}
+          <button
+            onClick={toggleMute}
+            className="absolute top-24 right-6 z-50 p-3 bg-black/50 hover:bg-black/70 rounded-full backdrop-blur-sm transition-all duration-300 group"
+            aria-label={isMuted ? 'Unmute video' : 'Mute video'}
+          >
+            {isMuted ? (
+              <VolumeX className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
+            ) : (
+              <Volume2 className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
+            )}
+          </button>
+        </>
       ) : backgroundImage ? (
         <div
           className="absolute inset-0 w-full h-full bg-cover bg-center"
