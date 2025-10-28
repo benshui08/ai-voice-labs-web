@@ -61,11 +61,11 @@ export default function LanguageSelector({
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative w-full" ref={dropdownRef}>
       {/* 选择按钮 - 与 VoiceSelector 相同高度 */}
       <button
         onClick={onToggle}
-        className="h-[66px] flex items-center gap-2 px-4 bg-gray-900/90 border border-gray-700 rounded-xl hover:bg-gray-800 transition-colors"
+        className="w-full h-[66px] flex items-center gap-2 px-4 bg-gray-900/90 border border-gray-700 rounded-xl hover:bg-gray-800 transition-colors"
       >
         {selectedLocale ? (
           <>

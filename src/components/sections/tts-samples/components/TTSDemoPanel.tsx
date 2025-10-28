@@ -68,26 +68,27 @@ export default function TTSDemoPanel({
   return (
     <div className="bg-gradient-to-br from-gray-950 to-black rounded-2xl p-6 border border-gray-800">
       {/* Voice & Language Selection */}
-      <div className="flex items-center gap-4 mb-4">
-        {/* Voice Selection - 使用 VoiceSelector 组件 */}
-        <VoiceSelector
-          selectedVoice={selectedVoice}
-          availableVoices={availableVoices}
-          isLoading={isLoadingVoices}
-          onSelect={onVoiceSelect}
-          isOpen={isVoiceDropdownOpen}
-          onToggle={onToggleVoiceDropdown}
-          currentLanguage={selectedLocale?.code.split('-')[0] || 'en'}
-        />
-
-        {/* Language Selection - 使用 LanguageSelector 组件 */}
-        <LanguageSelector
-          selectedLocale={selectedLocale}
-          availableLocales={availableLocales}
-          onSelect={onLocaleSelect}
-          isOpen={isLanguageDropdownOpen}
-          onToggle={onToggleLanguageDropdown}
-        />
+      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-4 mb-4">
+        <div className="w-full md:flex-1">
+          <VoiceSelector
+            selectedVoice={selectedVoice}
+            availableVoices={availableVoices}
+            isLoading={isLoadingVoices}
+            onSelect={onVoiceSelect}
+            isOpen={isVoiceDropdownOpen}
+            onToggle={onToggleVoiceDropdown}
+            currentLanguage={selectedLocale?.code.split('-')[0] || 'en'}
+          />
+        </div>
+        <div className="w-full md:w-auto md:flex-shrink-0">
+          <LanguageSelector
+            selectedLocale={selectedLocale}
+            availableLocales={availableLocales}
+            onSelect={onLocaleSelect}
+            isOpen={isLanguageDropdownOpen}
+            onToggle={onToggleLanguageDropdown}
+          />
+        </div>
       </div>
 
       {/* Text Input - 增加高度和对比度 */}
