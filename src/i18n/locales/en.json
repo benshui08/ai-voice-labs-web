@@ -136,9 +136,8 @@
     }
   },
   "faq": {
-    "title": "Any questions?",
-    "titleLine2": "Check out the FAQ",
-    "description": "Got questions? Find all the answers in our FAQ. If you need further assistance, feel free to visit our support center for more help.",
+    "title": "Frequently Asked Questions about AI Voice Labs",
+    "description": "Find answers to common questions about our AI voice generation platform.",
     "helpCenter": "Help Center",
     "contact": "Contact",
     "questions": {

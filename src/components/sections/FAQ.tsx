@@ -1,9 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { FAQ_ITEMS } from '@/config/faqConfig';
+import { ChevronDown, Minus } from 'lucide-react';
 
+/**
+ * FAQ Section Component
+ *
+ * Dark-themed FAQ section with accordion-style questions
+ */
 export default function FAQ() {
   const { t } = useLanguage();
   const [openIndex, setOpenIndex] = useState<number | null>(0);
@@ -12,90 +18,70 @@ export default function FAQ() {
     setOpenIndex(openIndex === index ? null : index);
   };
 
-  // Define FAQ questions keys
-  const faqQuestions = [
-    'freeTrial',
-    'refunds',
-    'studentDiscounts',
-    'outOfCredit',
-    'billingOptions',
-    'changePlans',
-    'cancelPlan',
-  ];
-
   return (
-    <section id="faq" className="py-20 px-4 bg-gray-50">
-      <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Left side - Title and description */}
-          <div className="lg:pr-8">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
-              {t('faq.title')}
-              <br />
-              {t('faq.titleLine2')}
-            </h2>
-            <p className="text-gray-600 text-base md:text-lg mb-8">
-              {t('faq.description')}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link
-                href="/help"
-                className="inline-flex items-center justify-center px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                {t('faq.helpCenter')}
-              </Link>
-              <Link
-                href="/contact"
-                className="inline-flex items-center justify-center px-6 py-3 border-2 border-purple-600 text-purple-600 font-medium rounded-lg hover:bg-purple-50 transition-colors"
-              >
-                {t('faq.contact')}
-              </Link>
-            </div>
-          </div>
+    <section id="faq" className="py-20 px-4 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <div className="max-w-5xl mx-auto">
+        {/* Title */}
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
+            {t('faq.title')}
+          </h2>
+          <p className="text-gray-400 text-lg">
+            {t('faq.description')}
+          </p>
+        </div>
 
-          {/* Right side - FAQ accordion */}
-          <div className="space-y-4">
-            {faqQuestions.map((questionKey, index) => (
-              <div
-                key={questionKey}
-                className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+        {/* FAQ Accordion */}
+        <div className="space-y-3">
+          {FAQ_ITEMS.map((item, index) => (
+            <div
+              key={item.id}
+              className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden transition-all hover:border-purple-500/50"
+            >
+              <button
+                onClick={() => toggleFAQ(index)}
+                className="w-full flex items-center justify-between p-5 md:p-6 text-left group"
+                aria-expanded={openIndex === index}
               >
-                <button
-                  onClick={() => toggleFAQ(index)}
-                  className="w-full flex items-center justify-between p-5 text-left hover:bg-gray-50 transition-colors"
-                  aria-expanded={openIndex === index}
-                >
-                  <span className={`font-medium text-base md:text-lg ${
-                    openIndex === index ? 'text-purple-600' : 'text-gray-900'
-                  }`}>
-                    {t(`faq.questions.${questionKey}.question`)}
+                <div className="flex items-start gap-4 flex-1">
+                  <span className="text-purple-400 font-bold text-lg flex-shrink-0">
+                    {index + 1}.
                   </span>
-                  <svg
-                    className={`w-5 h-5 text-gray-500 transition-transform flex-shrink-0 ml-4 ${
-                      openIndex === index ? 'rotate-180' : ''
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-                {openIndex === index && (
-                  <div className="px-5 pb-5">
-                    <p className="text-gray-600 text-sm md:text-base leading-relaxed">
-                      {t(`faq.questions.${questionKey}.answer`)}
-                    </p>
-                  </div>
-                )}
+                  <span className={`font-medium text-base md:text-lg transition-colors ${
+                    openIndex === index ? 'text-purple-400' : 'text-white group-hover:text-purple-300'
+                  }`}>
+                    {t(item.questionKey)}
+                  </span>
+                </div>
+                <div className="flex-shrink-0 ml-4">
+                  {openIndex === index ? (
+                    <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                      <Minus className="w-5 h-5 text-purple-400" />
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+                      <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-purple-400 transition-colors" />
+                    </div>
+                  )}
+                </div>
+              </button>
+
+              {/* Answer with smooth animation */}
+              <div
+                className={`transition-all duration-300 ease-in-out ${
+                  openIndex === index
+                    ? 'max-h-96 opacity-100'
+                    : 'max-h-0 opacity-0'
+                }`}
+              >
+                <div className="px-5 md:px-6 pb-5 md:pb-6 pl-16 md:pl-20">
+                  <p className="text-gray-300 text-sm md:text-base leading-relaxed">
+                    {t(item.answerKey)}
+                  </p>
+                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
