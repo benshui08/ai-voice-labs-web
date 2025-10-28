@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { voiceAPI } from '@/lib/api';
@@ -9,6 +9,7 @@ import MobileTextInput from './MobileTextInput';
 import ExampleButtons from './ExampleButtons';
 import MobileVoiceSelector from './MobileVoiceSelector';
 import MobileActionButtons from './MobileActionButtons';
+import AudioPlayerModal from './AudioPlayerModal';
 
 interface MobileTTSPageProps {
   text: string;
@@ -49,6 +50,7 @@ export default function MobileTTSPage({
 }: MobileTTSPageProps) {
   const router = useRouter();
   const { locale } = useLanguage();
+  const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
 
   // Initialize default voice based on current locale
   useEffect(() => {
@@ -76,6 +78,13 @@ export default function MobileTTSPage({
     void fetchDefaultVoice();
   }, [locale, selectedVoice, handleVoiceSelect]);
 
+  // 当音频生成成功时，自动打开弹窗
+  useEffect(() => {
+    if (audioUrl) {
+      setIsAudioModalOpen(true);
+    }
+  }, [audioUrl]);
+
   const handleSelectExample = (exampleText: string) => {
     handleTextChange(exampleText);
   };
@@ -88,6 +97,24 @@ export default function MobileTTSPage({
   const handleOpenSettings = () => {
     // TODO: Open settings modal
     console.log('Open settings');
+  };
+
+  // 获取当前语言的显示名称
+  const getVoiceDisplayName = () => {
+    if (!selectedVoice) return '晓臻';
+
+    // 尝试获取当前 locale 的显示名称
+    const displayName = selectedVoice.display_name?.[locale];
+    if (displayName) return displayName;
+
+    // 回退到其他语言
+    const fallbackName =
+      selectedVoice.display_name?.['zh-CN'] ||
+      selectedVoice.display_name?.['zh-TW'] ||
+      selectedVoice.display_name?.['en-US'] ||
+      selectedVoice.name;
+
+    return fallbackName || '晓臻';
   };
 
   return (
@@ -129,35 +156,18 @@ export default function MobileTTSPage({
           isGenerating={isGenerating}
           canGenerate={canGenerate}
         />
-
-        {/* Audio Player (only shown after generation) */}
-        {audioUrl && (
-          <div className="p-4 bg-white border-2 border-purple-200 rounded-2xl shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">
-                Generated Audio
-              </h3>
-              <a
-                href={audioUrl}
-                download="ai-voice-output.mp3"
-                className="text-purple-600 hover:text-purple-700 text-sm font-medium"
-              >
-                Download
-              </a>
-            </div>
-            <audio
-              controls
-              src={audioUrl}
-              className="w-full"
-              style={{
-                filter: 'sepia(20%) saturate(70%) hue-rotate(220deg)',
-              }}
-            >
-              Your browser does not support the audio element.
-            </audio>
-          </div>
-        )}
       </div>
+
+      {/* 底部弹出音频播放器 */}
+      {audioUrl && (
+        <AudioPlayerModal
+          isOpen={isAudioModalOpen}
+          onClose={() => setIsAudioModalOpen(false)}
+          audioUrl={audioUrl}
+          voiceName={getVoiceDisplayName()}
+          voiceAvatar={selectedVoice?.avatar_url}
+        />
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-type Locale = 'en' | 'zh-CN' | 'zh-TW';
+type Locale = 'en-US' | 'zh-CN' | 'zh-TW';
 
 interface LanguageContextType {
   locale: Locale;
@@ -17,7 +17,7 @@ type MessageValue = string | Record<string, unknown>;
 
 // 检测浏览器语言
 const detectBrowserLanguage = (): Locale => {
-  if (typeof window === 'undefined') return 'en';
+  if (typeof window === 'undefined') return 'en-US';
 
   const browserLang = navigator.language.toLowerCase();
 
@@ -29,19 +29,19 @@ const detectBrowserLanguage = (): Locale => {
     return 'zh-CN';
   }
 
-  return 'en';
+  return 'en-US';
 };
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  // 初始状态始终为 'en'，避免 hydration 不匹配
-  const [locale, setLocaleState] = useState<Locale>('en');
+  // 初始状态始终为 'en-US'，避免 hydration 不匹配
+  const [locale, setLocaleState] = useState<Locale>('en-US');
   const [messages, setMessages] = useState<Record<string, MessageValue>>({});
   const [isReady, setIsReady] = useState(false);
 
   // 在客户端检测语言设置
   useEffect(() => {
     const savedLocale = localStorage.getItem('locale') as Locale;
-    if (savedLocale && ['en', 'zh-CN', 'zh-TW'].includes(savedLocale)) {
+    if (savedLocale && ['en-US', 'zh-CN', 'zh-TW'].includes(savedLocale)) {
       // 优先使用保存的语言
       setLocaleState(savedLocale);
     } else {
@@ -115,7 +115,7 @@ export function useLanguage() {
 
 // 语言配置
 export const locales: { code: Locale; name: string; nativeName: string }[] = [
-  { code: 'en', name: 'English', nativeName: 'English' },
+  { code: 'en-US', name: 'English', nativeName: 'English' },
   { code: 'zh-CN', name: 'Simplified Chinese', nativeName: '简体中文' },
   { code: 'zh-TW', name: 'Traditional Chinese', nativeName: '繁體中文' },
 ];

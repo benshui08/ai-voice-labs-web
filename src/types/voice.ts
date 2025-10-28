@@ -29,8 +29,8 @@ export interface Voice {
 /**
  * 获取本地化的语音名称
  */
-export function getLocalizedVoiceName(voice: Voice, languageCode: string = 'en'): string {
-  return voice.display_name[languageCode] || voice.display_name['en'] || voice.name;
+export function getLocalizedVoiceName(voice: Voice, languageCode: string = 'en-US'): string {
+  return voice.display_name[languageCode] || voice.display_name['en-US'] || voice.name;
 }
 
 /**
