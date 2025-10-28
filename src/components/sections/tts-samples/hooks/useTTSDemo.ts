@@ -24,7 +24,7 @@ export function useTTSDemo() {
   // ==================== TTS 状态 ====================
   const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
   const [selectedLocale, setSelectedLocale] = useState<LocaleOption | null>(null);
-  const [textInput, setTextInput] = useState('非常好，我要试试');
+  const [textInput, setTextInput] = useState('');
   const [enhanceVoice, setEnhanceVoice] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -39,9 +39,19 @@ export function useTTSDemo() {
     enabled: !!selectedLocale,
   });
 
-  // 当语音列表加载完成且没有选中语音时，自动选择第一个
+  // 当语音列表变化时，检查并更新选中的语音
   useEffect(() => {
-    if (voices.length > 0 && !selectedVoice) {
+    if (voices.length === 0) {
+      // 如果没有语音列表，清空选中
+      setSelectedVoice(null);
+      return;
+    }
+
+    // 检查当前选中的语音是否在新列表中
+    const isCurrentVoiceInList = selectedVoice && voices.some((v) => v.id === selectedVoice.id);
+
+    if (!isCurrentVoiceInList) {
+      // 如果当前选中的语音不在列表中，选择第一个
       setSelectedVoice(voices[0]);
       console.log('🎤 自动选择第一个语音:', voices[0].name);
     }

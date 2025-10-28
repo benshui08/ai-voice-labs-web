@@ -120,6 +120,15 @@ export default function VoiceSelector({
     router.push('/studio/tts');
   };
 
+  // 当可用语音列表变化时（语言切换），停止播放并重置状态
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setPlayingVoiceId(null);
+  }, [availableVoices]);
+
   // 组件卸载时停止播放
   useEffect(() => {
     return () => {
