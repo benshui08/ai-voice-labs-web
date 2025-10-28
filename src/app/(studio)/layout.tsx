@@ -51,7 +51,10 @@ function StudioLayoutContent({
       {/* ========== 移动端布局 (<lg) ========== */}
       <div className="lg:hidden">
         {/* 移动端顶部导航 */}
-        <MobileTopNav onMenuToggle={setIsMobileMenuOpen} />
+        <MobileTopNav
+          isMenuOpen={isMobileMenuOpen}
+          onMenuToggle={setIsMobileMenuOpen}
+        />
 
         {/* 移动端侧边抽屉菜单 */}
         <MobileSideMenu

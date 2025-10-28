@@ -38,7 +38,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 /**
- * Bottom Navigation for Mobile Studio
+ * Mobile Bottom Navigation
  *
  * Fixed bottom navigation bar for mobile devices with:
  * - TTS, Voices, Clone, More Tools tabs
@@ -46,7 +46,7 @@ const NAV_ITEMS: NavItem[] = [
  *
  * Used across multiple Studio pages (TTS, Voices, etc.)
  */
-export default function StudioBottomNav() {
+export default function MobileBottomNav() {
   const router = useRouter();
   const pathname = usePathname();
 

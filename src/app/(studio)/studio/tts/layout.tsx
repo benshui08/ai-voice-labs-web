@@ -1,6 +1,6 @@
 'use client';
 
-import StudioBottomNav from '@/components/features/studio/StudioBottomNav';
+import MobileBottomNav from '@/components/features/studio/MobileBottomNav';
 
 /**
  * TTS Layout
@@ -31,7 +31,7 @@ export default function TTSLayout({
         </div>
 
         {/* Mobile Bottom Navigation */}
-        <StudioBottomNav />
+        <MobileBottomNav />
       </div>
     </>
   );

@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import LanguageSwitcher from '@/components/layout/Navbar/LanguageSwitcher';
@@ -8,6 +7,7 @@ import UserMenu from '@/components/layout/Navbar/UserMenu';
 import Link from 'next/link';
 
 interface MobileTopNavProps {
+  isMenuOpen?: boolean;
   onMenuToggle?: (isOpen: boolean) => void;
 }
 
@@ -21,14 +21,11 @@ interface MobileTopNavProps {
  * - Language switcher
  * - User avatar
  */
-export default function MobileTopNav({ onMenuToggle }: MobileTopNavProps) {
+export default function MobileTopNav({ isMenuOpen = false, onMenuToggle }: MobileTopNavProps) {
   const router = useRouter();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const toggleMenu = () => {
-    const newState = !isMenuOpen;
-    setIsMenuOpen(newState);
-    onMenuToggle?.(newState);
+    onMenuToggle?.(!isMenuOpen);
   };
 
   const handlePricingClick = () => {
@@ -74,7 +71,7 @@ export default function MobileTopNav({ onMenuToggle }: MobileTopNavProps) {
 
           {/* Language Switcher */}
           <div className="flex items-center">
-            <LanguageSwitcher theme="light" variant="compact" />
+            <LanguageSwitcher theme="dark" variant="compact" />
           </div>
 
           {/* User Menu */}

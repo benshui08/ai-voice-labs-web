@@ -31,25 +31,18 @@ export default function LanguageSwitcher({
   const currentLocale = locales.find((l) => l.code === locale) || locales[0];
 
   // Theme-based styles
+  // theme="dark" → 用于白色/浅色背景（深色文字）
+  // theme="light" → 用于深色背景（浅色文字）
+  // 弹出层统一使用白色背景
   const buttonStyles = theme === 'dark'
-    ? 'text-gray-300 hover:text-white'
+    ? 'text-gray-700 hover:text-gray-900'
     : 'text-white hover:text-purple-400';
 
-  const dropdownStyles = theme === 'dark'
-    ? 'bg-gray-800 border-gray-700'
-    : 'bg-white border-gray-200';
-
-  const itemStyles = theme === 'dark'
-    ? 'hover:bg-gray-700 text-gray-300'
-    : 'hover:bg-purple-50 text-gray-700';
-
-  const activeItemStyles = theme === 'dark'
-    ? 'bg-gray-700 text-white font-medium'
-    : 'bg-purple-50 text-purple-600 font-medium';
-
-  const subTextStyles = theme === 'dark'
-    ? 'text-gray-500'
-    : 'text-gray-500';
+  // 弹出层统一白色背景
+  const dropdownStyles = 'bg-white border-gray-200';
+  const itemStyles = 'hover:bg-purple-50 text-gray-700';
+  const activeItemStyles = 'bg-purple-50 text-purple-600 font-medium';
+  const subTextStyles = 'text-gray-500';
 
   return (
     <div className="relative" ref={dropdownRef}>

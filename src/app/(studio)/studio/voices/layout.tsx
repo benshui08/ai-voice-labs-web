@@ -1,6 +1,6 @@
 'use client';
 
-import StudioBottomNav from '@/components/features/studio/StudioBottomNav';
+import MobileBottomNav from '@/components/features/studio/MobileBottomNav';
 
 /**
  * Voices Layout
@@ -29,7 +29,7 @@ export default function VoicesLayout({
         </div>
 
         {/* Mobile Bottom Navigation */}
-        <StudioBottomNav />
+        <MobileBottomNav />
       </div>
     </>
   );
