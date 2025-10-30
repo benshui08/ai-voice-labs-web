@@ -152,6 +152,12 @@
       "aiMusic": "AI Music",
       "aiCover": "AI Cover",
       "musicTools": "Music Tools"
+    },
+    "mobileNav": {
+      "tts": "TTS",
+      "voices": "Voices",
+      "clone": "Clone",
+      "history": "History"
     }
   },
   "voiceFilters": {

@@ -236,6 +236,12 @@
       "aiMusic": "AI 音乐",
       "aiCover": "AI 翻唱",
       "musicTools": "音乐工具"
+    },
+    "mobileNav": {
+      "tts": "文字转语音",
+      "voices": "语音库",
+      "clone": "克隆",
+      "history": "历史"
     }
   },
   "voiceFilters": {
