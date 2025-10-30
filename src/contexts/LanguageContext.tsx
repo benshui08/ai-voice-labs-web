@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 
-type Locale = 'en-US' | 'zh-CN' | 'zh-TW';
+type Locale = 'en-US' | 'zh-CN' | 'zh-TW' | 'th-TH';
 
 interface LanguageContextType {
   locale: Locale;
@@ -37,7 +37,7 @@ const getInitialLocale = (): Locale => {
   if (typeof window === 'undefined') return 'en-US';
 
   const savedLocale = localStorage.getItem('locale') as Locale;
-  if (savedLocale && ['en-US', 'zh-CN', 'zh-TW'].includes(savedLocale)) {
+  if (savedLocale && ['en-US', 'zh-CN', 'zh-TW', 'th-TH'].includes(savedLocale)) {
     return savedLocale;
   }
 
@@ -127,4 +127,5 @@ export const locales: { code: Locale; name: string; nativeName: string }[] = [
   { code: 'en-US', name: 'English', nativeName: 'English' },
   { code: 'zh-CN', name: 'Simplified Chinese', nativeName: '简体中文' },
   { code: 'zh-TW', name: 'Traditional Chinese', nativeName: '繁體中文' },
+  { code: 'th-TH', name: 'Thai', nativeName: 'ภาษาไทย' },
 ];
