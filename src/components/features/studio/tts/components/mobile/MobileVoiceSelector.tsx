@@ -1,6 +1,8 @@
 'use client';
 
 import Image from 'next/image';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getLocalizedVoiceName } from '@/types/voice';
 import type { VoiceModel } from '@/hooks/useTTSGenerator';
 
 interface MobileVoiceSelectorProps {
@@ -20,6 +22,11 @@ export default function MobileVoiceSelector({
   onOpenVoiceModal,
   disabled = false,
 }: MobileVoiceSelectorProps) {
+  const { locale } = useLanguage();
+
+  // Get localized voice name
+  const voiceName = selectedVoice ? getLocalizedVoiceName(selectedVoice, locale) : '晓臻';
+
   return (
     <button
       type="button"
@@ -33,7 +40,7 @@ export default function MobileVoiceSelector({
           {selectedVoice?.avatar_url ? (
             <Image
               src={selectedVoice.avatar_url}
-              alt={selectedVoice.name}
+              alt={voiceName}
               width={48}
               height={48}
               className="w-full h-full object-cover"
@@ -46,11 +53,11 @@ export default function MobileVoiceSelector({
         {/* Voice Name */}
         <div className="text-left">
           <div className="text-base font-semibold text-gray-900">
-            {selectedVoice?.display_name?.zh || selectedVoice?.name || '晓臻'}
+            {voiceName}
           </div>
           {selectedVoice && (
             <div className="text-xs text-gray-500">
-              {selectedVoice.locale} • {selectedVoice.gender}
+              {selectedVoice.locale} • {selectedVoice.gender === 'male' ? 'Male' : selectedVoice.gender === 'female' ? 'Female' : 'Neutral'}
             </div>
           )}
         </div>

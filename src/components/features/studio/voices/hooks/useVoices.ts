@@ -13,7 +13,10 @@ interface UseVoicesReturn {
   voices: Voice[];
   filteredVoices: Voice[];
   loading: boolean;
+  loadingMore: boolean;
   error: string | null;
+  hasMore: boolean;
+  total: number;
 
   // Search state
   searchQuery: string;
@@ -37,6 +40,7 @@ interface UseVoicesReturn {
 
   // Actions
   refreshVoices: () => Promise<void>;
+  loadMoreVoices: () => Promise<void>;
 }
 
 /**
@@ -51,7 +55,14 @@ export function useVoices({ locale }: UseVoicesProps): UseVoicesReturn {
   // Voices data state
   const [voices, setVoices] = useState<Voice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const pageSize = 20;
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,57 +80,111 @@ export function useVoices({ locale }: UseVoicesProps): UseVoicesReturn {
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
-  // Load voices
+  // Load voices (initial load or refresh)
   const loadVoices = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getVoices({ is_active: true });
-      setVoices(data);
+
+      // Build API params
+      const params: {
+        is_active: boolean;
+        page: number;
+        page_size: number;
+        locale?: string;
+        gender?: string;
+        tag?: string;
+      } = {
+        is_active: true,
+        page: 1,
+        page_size: pageSize,
+      };
+
+      if (selectedLanguage) {
+        params.locale = selectedLanguage.code;
+      }
+
+      if (selectedGender !== 'all') {
+        params.gender = selectedGender;
+      }
+
+      if (selectedTagId !== 'all' && selectedTagId !== 'my-clone' && selectedTagId !== 'used') {
+        params.tag = selectedTagId;
+      }
+
+      const response = await getVoices(params);
+
+      setVoices(response.voices);
+      setTotal(response.total);
+      setTotalPages(response.total_pages);
+      setCurrentPage(response.page);
     } catch (err) {
       console.error('Failed to load voices:', err);
       setError('Failed to load voices');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedLanguage, selectedGender, selectedTagId, pageSize]);
 
+  // Load more voices (pagination)
+  const loadMoreVoices = useCallback(async () => {
+    if (loadingMore || currentPage >= totalPages) return;
+
+    try {
+      setLoadingMore(true);
+      const nextPage = currentPage + 1;
+
+      // Build API params
+      const params: {
+        is_active: boolean;
+        page: number;
+        page_size: number;
+        locale?: string;
+        gender?: string;
+        tag?: string;
+      } = {
+        is_active: true,
+        page: nextPage,
+        page_size: pageSize,
+      };
+
+      if (selectedLanguage) {
+        params.locale = selectedLanguage.code;
+      }
+
+      if (selectedGender !== 'all') {
+        params.gender = selectedGender;
+      }
+
+      if (selectedTagId !== 'all' && selectedTagId !== 'my-clone' && selectedTagId !== 'used') {
+        params.tag = selectedTagId;
+      }
+
+      const response = await getVoices(params);
+
+      setVoices((prev) => [...prev, ...response.voices]);
+      setTotal(response.total);
+      setTotalPages(response.total_pages);
+      setCurrentPage(response.page);
+    } catch (err) {
+      console.error('Failed to load more voices:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, currentPage, totalPages, selectedLanguage, selectedGender, selectedTagId, pageSize]);
+
+  // Initial load and reload when filters change
   useEffect(() => {
     void loadVoices();
   }, [loadVoices]);
 
-  // Filter voices based on all criteria
+  // Filter voices based on search query (client-side only)
+  // Other filters (language, gender, tag) are handled by API
   const filteredVoices = voices.filter((voice) => {
-    // Search filter
+    // Search filter (client-side for better UX)
     if (searchQuery) {
       const voiceName = getLocalizedVoiceName(voice, locale).toLowerCase();
       if (!voiceName.includes(searchQuery.toLowerCase())) {
-        return false;
-      }
-    }
-
-    // Language filter
-    if (selectedLanguage && voice.locale !== selectedLanguage.code) {
-      return false;
-    }
-
-    // Gender filter
-    if (selectedGender !== 'all' && voice.gender !== selectedGender) {
-      return false;
-    }
-
-    // Tag filter
-    if (selectedTagId !== 'all') {
-      if (selectedTagId === 'my-clone') {
-        // TODO: Implement my clone logic
-        return false;
-      }
-      if (selectedTagId === 'used') {
-        // TODO: Implement used voices logic
-        return false;
-      }
-      // Check if voice has this tag
-      if (!voice.tags.includes(selectedTagId)) {
         return false;
       }
     }
@@ -144,12 +209,18 @@ export function useVoices({ locale }: UseVoicesProps): UseVoicesReturn {
     }
   }, [audioElement, playingVoiceId]);
 
+  // Calculate hasMore
+  const hasMore = currentPage < totalPages;
+
   return {
     // Data state
     voices,
     filteredVoices,
     loading,
+    loadingMore,
     error,
+    hasMore,
+    total,
 
     // Search state
     searchQuery,
@@ -173,5 +244,6 @@ export function useVoices({ locale }: UseVoicesProps): UseVoicesReturn {
 
     // Actions
     refreshVoices: loadVoices,
+    loadMoreVoices,
   };
 }

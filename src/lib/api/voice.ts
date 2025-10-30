@@ -6,6 +6,15 @@ import type { Voice } from '@/types/voice';
  */
 
 // 获取语音列表
+// 语音列表分页响应
+export interface VoiceListResponse {
+  voices: Voice[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
 export const getVoices = async (params?: {
   provider?: string;
   country?: string;
@@ -15,9 +24,10 @@ export const getVoices = async (params?: {
   gender?: string;
   tag?: string;
   is_active?: boolean;
-  limit?: number;
-}): Promise<Voice[]> => {
-  return await apiClient.get<Voice[]>('/api/v1/voices', { params }) as Voice[];
+  page?: number;
+  page_size?: number;
+}): Promise<VoiceListResponse> => {
+  return await apiClient.get<VoiceListResponse>('/api/v1/voices', { params });
 };
 
 // 创建语音模型

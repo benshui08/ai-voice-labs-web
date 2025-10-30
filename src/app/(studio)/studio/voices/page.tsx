@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useStudio } from '@/contexts/StudioContext';
@@ -35,7 +35,10 @@ export default function VoicesPage() {
   const {
     filteredVoices,
     loading,
+    loadingMore,
     error,
+    hasMore,
+    total,
     searchQuery,
     setSearchQuery,
     selectedLanguage,
@@ -46,7 +49,21 @@ export default function VoicesPage() {
     setSelectedGender,
     playingVoiceId,
     handlePlayVoice,
+    loadMoreVoices,
   } = useVoices({ locale });
+
+  // Handle scroll to load more
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const target = e.currentTarget;
+      const bottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 100;
+
+      if (bottom && hasMore && !loading && !loadingMore) {
+        void loadMoreVoices();
+      }
+    },
+    [hasMore, loading, loadingMore, loadMoreVoices]
+  );
 
   // Set page title
   useEffect(() => {
@@ -108,8 +125,8 @@ export default function VoicesPage() {
             onGenderChange={setSelectedGender}
           />
 
-          {/* Voice List */}
-          <div className="flex-1 overflow-y-auto bg-gray-50">
+          {/* Voice List with Infinite Scroll */}
+          <div className="flex-1 overflow-y-auto bg-gray-50" onScroll={handleScroll}>
             <div className="p-6">
               <VoiceList
                 voices={filteredVoices}
@@ -121,6 +138,20 @@ export default function VoicesPage() {
                 onPlayVoice={handlePlayVoice}
                 onSelectVoice={handleSelectVoice}
               />
+
+              {/* Loading more indicator */}
+              {loadingMore && (
+                <div className="flex justify-center py-4">
+                  <div className="text-sm text-gray-500">Loading more voices...</div>
+                </div>
+              )}
+
+              {/* End of list indicator */}
+              {!loading && !loadingMore && !hasMore && filteredVoices.length > 0 && (
+                <div className="flex justify-center py-4">
+                  <div className="text-xs text-gray-400">All voices loaded ({total} total)</div>
+                </div>
+              )}
             </div>
           </div>
         </div>

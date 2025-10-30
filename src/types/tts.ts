@@ -24,7 +24,7 @@ export interface TtsRecord {
     name: string;
     display_name: Record<string, string>;
     avatar_url: string;
-    [key: string]: any;
+    [key: string]: unknown;
   }; // 关联的语音信息（仅在查询时填充）
 }
 

@@ -34,9 +34,9 @@ export function useVoices() {
         setLoading(true);
         setError(null);
 
-        const voicesData = await voiceAPI.getVoices({ is_active: true, limit: 1000 });
-        setVoices(voicesData as Voice[]);
-        console.log('✅ 成功获取语音列表:', `共 ${voicesData.length} 条`, voicesData[0]);
+        const response = await voiceAPI.getVoices({ is_active: true, page: 1, page_size: 1000 });
+        setVoices(response.voices);
+        console.log('✅ 成功获取语音列表:', `共 ${response.voices.length} 条`, response.voices[0]);
       } catch (err) {
         const error = err as Error;
         console.error('❌ 获取数据失败:', error);

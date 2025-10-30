@@ -145,16 +145,17 @@ export default function MobileTTSPage({
       console.log('🎤 [MobileTTSPage] 加载默认语音，locale:', locale);
       voiceLoadingPromise = (async () => {
         try {
-          const voices = await voiceAPI.getVoices({
+          const response = await voiceAPI.getVoices({
             locale,
             is_active: true,
-            limit: 1,
+            page: 1,
+            page_size: 1,
           });
 
-          if (voices && voices.length > 0) {
-            loadedVoiceCache = voices[0];
-            console.log('✅ [MobileTTSPage] 默认语音加载成功:', voices[0].name);
-            return voices[0];
+          if (response.voices && response.voices.length > 0) {
+            loadedVoiceCache = response.voices[0];
+            console.log('✅ [MobileTTSPage] 默认语音加载成功:', response.voices[0].name);
+            return response.voices[0];
           }
           return null;
         } catch (err) {
