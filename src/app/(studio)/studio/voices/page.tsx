@@ -89,7 +89,7 @@ export default function VoicesPage() {
   const getVoiceName = (voice: Voice) => getLocalizedVoiceName(voice, locale);
 
   return (
-    <div className="h-screen flex flex-col bg-white overflow-hidden">
+    <div className="h-[calc(100vh-60px)] lg:h-screen flex flex-col bg-white overflow-hidden">
       {/* ========== Search bar + Language selector ========== */}
       <VoiceSearchBar
         searchQuery={searchQuery}
@@ -108,7 +108,7 @@ export default function VoicesPage() {
       />
 
       {/* ========== 内容区域：左侧标签 + 右侧（上部筛选器 + 下部列表）========== */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* 左侧标签选择器 - 固定，自适应内容宽度 */}
         <div className="flex-shrink-0 border-r border-gray-200">
           <VoiceTagSelector
@@ -127,7 +127,7 @@ export default function VoicesPage() {
 
           {/* Voice List with Infinite Scroll */}
           <div className="flex-1 overflow-y-auto bg-gray-50" onScroll={handleScroll}>
-            <div className="p-6">
+            <div className="p-4 pb-20 lg:p-6 lg:pb-6">
               <VoiceList
                 voices={filteredVoices}
                 loading={loading}
