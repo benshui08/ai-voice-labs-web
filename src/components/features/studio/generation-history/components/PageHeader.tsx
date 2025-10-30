@@ -6,10 +6,11 @@ interface PageHeaderProps {
 /**
  * Page header component
  * Displays title and subtitle for the generation history page
+ * Hidden on mobile, visible on desktop
  */
 export default function PageHeader({ title, subtitle }: PageHeaderProps) {
   return (
-    <div>
+    <div className="hidden lg:block">
       <h1 className="text-3xl font-bold text-gray-900 mb-2">{title}</h1>
       <p className="text-gray-600">{subtitle}</p>
     </div>

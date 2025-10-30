@@ -67,7 +67,7 @@ export function useGenerationHistory({
   // Filter & pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(initialPageSize);
-  const [selectedStatus, setSelectedStatus] = useState<TaskStatus | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<TaskStatus | null>(TaskStatus.SUCCESS);
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
 

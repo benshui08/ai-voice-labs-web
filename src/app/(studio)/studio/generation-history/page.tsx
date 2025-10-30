@@ -2,8 +2,8 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import GenerationHistory from '@/components/features/generation-history/GenerationHistory';
-import { useGenerationHistory } from '@/components/features/generation-history/hooks/useGenerationHistory';
+import GenerationHistory from '@/components/features/studio/generation-history/GenerationHistory';
+import { useGenerationHistory } from '@/components/features/studio/generation-history/hooks/useGenerationHistory';
 
 /**
  * Generation History Page
@@ -75,8 +75,32 @@ export default function GenerationHistoryPage() {
   // Show main content (supports both authenticated and anonymous users)
   return (
     <>
-      <div className="min-h-screen bg-gray-50 pt-20">
+      {/* Desktop Layout */}
+      <div className="hidden lg:block min-h-screen bg-gray-50 pt-20 overflow-x-hidden">
         <div className="max-w-6xl mx-auto px-4 py-8">
+          <GenerationHistory
+            generations={generations}
+            total={total}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalPages={totalPages}
+            loading={loading}
+            selectedStatus={selectedStatus}
+            startDate={startDate}
+            endDate={endDate}
+            onClearAll={handleClearAll}
+            onDeleteGeneration={handleDeleteGeneration}
+            onDownloadGeneration={handleDownloadGeneration}
+            onPageChange={handlePageChange}
+            onStatusChange={handleStatusChange}
+            onDateRangeChange={handleDateRangeChange}
+          />
+        </div>
+      </div>
+
+      {/* Mobile Layout */}
+      <div className="lg:hidden fixed inset-0 bg-gray-50 pt-16 overflow-hidden">
+        <div className="h-full px-4">
           <GenerationHistory
             generations={generations}
             total={total}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { Mic, Users, Copy, Wrench, Sparkles } from 'lucide-react';
+import { Mic, Users, Copy, History } from 'lucide-react';
 
 interface NavItem {
   id: string;
@@ -30,10 +30,10 @@ const NAV_ITEMS: NavItem[] = [
     href: '/clone',
   },
   {
-    id: 'more',
-    icon: <Wrench className="w-5 h-5" />,
-    labelKey: 'More Tools',
-    href: '/studio',
+    id: 'history',
+    icon: <History className="w-5 h-5" />,
+    labelKey: 'History',
+    href: '/studio/generation-history',
   },
 ];
 
@@ -41,8 +41,7 @@ const NAV_ITEMS: NavItem[] = [
  * Mobile Bottom Navigation
  *
  * Fixed bottom navigation bar for mobile devices with:
- * - TTS, Voices, Clone, More Tools tabs
- * - 70% OFF promotion button
+ * - TTS, Voices, Clone, History tabs
  *
  * Used across multiple Studio pages (TTS, Voices, etc.)
  */
@@ -52,10 +51,6 @@ export default function MobileBottomNav() {
 
   const handleNavClick = (href: string) => {
     router.push(href);
-  };
-
-  const handlePromoClick = () => {
-    router.push('/pricing');
   };
 
   return (
@@ -85,17 +80,6 @@ export default function MobileBottomNav() {
             </button>
           );
         })}
-
-        {/* Promo Button */}
-        <button
-          onClick={handlePromoClick}
-          className="flex flex-col items-center gap-1 px-3 py-2 rounded-lg bg-gradient-to-r from-pink-500 to-red-500 text-white hover:from-pink-600 hover:to-red-600 transition-all shadow-lg"
-        >
-          <Sparkles className="w-5 h-5" />
-          <span className="text-[10px] font-bold whitespace-nowrap">
-            70% OFF
-          </span>
-        </button>
       </div>
     </div>
   );
