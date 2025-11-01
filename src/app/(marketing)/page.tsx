@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { Mic } from 'lucide-react';
 import Hero from '@/components/sections/index-hero';
 import TTSSamples from '@/components/sections/tts-samples';
@@ -23,6 +24,15 @@ const HERO_ACTIONS = [
 
 export default function Home() {
   const router = useRouter();
+
+  // 打印当前环境信息
+  useEffect(() => {
+    console.log('=== 环境信息 ===');
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log('Next.js 环境:', process.env.NEXT_PUBLIC_VERCEL_ENV || 'local');
+    console.log('PWA 状态:', process.env.NODE_ENV === 'development' ? '禁用 (开发环境)' : '启用 (生产环境)');
+    console.log('===============');
+  }, []);
 
   // Generate action buttons from configuration
   const actionButtons = HERO_ACTIONS.map(action => {
