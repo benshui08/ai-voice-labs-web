@@ -110,7 +110,7 @@ export default function UserMenu({ size = 'md' }: UserMenuProps = {}) {
             alt={user.displayName || 'User'}
             width={imageSize}
             height={imageSize}
-            className={`${avatarSize} rounded-full border-2 border-gray-200`}
+            className={`${avatarSize} rounded-full border-2 border-gray-200 object-cover`}
           />
         ) : (
           <div className={`${avatarSize} rounded-full bg-purple-600 flex items-center justify-center text-white font-semibold ${size === 'sm' ? 'text-sm' : ''}`}>
