@@ -1,5 +1,10 @@
 'use client';
 
+import { useState } from 'react';
+import UploadModal from './UploadModal';
+import AudioRecorder from './AudioRecorder';
+import LocalUploadModal from './LocalUploadModal';
+
 /**
  * Clone Modes Section Component
  *
@@ -8,9 +13,12 @@
  * 2. Custom Parameter Cloning - Create unique characters
  */
 export default function CloneModesSection() {
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isLocalUploadModalOpen, setIsLocalUploadModalOpen] = useState(false);
+  const [isRecorderOpen, setIsRecorderOpen] = useState(false);
+
   const handleStartCloneMode = () => {
-    console.log('Start Clone Mode');
-    // TODO: Navigate to clone mode page or open modal
+    setIsUploadModalOpen(true);
   };
 
   const handleStartCustomCloning = () => {
@@ -18,8 +26,29 @@ export default function CloneModesSection() {
     // TODO: Navigate to custom cloning page or open modal
   };
 
+  const handleLocalUpload = () => {
+    console.log('Local Upload selected');
+    setIsLocalUploadModalOpen(true);
+  };
+
+  const handleFileGenerate = (file: File) => {
+    console.log('Generate with file:', file.name, file.size);
+    // TODO: Handle file upload to backend
+  };
+
+  const handleRecordAudio = () => {
+    console.log('Record Audio selected');
+    setIsRecorderOpen(true);
+  };
+
+  const handleRecordingComplete = (audioBlob: Blob) => {
+    console.log('Recording complete:', audioBlob.size, 'bytes');
+    // TODO: Handle audio upload to backend
+  };
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 lg:p-8 mb-6">
+    <>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 lg:p-8 mb-6">
       {/* Header with badge */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -115,5 +144,28 @@ export default function CloneModesSection() {
         </div>
       </div>
     </div>
+
+      {/* Upload Modal */}
+      <UploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onLocalUpload={handleLocalUpload}
+        onRecordAudio={handleRecordAudio}
+      />
+
+      {/* Local Upload Modal */}
+      <LocalUploadModal
+        isOpen={isLocalUploadModalOpen}
+        onClose={() => setIsLocalUploadModalOpen(false)}
+        onGenerate={handleFileGenerate}
+      />
+
+      {/* Audio Recorder */}
+      <AudioRecorder
+        isOpen={isRecorderOpen}
+        onClose={() => setIsRecorderOpen(false)}
+        onRecordingComplete={handleRecordingComplete}
+      />
+    </>
   );
 }
