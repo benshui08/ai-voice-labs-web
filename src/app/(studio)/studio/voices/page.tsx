@@ -73,7 +73,7 @@ export default function VoicesPage() {
   // Get all available language options
   const availableLanguages = getAllLocaleOptions();
 
-  const handleLanguageSelect = (language: LocaleOption) => {
+  const handleLanguageSelect = (language: LocaleOption | null) => {
     setSelectedLanguage(language);
   };
 

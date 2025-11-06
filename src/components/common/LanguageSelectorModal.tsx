@@ -13,7 +13,7 @@ interface LanguageSelectorModalProps {
   /** 可用的语言选项列表 */
   availableLocales: LocaleOption[];
   /** 语言选择回调 */
-  onSelect: (locale: LocaleOption) => void;
+  onSelect: (locale: LocaleOption | null) => void;
   /** 模态框标题 */
   title?: string;
   /** 搜索占位符 */
@@ -72,16 +72,13 @@ export default function LanguageSelectorModal({
 
   // 处理选择
   const handleSelect = (locale: LocaleOption | null) => {
-    if (locale) {
-      onSelect(locale);
-    }
+    onSelect(locale);
     onClose();
   };
 
   // 处理"All"选项点击
   const handleAllClick = () => {
-    // 这里可以传递一个特殊的 locale 值，或者直接关闭模态框
-    // 根据实际需求调整
+    onSelect(null);
     onClose();
   };
 
