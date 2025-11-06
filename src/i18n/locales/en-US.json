@@ -152,6 +152,7 @@
       "shortVideo": "Short Video",
       "aiVideoGenerator": "AI Video Generator",
       "textToSpeech": "Text to Speech",
+      "generationHistory": "Generation History",
       "speechToSpeech": "Speech to Speech",
       "voiceCloning": "Voice Cloning",
       "voiceoverStudio": "Voiceover Studio",
