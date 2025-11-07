@@ -33,6 +33,20 @@
     "mostPopular": "最受歡迎",
     "autoRenew": "自動續費，隨時可取消。"
   },
+  "upgrade": {
+    "header": {
+      "title": "升級您的套餐",
+      "description": "選擇最適合您需求的套餐"
+    },
+    "tabs": {
+      "textToVoice": "文字轉語音",
+      "voiceClone": "語音複製"
+    },
+    "title": {
+      "textToVoice": "選擇您的文字轉語音套餐",
+      "voiceClone": "選擇您的語音複製套餐"
+    }
+  },
   "login": {
     "title": "AI 語音實驗室",
     "welcome": "歡迎",

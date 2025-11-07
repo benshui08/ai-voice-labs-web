@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, X, Coins, Star } from 'lucide-react';
+import { Menu, X, Coins, Crown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -107,38 +107,34 @@ export default function StudioTopNav({
 
         {/* ========== 桌面端右侧 (>= lg) ========== */}
         <div className="hidden lg:flex items-center gap-3">
-          {/* Credits Display - 只在已登录时显示 */}
-          {user && (
-            <>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 rounded-lg">
-                <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
-                  <Coins className="w-3 h-3 text-white" />
-                </div>
-                {creditsLoading ? (
-                  <div className="w-12 h-4 bg-blue-200 rounded animate-pulse" />
-                ) : (
-                  <span className="text-sm font-semibold text-blue-900">
-                    {credits}
-                  </span>
-                )}
-              </div>
+          {/* Credits Display - 始终显示 */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 rounded-lg">
+            <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+              <Coins className="w-3 h-3 text-white" />
+            </div>
+            {creditsLoading ? (
+              <div className="w-12 h-4 bg-blue-200 rounded animate-pulse" />
+            ) : (
+              <span className="text-sm font-semibold text-blue-900">
+                {credits}
+              </span>
+            )}
+          </div>
 
-              {/* Divider */}
-              <div className="h-6 w-px bg-gray-300"></div>
+          {/* Divider */}
+          <div className="h-6 w-px bg-gray-300"></div>
 
-              {/* Upgrade Button */}
-              <button
-                onClick={onUpgradeClick}
-                className="flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-medium hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm"
-              >
-                <Star className="w-4 h-4" />
-                <span className="text-sm hidden xl:inline">{t('studio.upgrade') || '购买/升级'}</span>
-              </button>
+          {/* Upgrade Button - 始终显示 */}
+          <button
+            onClick={() => router.push('/studio/upgrade')}
+            className="flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-medium hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm"
+          >
+            <Crown className="w-4 h-4" />
+            <span className="text-sm hidden xl:inline">{t('studio.upgrade') || '购买/升级'}</span>
+          </button>
 
-              {/* Divider */}
-              <div className="h-6 w-px bg-gray-300"></div>
-            </>
-          )}
+          {/* Divider */}
+          <div className="h-6 w-px bg-gray-300"></div>
 
           {/* Language Switcher - 桌面端显示完整名称 */}
           <LanguageSwitcher theme="dark" variant="full" showArrow={true} />

@@ -33,6 +33,20 @@
     "mostPopular": "最受欢迎",
     "autoRenew": "自动续费，随时可取消。"
   },
+  "upgrade": {
+    "header": {
+      "title": "升级您的套餐",
+      "description": "选择最适合您需求的套餐"
+    },
+    "tabs": {
+      "textToVoice": "文字转语音",
+      "voiceClone": "语音克隆"
+    },
+    "title": {
+      "textToVoice": "选择您的文字转语音套餐",
+      "voiceClone": "选择您的语音克隆套餐"
+    }
+  },
   "login": {
     "title": "AI 语音实验室",
     "welcome": "欢迎",

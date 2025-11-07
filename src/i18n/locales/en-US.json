@@ -39,6 +39,20 @@
     "mostPopular": "Most Popular",
     "autoRenew": "Auto-renew. Cancel at any time."
   },
+  "upgrade": {
+    "header": {
+      "title": "Upgrade Your Plan",
+      "description": "Choose the perfect plan for your needs"
+    },
+    "tabs": {
+      "textToVoice": "Text to Voice",
+      "voiceClone": "Voice Clone"
+    },
+    "title": {
+      "textToVoice": "Pick Your Plan of Text to Speech",
+      "voiceClone": "Pick Your Plan of Voice Clone"
+    }
+  },
   "login": {
     "title": "AI Voice Labs",
     "welcome": "Welcome",
