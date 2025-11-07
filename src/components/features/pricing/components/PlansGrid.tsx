@@ -31,8 +31,17 @@ export default function PlansGrid({ plans, cycle, onCycleChange }: PlansGridProp
     );
   }
 
+  // 根据套餐数量动态设置列数
+  const getGridCols = () => {
+    const count = plans.length;
+    if (count === 1) return 'lg:grid-cols-1';
+    if (count === 2) return 'lg:grid-cols-2';
+    if (count === 3) return 'lg:grid-cols-3';
+    return 'lg:grid-cols-4';
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className={`grid grid-cols-1 md:grid-cols-2 ${getGridCols()} gap-6 max-w-7xl mx-auto`}>
       {plans.map((plan, index) => (
         <PricingCard
           key={plan.id || index}

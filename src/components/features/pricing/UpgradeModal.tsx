@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Crown } from 'lucide-react';
 import { PricingPlans } from '@/components/features/pricing';
 import { usePricingByType, ProductType } from '@/components/features/pricing/hooks/usePricingByType';
 import ProductTypeTabs from '@/components/features/pricing/components/ProductTypeTabs';
@@ -73,24 +73,30 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
 
       {/* Modal Content - 移动端全屏，桌面端弹窗 */}
       <div className="relative w-full h-full lg:h-auto lg:max-h-[90vh] lg:w-[90vw] lg:max-w-7xl bg-white lg:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-4 lg:px-6 lg:py-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">
+        {/* Header - 带渐变背景 */}
+        <div className="flex-shrink-0 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500 px-4 py-6 lg:px-6 lg:py-8 relative">
+          {/* 关闭按钮 - 右上角 */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 lg:top-6 lg:right-6 p-2 hover:bg-white/20 rounded-lg transition-colors backdrop-blur-sm"
+            aria-label="Close modal"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+
+          {/* 居中内容 */}
+          <div className="flex flex-col items-center text-center">
+            {/* 标题行 - 皇冠在左边 */}
+            <div className="flex items-center gap-3 mb-3">
+              <Crown className="w-7 h-7 lg:w-8 lg:h-8 text-yellow-300" />
+              <h2 className="text-2xl lg:text-4xl font-bold text-white">
                 {t('upgrade.header.title')}
               </h2>
-              <p className="text-sm lg:text-base text-gray-600 mt-1">
-                {t('upgrade.header.description')}
-              </p>
             </div>
-            <button
-              onClick={onClose}
-              className="flex-shrink-0 p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              aria-label="Close modal"
-            >
-              <X className="w-6 h-6 text-gray-500" />
-            </button>
+
+            <p className="text-sm lg:text-lg text-white/90 max-w-2xl">
+              {t('upgrade.header.description')}
+            </p>
           </div>
         </div>
 
