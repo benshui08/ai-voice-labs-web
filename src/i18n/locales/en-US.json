@@ -16,6 +16,7 @@
     "myVoiceModels": "My Voice Models",
     "generationHistory": "Generation History",
     "subscription": "Subscription",
+    "profile": "Profile",
     "login": "Login",
     "logout": "Logout"
   },
@@ -88,8 +89,8 @@
     "title": "Settings",
     "menu": {
       "home": "Home",
-      "myBenefits": "My Benefits",
-      "myAccount": "My Account",
+      "mySubscription": "My Subscription",
+      "myProfile": "My Profile",
       "orderList": "Order List",
       "myCoupon": "My Coupon",
       "messageCenter": "Message Center"

@@ -10,6 +10,7 @@
     "myVoiceModels": "我的语音模型",
     "generationHistory": "生成历史",
     "subscription": "订阅",
+    "profile": "个人资料",
     "login": "登录",
     "logout": "退出登录"
   },
@@ -82,8 +83,8 @@
     "title": "设置",
     "menu": {
       "home": "首页",
-      "myBenefits": "我的权益",
-      "myAccount": "我的账户",
+      "mySubscription": "我的订阅",
+      "myProfile": "我的资料",
       "orderList": "订单列表",
       "myCoupon": "我的优惠券",
       "messageCenter": "消息中心"

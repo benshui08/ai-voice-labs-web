@@ -10,6 +10,7 @@
     "myVoiceModels": "我的語音模型",
     "generationHistory": "生成歷史",
     "subscription": "訂閱",
+    "profile": "個人資料",
     "login": "登入",
     "logout": "登出"
   },
@@ -82,8 +83,8 @@
     "title": "設定",
     "menu": {
       "home": "首頁",
-      "myBenefits": "我的權益",
-      "myAccount": "我的帳戶",
+      "mySubscription": "我的訂閱",
+      "myProfile": "我的資料",
       "orderList": "訂單列表",
       "myCoupon": "我的優惠券",
       "messageCenter": "訊息中心"

@@ -10,6 +10,7 @@
     "myVoiceModels": "โมเดลเสียงของฉัน",
     "generationHistory": "ประวัติการสร้าง",
     "subscription": "แพ็กเกจ",
+    "profile": "โปรไฟล์",
     "login": "เข้าสู่ระบบ",
     "logout": "ออกจากระบบ"
   },
@@ -32,6 +33,20 @@
     "freeForEveryone": "ฟรีสำหรับทุกคน",
     "mostPopular": "ยอดนิยมสูงสุด",
     "autoRenew": "ต่ออายุอัตโนมัติ ยกเลิกได้ทุกเมื่อ"
+  },
+  "upgrade": {
+    "header": {
+      "title": "อัปเกรดแพ็กเกจของคุณ",
+      "description": "เลือกแพ็กเกจที่เหมาะกับความต้องการของคุณ"
+    },
+    "tabs": {
+      "textToVoice": "ข้อความเป็นเสียง",
+      "voiceClone": "โคลนเสียง"
+    },
+    "title": {
+      "textToVoice": "เลือกแพ็กเกจข้อความเป็นเสียงของคุณ",
+      "voiceClone": "เลือกแพ็กเกจโคลนเสียงของคุณ"
+    }
   },
   "login": {
     "title": "AI Voice Labs",
@@ -68,8 +83,8 @@
     "title": "การตั้งค่า",
     "menu": {
       "home": "หน้าแรก",
-      "myBenefits": "สิทธิประโยชน์ของฉัน",
-      "myAccount": "บัญชีของฉัน",
+      "mySubscription": "แพ็กเกจของฉัน",
+      "myProfile": "โปรไฟล์ของฉัน",
       "orderList": "รายการคำสั่งซื้อ",
       "myCoupon": "คูปองของฉัน",
       "messageCenter": "ศูนย์ข้อความ"
@@ -146,6 +161,7 @@
       "shortVideo": "วิดีโอสั้น",
       "aiVideoGenerator": "เครื่องมือสร้างวิดีโอ AI",
       "textToSpeech": "ข้อความเป็นเสียง",
+      "generationHistory": "ประวัติการสร้าง",
       "speechToSpeech": "เสียงเป็นเสียง",
       "voiceCloning": "โคลนเสียง",
       "voiceoverStudio": "สตูดิโอพากย์เสียง",
