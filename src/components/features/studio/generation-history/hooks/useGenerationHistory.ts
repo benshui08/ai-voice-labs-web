@@ -107,7 +107,13 @@ export function useGenerationHistory({
 
       // Accumulate data for infinite scroll or replace for pagination
       if (accumulateData && currentPage > 1) {
-        setGenerations(prev => [...prev, ...convertedGenerations]);
+        setGenerations(prev => {
+          // Get existing IDs
+          const existingIds = new Set(prev.map(g => g.id));
+          // Filter out duplicates from new data
+          const newData = convertedGenerations.filter(g => !existingIds.has(g.id));
+          return [...prev, ...newData];
+        });
       } else {
         setGenerations(convertedGenerations);
       }
@@ -241,6 +247,7 @@ export function useGenerationHistory({
   const handleStatusChange = useCallback((status: TaskStatus | null) => {
     setSelectedStatus(status);
     setCurrentPage(1); // Reset to first page
+    setGenerations([]); // Clear accumulated data when filter changes
   }, []);
 
   // Handle date range change
@@ -248,6 +255,7 @@ export function useGenerationHistory({
     setStartDate(start);
     setEndDate(end);
     setCurrentPage(1); // Reset to first page
+    setGenerations([]); // Clear accumulated data when filter changes
   }, []);
 
   // Close confirmation dialog
