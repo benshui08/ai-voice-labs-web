@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Trash2, ChevronDown } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import MobileAudioPlayer from './MobileAudioPlayer';
 import TextExpandModal from './TextExpandModal';
 import { getStatusLabel, getStatusColor } from '@/lib/api/tts';
@@ -78,11 +78,15 @@ export default function MobileSpeechCard({ generation, onDelete, onDownload }: M
         </p>
         {isTruncated && (
           <button
-            onClick={() => setIsTextExpanded(true)}
-            className="absolute top-0 right-0 p-0.5 text-purple-600 hover:text-purple-700 transition-colors"
-            title="View full text"
+            onClick={() => setIsTextExpanded(!isTextExpanded)}
+            className="absolute top-0 right-0 p-0.5 text-gray-500 hover:text-gray-700 transition-colors"
+            title={isTextExpanded ? "Hide full text" : "View full text"}
           >
-            <ChevronDown className="w-4 h-4" />
+            {isTextExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
           </button>
         )}
       </div>

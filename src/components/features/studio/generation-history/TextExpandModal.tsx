@@ -25,15 +25,15 @@ export default function TextExpandModal({ isOpen, text, onClose }: TextExpandMod
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end lg:items-center lg:justify-center">
+    <div className="fixed inset-0 z-[9999] flex items-end">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="fixed inset-0 bg-black/50 animate-fade-in"
         onClick={onClose}
       />
 
       {/* Modal Content */}
-      <div className="relative w-full max-h-[80vh] bg-white rounded-t-2xl lg:rounded-2xl lg:max-w-2xl lg:mx-4 animate-slide-up">
+      <div className="fixed bottom-0 left-0 right-0 w-full max-h-[80vh] bg-white rounded-t-2xl animate-slide-up">
         {/* Header */}
         <div className="sticky top-0 bg-white rounded-t-2xl border-b border-gray-200 px-4 py-3 flex items-center justify-between">
           <h3 className="text-base font-semibold text-gray-900">Generated Text</h3>
