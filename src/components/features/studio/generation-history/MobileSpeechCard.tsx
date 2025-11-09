@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
-import AudioPlayer from './AudioPlayer';
+import MobileAudioPlayer from './MobileAudioPlayer';
 import { getStatusLabel, getStatusColor } from '@/lib/api/tts';
 import type { Generation } from '@/types/tts';
 
@@ -48,7 +48,7 @@ export default function MobileSpeechCard({ generation, onDelete, onDownload }: M
 
       {/* Audio Player */}
       {generation.audioUrl && (
-        <AudioPlayer
+        <MobileAudioPlayer
           audioUrl={generation.audioUrl}
           duration={generation.duration}
           isPlaying={isPlaying}

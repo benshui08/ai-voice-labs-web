@@ -22,11 +22,15 @@ export default function MobileSpeechCardSkeleton() {
       {/* Audio Player Skeleton */}
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 bg-gray-200 rounded-full flex-shrink-0"></div>
-        <div className="flex-1 space-y-2">
+        <div className="flex-1 space-y-1.5">
           <div className="h-3 bg-gray-200 rounded w-20"></div>
-          <div className="h-2 bg-gray-200 rounded w-full"></div>
+          <div className="h-1.5 bg-gray-200 rounded w-full"></div>
+          <div className="flex justify-between">
+            <div className="h-2.5 bg-gray-200 rounded w-8"></div>
+            <div className="h-2.5 bg-gray-200 rounded w-8"></div>
+          </div>
         </div>
-        <div className="w-8 h-8 bg-gray-200 rounded flex-shrink-0"></div>
+        <div className="w-9 h-9 bg-gray-200 rounded-full flex-shrink-0"></div>
       </div>
     </div>
   );
