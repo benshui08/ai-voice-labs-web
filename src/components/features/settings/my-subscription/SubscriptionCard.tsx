@@ -19,14 +19,16 @@ export default function SubscriptionCard({
 
   // 状态标签样式
   const getStatusBadge = (status: UserSubscription['status']) => {
-    const styles = {
+    const styles: Record<string, string> = {
       TRIAL: 'bg-blue-100 text-blue-700',
       ACTIVE: 'bg-green-100 text-green-700',
       EXPIRED: 'bg-gray-100 text-gray-700',
       CANCELLED: 'bg-red-100 text-red-700',
       SUSPENDED: 'bg-yellow-100 text-yellow-700',
     };
-    return styles[status] || 'bg-gray-100 text-gray-700';
+    // 不区分大小写匹配
+    const statusKey = (status as string).toUpperCase();
+    return styles[statusKey] || 'bg-gray-100 text-gray-700';
   };
 
   // 格式化日期
@@ -57,7 +59,12 @@ export default function SubscriptionCard({
   };
 
   // 是否显示取消按钮：仅对 ACTIVE 状态且平台为 stripe 的订阅显示
-  const showCancelButton = subscription.status === 'ACTIVE' && subscription.platform === 'stripe' && onCancel;
+  // 注意：后端可能返回小写 'active'，所以需要不区分大小写比较
+  const statusUpper = (subscription.status as string).toUpperCase();
+  const showCancelButton =
+    statusUpper === 'ACTIVE' &&
+    subscription.platform === 'stripe' &&
+    onCancel;
 
   // 处理取消订阅
   const handleCancelConfirm = async (reason?: string) => {
