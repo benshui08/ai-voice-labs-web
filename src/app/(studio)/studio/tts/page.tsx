@@ -83,16 +83,13 @@ export default function StudioTTSPage() {
     checkMobile();
   }, []);
 
-  // Initialize default voice based on current locale (mobile only)
+  // Initialize default voice based on current locale
   useEffect(() => {
-    // 只在移动端加载默认语音
-    if (!isMobile) return;
-
     // 等待认证完成
     if (authLoading) return;
 
     // Early return if conditions not met yet
-    if (!isMobile || !isLocaleReady) return;
+    if (!isLocaleReady) return;
 
     // Skip if already selected
     if (selectedVoice) return;
@@ -165,7 +162,7 @@ export default function StudioTTSPage() {
 
     void fetchDefaultVoice();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locale, isMobile, isLocaleReady, authLoading, selectedVoice]);
+  }, [locale, isLocaleReady, authLoading, selectedVoice]);
 
   // 当音频生成成功时，移动端自动打开弹窗
   useEffect(() => {
