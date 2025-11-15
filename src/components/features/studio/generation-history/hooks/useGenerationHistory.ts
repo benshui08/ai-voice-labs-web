@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   queryTtsRecords,
   deleteTtsRecord,
@@ -75,6 +75,9 @@ export function useGenerationHistory({
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
 
+  // Polling for processing records
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -130,6 +133,21 @@ export function useGenerationHistory({
     }
   }, [selectedStatus, startDate, endDate, currentPage, pageSize, accumulateData]);
 
+  // Clear polling interval
+  const clearPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearTimeout(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      clearPolling();
+    };
+  }, [clearPolling]);
+
   // Handle user login/logout and fetch records when filters change
   // Wait for auth to complete before fetching to avoid duplicate queries
   useEffect(() => {
@@ -146,6 +164,30 @@ export function useGenerationHistory({
     // User is logged in, fetch records
     void fetchRecords();
   }, [user, authLoading, fetchRecords]);
+
+  // Poll for processing records
+  useEffect(() => {
+    // Check if there are any processing or pending records
+    const hasProcessingRecords = generations.some(
+      gen => gen.status === TaskStatus.PROCESSING || gen.status === TaskStatus.PENDING
+    );
+
+    // Clear existing polling
+    clearPolling();
+
+    // Start polling if there are processing records
+    if (hasProcessingRecords && !loading) {
+      console.log('🔄 [useGenerationHistory] Starting polling for processing records');
+      pollingIntervalRef.current = setTimeout(() => {
+        console.log('⏰ [useGenerationHistory] Polling interval triggered');
+        void fetchRecords();
+      }, 2000); // Poll every 2 seconds
+    }
+
+    return () => {
+      clearPolling();
+    };
+  }, [generations, loading, fetchRecords, clearPolling]);
 
   // Handle clear all records
   const handleClearAll = useCallback(async () => {
