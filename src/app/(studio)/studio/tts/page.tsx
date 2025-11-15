@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStudio } from '@/contexts/StudioContext';
 import { useCredits } from '@/contexts/CreditsContext';
 import { useTTSGenerator } from '@/hooks/useTTSGenerator';
-import { voiceAPI } from '@/lib/api';
 import type { Voice } from '@/types/voice';
 import TextInput from '@/components/features/studio/tts/components/TextInput';
 import VoiceSelector from '@/components/features/studio/tts/components/VoiceSelector';
@@ -52,7 +51,6 @@ export default function StudioTTSPage() {
     audioUrl,
     availableCharacters,
     canGenerate,
-    taskProgress,
     handleTextChange,
     handleVoiceSelect,
     handleGenerate,
@@ -133,16 +131,17 @@ export default function StudioTTSPage() {
     }
   }, [audioUrl, isMobile]);
 
-  // 生成完成后刷新历史记录
+  // 任务提交后立即刷新历史记录
   useEffect(() => {
-    if (audioUrl) {
-      // 等待一小段时间确保后端已保存记录
+    if (!isGenerating) {
+      // 任务刚刚提交完成，立即刷新记录列表
+      // 这样新的 PENDING/PROCESSING 记录会立即出现
       const timer = setTimeout(() => {
         void fetchRecords();
-      }, 500);
+      }, 300);
       return () => clearTimeout(timer);
     }
-  }, [audioUrl, fetchRecords]);
+  }, [isGenerating, fetchRecords]);
 
   const handleOpenSettings = () => {
     // TODO: Open settings modal
@@ -243,9 +242,6 @@ export default function StudioTTSPage() {
                   loading={historyLoading}
                   onDelete={handleDeleteGeneration}
                   onDownload={handleDownloadGeneration}
-                  isGenerating={isGenerating}
-                  generatingText={text}
-                  taskProgress={taskProgress}
                 />
               </div>
             </div>

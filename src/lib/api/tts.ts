@@ -127,6 +127,7 @@ export function convertTtsRecordToGeneration(record: TtsRecord): Generation {
     characterCount: record.character_count,
     audioUrl: record.audio_url || '',
     status: record.status,
+    progress: record.progress,
     errorMessage: record.error_message,
     // 优先使用 voice 对象中的名称，回退到 voice_name
     voiceName: record.voice?.name || record.voice_name,

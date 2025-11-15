@@ -13,6 +13,7 @@ export interface TtsRecord {
   created_at: string;
   updated_at: string;
   status: TaskStatus;
+  progress?: number; // 任务进度 0-100
   duration?: number;
   character_count: number;
   audio_url?: string;
@@ -55,6 +56,7 @@ export interface Generation {
   characterCount: number;
   audioUrl: string;
   status?: TaskStatus;
+  progress?: number; // 任务进度 0-100 (用于 processing 状态)
   errorMessage?: string;
   voiceName?: string;
   voiceDisplayName?: string; // 语音显示名称
