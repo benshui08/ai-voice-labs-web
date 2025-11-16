@@ -101,32 +101,27 @@ export default function TextInput({
 
           {/* Right: Clear button, Character count and Desktop Generate button */}
           <div className="flex items-center gap-2">
-            {/* Clear button (扫把图标) */}
+            {/* Clear button (扫把图标) - 只在有内容时显示 */}
             {value.length > 0 && (
               <button
                 type="button"
                 onClick={handleClear}
                 disabled={disabled}
-                className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-1 hover:bg-purple-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
                 aria-label="Clear text"
                 title="清空输入框"
               >
-                <svg className="w-4 h-4 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {/* 扫把图标 - Heroicons: sparkles */}
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                {/* 扫把图标 - 更清晰的清理图标 */}
+                <svg className="w-4 h-4 text-gray-400 group-hover:text-purple-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
             )}
 
-            {/* Character count */}
-            <div className="flex items-center gap-1">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <span className="text-gray-400 text-sm font-normal">
-                {value.length} / {maxCharacters}
-              </span>
-            </div>
+            {/* Character count - 只显示数字，不显示文档图标 */}
+            <span className="text-gray-400 text-sm font-normal">
+              {value.length} / {maxCharacters}
+            </span>
 
             {/* Desktop Generate button */}
             {onGenerate && (
