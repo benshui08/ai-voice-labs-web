@@ -13,83 +13,129 @@ interface StepperProps {
 /**
  * Stepper Component for AI Song Creation
  *
- * 显示创作流程的步骤进度
+ * 显示创作流程的步骤进度 - Enhanced visual design
  */
 export default function Stepper({ steps, currentStep }: StepperProps) {
   return (
-    <div className="w-full bg-white border-b border-gray-200 py-4 px-4">
-      <div className="max-w-4xl mx-auto flex items-center justify-center gap-2 lg:gap-4">
-        {steps.map((step, index) => (
-          <div key={step.id} className="flex items-center">
-            {/* Step Circle and Label */}
-            <div className="flex items-center gap-1.5 lg:gap-2">
-              {/* Circle */}
-              <div
-                className={`
-                  w-6 h-6 lg:w-8 lg:h-8 rounded-full flex items-center justify-center
-                  transition-all duration-300
-                  ${
-                    index === currentStep
-                      ? 'bg-blue-600 border-2 border-blue-600'
-                      : index < currentStep
-                      ? 'bg-blue-600 border-2 border-blue-600'
-                      : 'bg-white border-2 border-gray-300'
-                  }
-                `}
-              >
-                {index < currentStep ? (
-                  // Completed - Show checkmark
-                  <svg className="w-3 h-3 lg:w-4 lg:h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                ) : (
-                  // Current or Future - Show dot
-                  <div
-                    className={`
-                      w-2 h-2 lg:w-3 lg:h-3 rounded-full
-                      ${index === currentStep ? 'bg-white' : 'bg-gray-300'}
-                    `}
-                  />
-                )}
-              </div>
+    <div className="w-full bg-gradient-to-r from-blue-50 via-white to-purple-50 border-b border-gray-200 py-6 px-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Desktop: Horizontal Stepper */}
+        <div className="hidden lg:flex items-center justify-between relative">
+          {/* Background Progress Line */}
+          <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 rounded-full" style={{ zIndex: 0 }} />
+          <div
+            className="absolute top-6 left-0 h-1 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+            style={{
+              width: `${(currentStep / (steps.length - 1)) * 100}%`,
+              zIndex: 0
+            }}
+          />
 
-              {/* Label - hidden on mobile for space */}
-              <span
-                className={`
-                  hidden lg:inline-block text-sm font-medium transition-colors
-                  ${
-                    index === currentStep
-                      ? 'text-blue-600'
-                      : index < currentStep
-                      ? 'text-blue-600'
-                      : 'text-gray-400'
-                  }
-                `}
-              >
-                {step.label}
-              </span>
+          {steps.map((step, index) => {
+            const isCompleted = index < currentStep;
+            const isCurrent = index === currentStep;
+            const isFuture = index > currentStep;
+
+            return (
+              <div key={step.id} className="flex flex-col items-center gap-3 relative" style={{ zIndex: 1 }}>
+                {/* Circle with number */}
+                <div
+                  className={`
+                    w-12 h-12 rounded-full flex items-center justify-center
+                    transition-all duration-300 font-semibold text-base
+                    ${
+                      isCurrent
+                        ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/50 scale-110'
+                        : isCompleted
+                        ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md'
+                        : 'bg-white border-2 border-gray-300 text-gray-400'
+                    }
+                  `}
+                >
+                  {isCompleted ? (
+                    // Completed - Show checkmark with animation
+                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  ) : (
+                    // Show step number
+                    <span>{index + 1}</span>
+                  )}
+                </div>
+
+                {/* Label */}
+                <div className="flex flex-col items-center gap-1">
+                  <span
+                    className={`
+                      text-sm font-semibold transition-colors whitespace-nowrap
+                      ${
+                        isCurrent
+                          ? 'text-blue-600'
+                          : isCompleted
+                          ? 'text-blue-500'
+                          : 'text-gray-400'
+                      }
+                    `}
+                  >
+                    {step.label}
+                  </span>
+                  {isCurrent && (
+                    <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Mobile: Compact Stepper with Progress Bar */}
+        <div className="lg:hidden space-y-4">
+          {/* Progress Bar */}
+          <div className="relative">
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 rounded-full"
+                style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Current Step Info */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center font-semibold shadow-lg shadow-blue-500/30">
+                {currentStep + 1}
+              </div>
+              <div>
+                <div className="text-xs text-gray-500">步骤 {currentStep + 1} / {steps.length}</div>
+                <div className="text-base font-semibold text-blue-600">{steps[currentStep].label}</div>
+              </div>
             </div>
 
-            {/* Connector Line */}
-            {index < steps.length - 1 && (
-              <div
-                className={`
-                  w-8 lg:w-12 h-0.5 mx-1 lg:mx-2 transition-colors
-                  ${index < currentStep ? 'bg-blue-600' : 'bg-gray-300'}
-                `}
-              />
-            )}
+            {/* Mini step indicators */}
+            <div className="flex items-center gap-1.5">
+              {steps.map((_, index) => (
+                <div
+                  key={index}
+                  className={`
+                    w-2 h-2 rounded-full transition-all duration-300
+                    ${
+                      index === currentStep
+                        ? 'w-6 bg-blue-600'
+                        : index < currentStep
+                        ? 'bg-blue-500'
+                        : 'bg-gray-300'
+                    }
+                  `}
+                />
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
-
-      {/* Mobile: Show current step label below */}
-      <div className="lg:hidden text-center mt-3">
-        <span className="text-sm font-medium text-blue-600">{steps[currentStep].label}</span>
+        </div>
       </div>
     </div>
   );
