@@ -10,6 +10,9 @@ import prisma from './prisma';
 export const authConfig: NextAuthConfig = {
   adapter: PrismaAdapter(prisma),
 
+  // 启用调试模式查看详细日志
+  debug: process.env.NODE_ENV === 'development',
+
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -33,10 +36,17 @@ export const authConfig: NextAuthConfig = {
       if (session.user) {
         session.user.id = user.id;
 
+        console.log('📝 [Session Callback] User ID:', user.id);
+
         // 获取应用用户信息
         const authUser = await prisma.user.findUnique({
           where: { id: user.id },
           include: { appUser: true },
+        });
+
+        console.log('📝 [Session Callback] Auth User:', {
+          hasAppUser: !!authUser?.appUser,
+          appUserId: authUser?.appUser?.user_id,
         });
 
         if (authUser?.appUser) {
@@ -92,5 +102,24 @@ export const authConfig: NextAuthConfig = {
 
   session: {
     strategy: 'database',
+    // Session 30 天过期
+    maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+    // 每次访问时更新 session 过期时间
+    updateAge: 24 * 60 * 60, // 24 hours
+  },
+
+  // 配置 cookies 确保持久化
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production'
+        ? `__Secure-next-auth.session-token`
+        : `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
   },
 };
