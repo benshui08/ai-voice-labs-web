@@ -8,7 +8,6 @@ import { headers } from 'next/headers';
 import { auth } from './auth-next';
 import { getDb, anonymousUsers } from './db';
 import { eq } from 'drizzle-orm';
-import crypto from 'crypto';
 
 export interface AuthUser {
   uid: string;
@@ -77,8 +76,12 @@ async function createOrGetAnonymousUser(
 ): Promise<{ user_id: string; credits: number }> {
   const db = getDb();
 
-  // 生成匿名用户 ID
-  const hash = crypto.createHash('sha256').update(deviceFingerprint).digest('hex').substring(0, 16);
+  // 生成匿名用户 ID (使用 Web Crypto API)
+  const encoder = new TextEncoder();
+  const data = encoder.encode(deviceFingerprint);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
   const anonymousUserId = `anonymous_${hash}`;
 
   // 查找现有匿名用户

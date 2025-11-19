@@ -45,6 +45,9 @@ export const viewport = {
   themeColor: "#9333ea",
 };
 
+// Required for Cloudflare D1 database access
+export const runtime = 'edge';
+
 export default function RootLayout({
   children,
 }: Readonly<{
