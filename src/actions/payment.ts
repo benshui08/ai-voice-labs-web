@@ -5,10 +5,14 @@
  */
 import Stripe from 'stripe';
 import { getCurrentUser } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { getDb } from '@/lib/db';
+import { users, subscriptionPlans, userSubscriptions } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+// Lazy initialization to avoid build-time errors
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!);
+}
 
 // 支付特有的类型定义
 export interface StripeCheckoutRequest {
@@ -30,15 +34,22 @@ export async function createStripeCheckout(request: StripeCheckoutRequest): Prom
   // 验证用户已登录
   const user = await getCurrentUser();
   const userId = user.uid;
+  const db = await getDb();
 
   // 获取订阅计划
-  const plan = await prisma.subscription_plans.findFirst({
-    where: {
-      product_id: request.product_id,
-      platform: 'stripe',
-      active: true,
-    },
-  });
+  const plans = await db
+    .select()
+    .from(subscriptionPlans)
+    .where(
+      and(
+        eq(subscriptionPlans.productId, request.product_id),
+        eq(subscriptionPlans.platform, 'stripe'),
+        eq(subscriptionPlans.active, true)
+      )
+    )
+    .limit(1);
+
+  const plan = plans[0];
 
   if (!plan) {
     throw new Error(`订阅计划不存在: ${request.product_id}`);
@@ -46,7 +57,7 @@ export async function createStripeCheckout(request: StripeCheckoutRequest): Prom
 
   // 确定货币和价格
   const currency = (request.currency || 'usd').toLowerCase();
-  const priceData = plan.discounted_price as Record<string, number> | null;
+  const priceData = plan.discountedPrice as Record<string, number> | null;
   const originalPriceData = plan.price as Record<string, number> | null;
 
   // 优先使用折扣价，没有则使用原价
@@ -69,8 +80,8 @@ export async function createStripeCheckout(request: StripeCheckoutRequest): Prom
   const unitAmountInCents = Math.round(unitAmount * 100);
 
   // 获取用户信息（用于 Stripe customer）
-  const appUser = await prisma.users.findUnique({
-    where: { user_id: userId },
+  const appUser = await db.query.users.findFirst({
+    where: eq(users.userId, userId),
   });
 
   // 构建带 session ID 的 success URL
@@ -80,7 +91,7 @@ export async function createStripeCheckout(request: StripeCheckoutRequest): Prom
 
   // 创建 Stripe Checkout Session
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
-    mode: plan.billing_period ? 'subscription' : 'payment',
+    mode: plan.billingPeriod ? 'subscription' : 'payment',
     payment_method_types: ['card'],
     line_items: [
       {
@@ -88,12 +99,12 @@ export async function createStripeCheckout(request: StripeCheckoutRequest): Prom
           currency: currency,
           unit_amount: unitAmountInCents,
           product_data: {
-            name: (plan.display_name as Record<string, string>)?.en || plan.plan_name,
-            description: `${plan.credits_per_cycle} credits for ${plan.cycle_days} days`,
+            name: (plan.displayName as Record<string, string>)?.en || plan.planName,
+            description: `${plan.creditsPerCycle} credits for ${plan.cycleDays} days`,
           },
-          ...(plan.billing_period && {
+          ...(plan.billingPeriod && {
             recurring: {
-              interval: plan.billing_period === 'year' ? 'year' : 'month',
+              interval: plan.billingPeriod === 'year' ? 'year' : 'month',
             },
           }),
         },
@@ -106,14 +117,14 @@ export async function createStripeCheckout(request: StripeCheckoutRequest): Prom
       user_id: userId,
       product_id: request.product_id,
       plan_id: String(plan.id),
-      credits: String(plan.credits_per_cycle),
+      credits: String(plan.creditsPerCycle),
     },
     ...(appUser?.email && {
       customer_email: appUser.email,
     }),
   };
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripe().checkout.sessions.create({
     ...sessionParams,
     // 展开 line_items 以便在 webhook 中获取
     expand: ['line_items'],
@@ -141,18 +152,19 @@ export async function verifyStripePayment(params: { request_id: string }): Promi
   message: string;
 }> {
   try {
-    const session = await stripe.checkout.sessions.retrieve(params.request_id);
+    const session = await getStripe().checkout.sessions.retrieve(params.request_id);
+    const db = await getDb();
 
     const isPaid = session.payment_status === 'paid';
 
     // 查找订阅记录
     let subscriptionId: string | undefined;
     if (isPaid) {
-      const subscription = await prisma.user_subscriptions.findFirst({
-        where: {
-          external_transaction_id: session.id,
-          platform: 'stripe',
-        },
+      const subscription = await db.query.userSubscriptions.findFirst({
+        where: and(
+          eq(userSubscriptions.externalTransactionId, session.id),
+          eq(userSubscriptions.platform, 'stripe')
+        ),
       });
       subscriptionId = subscription ? String(subscription.id) : undefined;
     }
@@ -184,31 +196,33 @@ export async function getStripePrices(productId: string): Promise<Array<{
   billing_type: 'recurring' | 'one_time';
   billing_period: string | null;
 }>> {
+  const db = await getDb();
+
   // 从数据库获取订阅计划的价格信息
-  const plan = await prisma.subscription_plans.findFirst({
-    where: {
-      product_id: productId,
-      platform: 'stripe',
-      active: true,
-    },
+  const plan = await db.query.subscriptionPlans.findFirst({
+    where: and(
+      eq(subscriptionPlans.productId, productId),
+      eq(subscriptionPlans.platform, 'stripe'),
+      eq(subscriptionPlans.active, true)
+    ),
   });
 
   if (!plan) {
     return [];
   }
 
-  const priceData = (plan.discounted_price || plan.price) as Record<string, number> | null;
+  const priceData = (plan.discountedPrice || plan.price) as Record<string, number> | null;
   if (!priceData) {
     return [];
   }
 
   // 转换为价格数组
   return Object.entries(priceData).map(([currency, amount]) => ({
-    id: `${plan.product_id}_${currency}`,
+    id: `${plan.productId}_${currency}`,
     unit_amount: Math.round(amount * 100),
     currency: currency.toLowerCase(),
     active: true,
-    billing_type: plan.billing_period ? 'recurring' : 'one_time',
-    billing_period: plan.billing_period,
+    billing_type: plan.billingPeriod ? 'recurring' : 'one_time',
+    billing_period: plan.billingPeriod,
   }));
 }
