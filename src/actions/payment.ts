@@ -9,8 +9,10 @@ import { getDb } from '@/lib/db';
 import { users, subscriptionPlans, userSubscriptions } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+// Lazy initialization to avoid build-time errors
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!);
+}
 
 // 支付特有的类型定义
 export interface StripeCheckoutRequest {
@@ -122,7 +124,7 @@ export async function createStripeCheckout(request: StripeCheckoutRequest): Prom
     }),
   };
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripe().checkout.sessions.create({
     ...sessionParams,
     // 展开 line_items 以便在 webhook 中获取
     expand: ['line_items'],
@@ -150,7 +152,7 @@ export async function verifyStripePayment(params: { request_id: string }): Promi
   message: string;
 }> {
   try {
-    const session = await stripe.checkout.sessions.retrieve(params.request_id);
+    const session = await getStripe().checkout.sessions.retrieve(params.request_id);
     const db = getDb();
 
     const isPaid = session.payment_status === 'paid';

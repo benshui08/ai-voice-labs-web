@@ -10,8 +10,10 @@ import { eq, and, gte, desc } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth';
 import type { SubscriptionPlan, UserSubscription, UserSubscriptionListResponse } from '@/types/subscription';
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+// Lazy initialization to avoid build-time errors
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!);
+}
 
 /**
  * 获取订阅计划列表
@@ -363,7 +365,7 @@ export async function cancelSubscription(
     try {
       console.log(`🔄 取消 Stripe 订阅: ${subscription.externalSubscriptionId}`);
 
-      await stripe.subscriptions.cancel(subscription.externalSubscriptionId, {
+      await getStripe().subscriptions.cancel(subscription.externalSubscriptionId, {
         cancellation_details: {
           comment: data?.cancellation_reason,
         },
