@@ -5,12 +5,6 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '@/db/schema';
 
-// Define the environment type with D1 binding
-interface CloudflareEnv {
-  DB: D1Database;
-  [key: string]: unknown;
-}
-
 export type DbClient = ReturnType<typeof getDb>;
 
 /**
@@ -18,7 +12,8 @@ export type DbClient = ReturnType<typeof getDb>;
  * Use this in API routes and server actions
  */
 export async function getDb() {
-  const { env } = await getCloudflareContext<CloudflareEnv>();
+  const ctx = await getCloudflareContext();
+  const env = ctx.env as { DB: D1Database };
   return drizzle(env.DB, { schema });
 }
 
