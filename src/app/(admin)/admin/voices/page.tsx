@@ -1,0 +1,260 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { getVoiceLocales, syncVoicesByLocale, getVoiceStatsByLocale } from '@/actions/admin/voices';
+
+interface LocaleStats {
+  locale: string;
+  localeName: string;
+  apiCount: number;
+  dbCount: number;
+  canSync: boolean;
+}
+
+interface SyncResult {
+  success: boolean;
+  message: string;
+  inserted?: number;
+  skipped?: number;
+}
+
+/**
+ * 语音管理页面
+ */
+export default function VoicesManagementPage() {
+  const [locales, setLocales] = useState<LocaleStats[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState<string | null>(null);
+  const [syncResults, setSyncResults] = useState<Record<string, SyncResult>>({});
+
+  // 加载 locale 列表和统计
+  const loadLocales = async () => {
+    setLoading(true);
+    try {
+      const data = await getVoiceStatsByLocale();
+      setLocales(data);
+    } catch (error) {
+      console.error('加载语言列表失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadLocales();
+  }, []);
+
+  // 同步指定 locale 的语音
+  const handleSync = async (locale: string) => {
+    setSyncing(locale);
+    try {
+      const result = await syncVoicesByLocale(locale);
+      setSyncResults((prev) => ({ ...prev, [locale]: result }));
+      // 同步成功后刷新统计
+      if (result.success) {
+        await loadLocales();
+      }
+    } catch (error) {
+      setSyncResults((prev) => ({
+        ...prev,
+        [locale]: {
+          success: false,
+          message: error instanceof Error ? error.message : '同步失败',
+        },
+      }));
+    } finally {
+      setSyncing(null);
+    }
+  };
+
+  // 同步所有
+  const handleSyncAll = async () => {
+    setSyncing('all');
+    let totalInserted = 0;
+    let totalSkipped = 0;
+    let failedLocales: string[] = [];
+
+    for (const item of locales) {
+      if (item.canSync) {
+        try {
+          const result = await syncVoicesByLocale(item.locale);
+          if (result.success) {
+            totalInserted += result.inserted || 0;
+            totalSkipped += result.skipped || 0;
+          } else {
+            failedLocales.push(item.locale);
+          }
+          setSyncResults((prev) => ({ ...prev, [item.locale]: result }));
+        } catch (error) {
+          failedLocales.push(item.locale);
+        }
+      }
+    }
+
+    setSyncing(null);
+    await loadLocales();
+
+    // 显示总结
+    setSyncResults((prev) => ({
+      ...prev,
+      all: {
+        success: failedLocales.length === 0,
+        message: failedLocales.length === 0
+          ? `全部同步完成`
+          : `部分同步失败: ${failedLocales.join(', ')}`,
+        inserted: totalInserted,
+        skipped: totalSkipped,
+      },
+    }));
+  };
+
+  return (
+    <div>
+      {/* 页面标题 */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">语音管理</h1>
+        <p className="text-gray-600 mt-1">按语言区域同步语音数据（仅插入新语音，不更新现有数据）</p>
+      </div>
+
+      {/* 全部同步 */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">批量同步</h2>
+            <p className="text-sm text-gray-600 mt-1">同步所有可同步的语言区域</p>
+          </div>
+          <button
+            onClick={handleSyncAll}
+            disabled={syncing !== null || locales.filter(l => l.canSync).length === 0}
+            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {syncing === 'all' ? '同步中...' : '同步全部'}
+          </button>
+        </div>
+        {syncResults.all && (
+          <div className={`mt-4 p-3 rounded-lg text-sm ${
+            syncResults.all.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+          }`}>
+            <div className="font-medium">
+              {syncResults.all.success ? '✓ 同步完成' : '✗ 部分失败'}
+            </div>
+            <div className="mt-1">{syncResults.all.message}</div>
+            {(syncResults.all.inserted !== undefined || syncResults.all.skipped !== undefined) && (
+              <div className="mt-1 text-xs opacity-80">
+                新增: {syncResults.all.inserted || 0} | 跳过: {syncResults.all.skipped || 0}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 语言列表 */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">语言区域列表</h2>
+          <button
+            onClick={loadLocales}
+            disabled={loading}
+            className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+          >
+            {loading ? '加载中...' : '刷新'}
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="p-8 text-center text-gray-500">加载中...</div>
+        ) : locales.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">暂无数据</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    语言区域
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    API 数量
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    数据库数量
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    状态
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    操作
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {locales.map((item) => (
+                  <tr key={item.locale} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="font-medium text-gray-900">{item.locale}</div>
+                      <div className="text-sm text-gray-500">{item.localeName}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {item.apiCount}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {item.dbCount}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {item.apiCount === item.dbCount ? (
+                        <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                          已同步
+                        </span>
+                      ) : item.canSync ? (
+                        <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
+                          待同步 (+{item.apiCount - item.dbCount})
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+                          无需同步
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <button
+                        onClick={() => handleSync(item.locale)}
+                        disabled={syncing !== null || !item.canSync}
+                        className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                          item.canSync
+                            ? 'bg-purple-600 text-white hover:bg-purple-700'
+                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        } disabled:opacity-50`}
+                      >
+                        {syncing === item.locale ? '同步中...' : '同步'}
+                      </button>
+                      {syncResults[item.locale] && (
+                        <div className={`mt-2 text-xs ${
+                          syncResults[item.locale].success ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {syncResults[item.locale].success
+                            ? `+${syncResults[item.locale].inserted || 0}`
+                            : '失败'}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* 说明 */}
+      <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-blue-800 mb-2">说明</h3>
+        <ul className="text-sm text-blue-700 space-y-1">
+          <li>• 语音数据从后端 API 获取，按语言区域（locale）分组显示</li>
+          <li>• 同步操作只会<strong>插入新语音</strong>，不会更新已存在的语音数据</li>
+          <li>• "API 数量"表示后端 API 返回的语音数量</li>
+          <li>• "数据库数量"表示当前数据库中的语音数量</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
