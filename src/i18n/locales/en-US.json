@@ -284,6 +284,7 @@
     "female": "Female",
     "neutral": "Neutral",
     "proBasic": "Pro/Basic",
+    "usedOnly": "Used",
     "noVoicesFound": "No voices found",
     "loadMoreVoices": "Load More Voices",
     "searchLanguages": "Search languages...",

@@ -4,6 +4,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 interface VoiceFiltersProps {
   selectedGender: string;
   onGenderChange: (gender: string) => void;
+  usedOnly: boolean;
+  onUsedOnlyChange: (usedOnly: boolean) => void;
 }
 
 /**
@@ -12,6 +14,8 @@ interface VoiceFiltersProps {
 export default function VoiceFilters({
   selectedGender,
   onGenderChange,
+  usedOnly,
+  onUsedOnlyChange,
 }: VoiceFiltersProps) {
   const { t } = useLanguage();
   const [isGenderDropdownOpen, setIsGenderDropdownOpen] = useState(false);
@@ -70,15 +74,19 @@ export default function VoiceFilters({
           )}
         </div>
 
-        {/* Pro/Basic filter - disabled for now */}
+        {/* Used Only filter */}
         <button
-          disabled
-          className="px-3 py-1.5 text-xs font-medium text-gray-400 bg-gray-50 border border-gray-200 rounded-lg cursor-not-allowed flex items-center gap-1.5 opacity-50"
+          onClick={() => onUsedOnlyChange(!usedOnly)}
+          className={`px-3 py-1.5 text-xs font-medium bg-white border rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5 ${
+            usedOnly ? 'border-purple-500 text-purple-600' : 'border-gray-200 text-gray-700'
+          }`}
         >
-          {t('voiceFilters.proBasic')}
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          {usedOnly && (
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+          )}
+          {t('voiceFilters.usedOnly')}
         </button>
       </div>
     </div>
