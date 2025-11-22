@@ -8,6 +8,7 @@ import { headers } from 'next/headers';
 import { auth as adminAuth } from './firebase-admin';
 import prisma from './prisma';
 import crypto from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
 import { appConfig } from '@/config/appConfig';
 
 export interface AuthUser {
@@ -104,6 +105,7 @@ async function createOrUpdateFirebaseUser(decodedToken: {
     await prisma.credit_history.create({
       data: {
         user_id: decodedToken.uid,
+        task_id: `signup_${uuidv4()}`,
         amount: initialCredits,
         description: '新用户注册赠送积分',
       },
@@ -196,6 +198,7 @@ async function createOrGetAnonymousUser(
   await prisma.credit_history.create({
     data: {
       user_id: anonymousUserId,
+      task_id: `anon_signup_${uuidv4()}`,
       amount: initialCredits,
       description: '匿名用户初始赠送积分',
     },
