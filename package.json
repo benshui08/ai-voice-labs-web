@@ -5,9 +5,9 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "prebuild": "node scripts/sync-version.js",
-    "build": "prisma generate && next build --turbopack",
-    "build:webpack": "prisma generate && next build",
-    "build:production": "prisma generate && next build",
+    "build": "prisma generate && prisma migrate deploy && next build --turbopack",
+    "build:webpack": "prisma generate && prisma migrate deploy && next build",
+    "build:production": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
     "inngest:dev": "npx inngest-cli@latest dev",
