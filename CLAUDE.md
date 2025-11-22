@@ -266,6 +266,88 @@ const user = await userAPI.getCurrentUser();
 2. 填写实际值
 3. 重启开发服务器
 
+## 数据库迁移 (Prisma Migrate)
+
+本项目使用 **Prisma Migrate** 管理数据库结构变更，支持本地开发和生产环境分离。
+
+### 环境配置
+
+- **本地开发**: `.env.local` 中的 `DATABASE_URL` 指向测试数据库
+- **生产环境**: Vercel 环境变量中的 `DATABASE_URL` 指向 Neon 生产数据库
+
+### 迁移文件位置
+
+```
+prisma/
+├── schema.prisma           # 数据库模型定义
+├── migrations/             # 迁移文件目录
+│   ├── migration_lock.toml # 锁文件（标识数据库类型）
+│   └── 0_init/            # 初始迁移（baseline）
+│       └── migration.sql
+```
+
+### 日常开发流程
+
+**修改数据库结构时：**
+
+```bash
+# 1. 修改 prisma/schema.prisma
+
+# 2. 生成迁移文件（本地连测试库）
+npx prisma migrate dev --name 描述性名称
+
+# 例如：
+npx prisma migrate dev --name add_user_avatar
+npx prisma migrate dev --name add_product_type_to_credit_history
+
+# 3. 提交代码并部署到 Vercel
+# Vercel 构建时会自动执行 prisma migrate deploy 应用迁移
+```
+
+### 构建命令
+
+`package.json` 中的构建脚本已配置自动迁移：
+
+```json
+{
+  "build": "prisma generate && prisma migrate deploy && next build"
+}
+```
+
+- `prisma generate`: 生成 Prisma Client
+- `prisma migrate deploy`: 应用待执行的迁移到数据库
+- `next build`: 构建 Next.js 应用
+
+### 常用命令
+
+```bash
+# 创建新迁移（开发环境）
+npx prisma migrate dev --name 迁移名称
+
+# 查看迁移状态
+npx prisma migrate status
+
+# 重置开发数据库（危险！会删除所有数据）
+npx prisma migrate reset
+
+# 仅生成 Prisma Client（不执行迁移）
+npx prisma generate
+
+# 将 schema 同步到数据库（不推荐，跳过迁移历史）
+npx prisma db push
+```
+
+### 注意事项
+
+- ⚠️ **永远不要在生产环境运行 `prisma migrate dev`**，它可能会重置数据库
+- ⚠️ **永远不要在生产环境运行 `prisma db push`**，它会跳过迁移历史
+- ✅ 生产环境只使用 `prisma migrate deploy`（Vercel 构建时自动执行）
+- ✅ 本地开发使用测试数据库，与生产数据隔离
+
+### Baseline 迁移说明
+
+项目初始化时已创建 `0_init` baseline 迁移，标记现有数据库结构。生产数据库的 `_prisma_migrations` 表中已有对应记录，Prisma 会跳过该迁移。
+
 ## 版本管理
 
 本项目使用 **package.json 作为版本号的单一来源**，通过自动化脚本确保版本一致性。
