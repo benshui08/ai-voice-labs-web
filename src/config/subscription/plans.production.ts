@@ -78,13 +78,13 @@ export const subscriptionPlans: SubscriptionPlansConfig = {
           price: { USD: 17.99 },
           discounted_price: { USD: 8.99 },
           product_id: 'prod_creator_15000',
+          default: true,
         },
         {
           credits: 30000,
           price: { USD: 35.99 },
           discounted_price: { USD: 17.99 },
           product_id: 'prod_creator_30000',
-          default: true,
         },
         {
           credits: 50000,
