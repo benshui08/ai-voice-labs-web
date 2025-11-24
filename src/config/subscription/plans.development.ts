@@ -55,6 +55,32 @@ export const subscriptionPlans: SubscriptionPlansConfig = {
         'zh-TW': '首週5折',
         'th-TH': 'สัปดาห์แรก ลด 50%',
       },
+      features: [
+        {
+          en: 'up to 180 videos per week',
+          'zh-CN': '每周最多 180 个视频',
+          'zh-TW': '每週最多 180 個影片',
+          'th-TH': 'วิดีโอได้สูงสุด 180 รายการต่อสัปดาห์',
+        },
+        {
+          en: 'up to 450 songs per week',
+          'zh-CN': '每周最多 450 首歌曲',
+          'zh-TW': '每週最多 450 首歌曲',
+          'th-TH': 'เพลงได้สูงสุด 450 เพลงต่อสัปดาห์',
+        },
+        {
+          en: 'up to 450,000 characters per week',
+          'zh-CN': '每周最多 450,000 个字符',
+          'zh-TW': '每週最多 450,000 個字元',
+          'th-TH': 'อักขระได้สูงสุด 450,000 ตัวต่อสัปดาห์',
+        },
+        {
+          en: 'Learn more on rules below',
+          'zh-CN': '更多规则请见下方',
+          'zh-TW': '更多規則請見下方',
+          'th-TH': 'เรียนรู้เพิ่มเติมเกี่ยวกับกฎด้านล่าง',
+        },
+      ],
       active: true,
       sort_order: 1,
     },
