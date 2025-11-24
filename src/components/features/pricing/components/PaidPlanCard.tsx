@@ -248,12 +248,12 @@ export default function PaidPlanCard({ plan }: PaidPlanCardProps) {
         )}
 
         {/* Plan Name */}
-        <div className="mb-4 mt-2">
+        <div className="mb-3 mt-2">
           <h3 className="text-xl font-bold text-gray-900">{getPlanName()}</h3>
         </div>
 
         {/* Price Section - 新布局 */}
-        <div className="mb-4">
+        <div className="mb-6">
           {priceInfo ? (
             <>
               {/* 主价格行：大价格在左，划线价在右 */}
@@ -297,6 +297,18 @@ export default function PaidPlanCard({ plan }: PaidPlanCardProps) {
         {!hasCreditTiers && (
           <div className="text-sm text-gray-600 mb-4">
             {currentCredits.toLocaleString()} {t('pricing.creditsPerCycle')}
+          </div>
+        )}
+
+        {/* 功能列表 */}
+        {plan.features && plan.features.length > 0 && (
+          <div className="mb-4 space-y-2">
+            {plan.features.map((feature, index) => (
+              <div key={index} className="flex items-start gap-2 text-sm text-gray-700">
+                <span className="text-purple-600 mt-0.5">•</span>
+                <span>{feature[locale] || feature.en || feature['zh-CN'] || ''}</span>
+              </div>
+            ))}
           </div>
         )}
 

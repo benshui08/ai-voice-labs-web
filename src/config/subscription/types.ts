@@ -73,6 +73,14 @@ export interface SubscriptionPlanConfig {
 
   // 推荐标签（如 "最受欢迎"）
   is_popular?: boolean;
+
+  // 功能列表（多语言）
+  features?: Array<{
+    en: string;
+    'zh-CN': string;
+    'zh-TW': string;
+    'th-TH'?: string;
+  }>;
 }
 
 /**
