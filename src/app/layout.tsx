@@ -23,13 +23,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Voice Labs - Create Stunning AI Voices",
-  description: "Transform your content with natural-sounding AI voice generation. Create custom voice models with cutting-edge technology.",
+  title: "Voicica AI - One Stop AI Solution for Video, Music, and Voiceover",
+  description: "Everything you need for high-quality video with music and voiceover in one place. No technical skills required. Bring your best ideas to life on Voicica now.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "AI Voice Labs",
+    title: "Voicica AI",
   },
   formatDetection: {
     telephone: false,
