@@ -28,7 +28,9 @@
     "studio": "工作室",
     "pricing": "定价",
     "faq": "常见问题",
-    "generationHistory": "生成历史"
+    "generationHistory": "生成历史",
+    "freeTools": "免费工具",
+    "tiktokDownloader": "TikTok 下载"
   },
   "pricing": {
     "pageTitle": "Voicica AI 套餐与定价",

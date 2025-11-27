@@ -1,38 +1,22 @@
 /**
  * Navigation configuration
- * Centralized navigation links and routing configuration
+ *
+ * This file re-exports from the navigation module for backward compatibility.
+ * New code should import from '@/config/navigation' directly.
  */
 
-export interface NavLink {
-  href: string;
-  labelKey: string; // i18n key for translation
-  type?: 'page' | 'section'; // 'page' for route navigation, 'section' for scroll to section
-  sectionId?: string; // section id for scroll behavior (only when type is 'section')
-  openInNewWindow?: boolean; // if true, opens link in a new window/tab
-}
+export {
+  NAV_LINKS,
+  NAV_DROPDOWNS,
+  navigationConfig,
+  getEnabledNavLinks,
+  getEnabledDropdowns,
+  getDropdownById,
+} from './navigation/index';
 
-/**
- * Main navigation links
- * These appear in the header navigation bar
- */
-export const NAV_LINKS: NavLink[] = [
-  {
-    href: '/studio/tts',
-    labelKey: 'nav.studio',
-    type: 'page',
-    // openInNewWindow 已移除 - 现在在当前页面跳转
-  },
-  {
-    href: '/pricing',
-    labelKey: 'nav.pricing',
-    type: 'section', // Can scroll to section on homepage if exists, otherwise navigates to page
-    sectionId: 'pricing',
-  },
-  {
-    href: '/#faq',
-    labelKey: 'nav.faq',
-    type: 'section',
-    sectionId: 'faq',
-  },
-];
-
+export type {
+  NavLink,
+  NavDropdown,
+  NavDropdownItem,
+  NavigationConfig,
+} from './navigation/index';

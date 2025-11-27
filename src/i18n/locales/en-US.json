@@ -28,7 +28,9 @@
     "studio": "Studio",
     "pricing": "Pricing",
     "faq": "FAQ",
-    "generationHistory": "Generation History"
+    "generationHistory": "Generation History",
+    "freeTools": "Free Tools",
+    "tiktokDownloader": "TikTok Downloader"
   },
   "pricing": {
     "pageTitle": "Plans & Pricing of Voicica AI",
