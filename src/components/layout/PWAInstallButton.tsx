@@ -45,10 +45,24 @@ export default function PWAInstallButton() {
     setShowButton(true);
     console.log('[PWA Install Button] Showing button');
 
+    // Android/Desktop: 如果 5 秒内事件没有触发，隐藏按钮（可能已安装）
+    let hideButtonTimer: NodeJS.Timeout | null = null;
+
+    if (!isIOSDevice) {
+      hideButtonTimer = setTimeout(() => {
+        console.log('[PWA Install Button] ⏰ Timeout: beforeinstallprompt not fired, hiding button (likely already installed)');
+        setShowButton(false);
+      }, 5000);
+    }
+
     // Android/Desktop: 监听 beforeinstallprompt 事件
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       console.log('[PWA Install Button] ✅ beforeinstallprompt event fired!');
+      if (hideButtonTimer) {
+        clearTimeout(hideButtonTimer);
+        hideButtonTimer = null;
+      }
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
@@ -64,6 +78,9 @@ export default function PWAInstallButton() {
     window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
+      if (hideButtonTimer) {
+        clearTimeout(hideButtonTimer);
+      }
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
@@ -75,8 +92,8 @@ export default function PWAInstallButton() {
 
   const handleInstall = async () => {
     if (!deferredPrompt) {
-      // 如果没有 deferredPrompt，说明浏览器不支持 PWA 安装或 PWA 配置不完整
-      alert('当前浏览器不支持自动安装，或应用未满足 PWA 安装条件。\n\n您可以尝试：\n1. 使用 Chrome/Edge 浏览器\n2. 确保网站通过 HTTPS 访问\n3. 手动将网站添加到主屏幕');
+      // 如果没有 deferredPrompt，可能是应用已安装或浏览器不支持
+      alert('应用可能已经安装，或当前浏览器不支持自动安装。\n\n如果应用未安装，您可以：\n1. 检查应用列表中是否已有 Voicica AI\n2. 尝试使用 Chrome/Edge 浏览器\n3. 手动通过浏览器菜单"安装应用"');
       return;
     }
 
