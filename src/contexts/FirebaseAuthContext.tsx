@@ -220,6 +220,8 @@ export function FirebaseAuthProvider({ children }: { children: React.ReactNode }
       // 设置邮件语言
       auth.languageCode = firebaseLanguageCode;
 
+      // 发送密码重置邮件
+      // 邮件链接会使用 Firebase Console 中配置的"操作网址"
       await sendPasswordResetEmail(auth, email);
       console.log(`[FirebaseAuth] 密码重置邮件已发送 (语言: ${firebaseLanguageCode})`);
     } catch (error) {
