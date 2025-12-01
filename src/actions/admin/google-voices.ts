@@ -326,7 +326,7 @@ export async function syncGoogleVoicesByLocale(locale: string): Promise<SyncResu
       voice_sample_text: '',
       tags: buildTags(voice.name, voice.naturalSampleRateHertz),
       style_list: ['default'], // Google 没有风格概念，使用 default
-      is_active: false, // 默认不启用
+      is_active: true,
       sort_order: 0,
     }));
 
