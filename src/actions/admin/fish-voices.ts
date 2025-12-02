@@ -883,8 +883,32 @@ interface ExportResult {
 }
 
 /**
+ * 将 Fish 模型转换为 Excel 行数据
+ */
+function modelToExcelRow(model: FishVoiceModel, index: number) {
+  return {
+    序号: index + 1,
+    ID: model._id,
+    名称: model.title,
+    描述: model.description,
+    作者: model.author?.nickname || 'Unknown',
+    语言: model.languages.join(', '),
+    使用次数: model.task_count,
+    点赞数: model.like_count,
+    收藏数: model.mark_count,
+    标签: model.tags.join(', '),
+    训练模式: model.train_mode,
+    状态: model.state,
+    可见性: model.visibility,
+    创建时间: model.created_at,
+    更新时间: model.updated_at,
+    封面图: buildCoverImageUrl(model.cover_image),
+  };
+}
+
+/**
  * 导出 Fish Audio 语音列表为 Excel
- * 下载全部数据（分页获取所有数据）
+ * 分批获取数据，每批 10000 条，边获取边写入
  * @param language 语言筛选（可选）
  */
 export async function exportFishVoicesToExcel(language?: string): Promise<ExportResult> {
@@ -893,56 +917,64 @@ export async function exportFishVoicesToExcel(language?: string): Promise<Export
   try {
     console.log(`📊 开始导出 Fish Audio 语音数据 (语言: ${language || '全部'})...`);
 
-    // 分页获取所有数据
-    const allVoices: FishVoiceModel[] = [];
-    const pageSize = 100;
+    const batchSize = 10000;
     let pageNumber = 1;
+    let totalFetched = 0;
     let total = 0;
 
-    // 首次获取，拿到 total
-    const firstPage = await fetchVoicesFromFish(pageSize, pageNumber, language);
-    total = firstPage.total;
-    allVoices.push(...firstPage.items);
+    // 创建工作簿
+    const workbook = XLSX.utils.book_new();
+    let worksheet: XLSX.WorkSheet | null = null;
 
-    // 计算总页数
-    const totalPages = Math.ceil(total / pageSize);
-    console.log(`📊 总共 ${total} 条数据，${totalPages} 页`);
+    // 分批获取数据
+    while (true) {
+      console.log(`📊 获取第 ${pageNumber} 批数据 (每批 ${batchSize} 条)...`);
+      const data = await fetchVoicesFromFish(batchSize, pageNumber, language);
 
-    // 获取剩余页面
-    for (let page = 2; page <= totalPages; page++) {
-      console.log(`📊 获取第 ${page}/${totalPages} 页...`);
-      const pageData = await fetchVoicesFromFish(pageSize, page, language);
-      allVoices.push(...pageData.items);
+      if (pageNumber === 1) {
+        total = data.total;
+        console.log(`📊 总共 ${total} 条数据`);
+      }
 
-      // 添加延迟避免 API 限流
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      if (data.items.length === 0) {
+        break;
+      }
+
+      // 转换为 Excel 行数据
+      const rows = data.items.map((model, index) =>
+        modelToExcelRow(model, totalFetched + index)
+      );
+
+      if (worksheet === null) {
+        // 第一批：创建工作表
+        worksheet = XLSX.utils.json_to_sheet(rows);
+      } else {
+        // 后续批次：追加行（跳过表头）
+        XLSX.utils.sheet_add_json(worksheet, rows, {
+          skipHeader: true,
+          origin: -1, // 追加到末尾
+        });
+      }
+
+      totalFetched += data.items.length;
+      console.log(`📊 已获取 ${totalFetched}/${total} 条`);
+
+      // 如果已获取所有数据，退出循环
+      if (totalFetched >= total || data.items.length < batchSize) {
+        break;
+      }
+
+      pageNumber++;
     }
 
-    console.log(`📊 共获取 ${allVoices.length} 条数据，开始生成 Excel...`);
+    if (!worksheet) {
+      return {
+        success: false,
+        message: '没有数据可导出',
+      };
+    }
 
-    // 转换为 Excel 数据格式
-    const excelData = allVoices.map((model, index) => ({
-      序号: index + 1,
-      ID: model._id,
-      名称: model.title,
-      描述: model.description,
-      作者: model.author?.nickname || 'Unknown',
-      语言: model.languages.join(', '),
-      使用次数: model.task_count,
-      点赞数: model.like_count,
-      收藏数: model.mark_count,
-      标签: model.tags.join(', '),
-      训练模式: model.train_mode,
-      状态: model.state,
-      可见性: model.visibility,
-      创建时间: model.created_at,
-      更新时间: model.updated_at,
-      封面图: buildCoverImageUrl(model.cover_image),
-    }));
-
-    // 创建工作簿和工作表
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    const workbook = XLSX.utils.book_new();
+    // 添加工作表到工作簿
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Fish Voices');
 
     // 设置列宽
@@ -977,11 +1009,11 @@ export async function exportFishVoicesToExcel(language?: string): Promise<Export
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const filename = `fish_voices${languageLabel}_${dateStr}.xlsx`;
 
-    console.log(`✅ Excel 生成成功: ${filename} (${allVoices.length} 条数据)`);
+    console.log(`✅ Excel 生成成功: ${filename} (${totalFetched} 条数据)`);
 
     return {
       success: true,
-      message: `导出成功: ${allVoices.length} 条数据`,
+      message: `导出成功: ${totalFetched} 条数据`,
       data: base64,
       filename,
     };
