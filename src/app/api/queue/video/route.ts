@@ -19,8 +19,8 @@ import { ProductType } from '@/config/productType';
 import type { VideoQueuePayload } from '@/lib/queue/video-queue';
 import { deductCreditsAtomic, addCredits } from '@/lib/credits';
 
-// 允许长时间运行（最多 10 分钟，视频生成需要更长时间）
-export const maxDuration = 600;
+// 允许长时间运行（Hobby 计划最大 300 秒）
+export const maxDuration = 300;
 
 // 处理函数（不带签名验证，用于开发环境）
 async function handleVideoTask(req: NextRequest) {
