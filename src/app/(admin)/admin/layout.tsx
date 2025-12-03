@@ -9,6 +9,7 @@ import { ADMIN_EMAILS } from '@/config/admin';
 // 导航菜单配置
 const NAV_ITEMS = [
   { href: '/admin/users', label: '用户管理' },
+  { href: '/admin/tts-records', label: 'TTS 记录' },
   { href: '/admin/voices', label: '语音管理' },
   { href: '/admin/voices/sync', label: 'Azure 同步' },
   { href: '/admin/voices/sync-google', label: 'Google 同步' },
