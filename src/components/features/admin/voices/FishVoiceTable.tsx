@@ -225,6 +225,7 @@ function FishVoiceTableRow({
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
           {voice.coverImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={voice.coverImage}
               alt={voice.title}

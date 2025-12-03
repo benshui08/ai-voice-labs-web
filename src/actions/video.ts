@@ -10,7 +10,6 @@ import { nanoid } from 'nanoid';
 import { videoQueue } from '@/lib/queue/video-queue';
 import { InsufficientCreditsError, errorToResponse } from '@/lib/errors';
 import { calculateVideoCost, type VideoResolution, type VideoDuration } from '@/config/creditsCost';
-import { ProductType } from '@/config/productType';
 import { checkCredits } from '@/lib/credits';
 
 /**

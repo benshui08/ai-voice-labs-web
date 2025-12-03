@@ -34,6 +34,7 @@ export default function FishVoiceDetailDialog({
         <div className="px-6 py-4 border-b border-gray-200 flex items-start justify-between flex-shrink-0">
           <div className="flex items-center gap-4">
             {voice.coverImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={voice.coverImage}
                 alt={voice.title}

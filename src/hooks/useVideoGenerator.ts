@@ -61,7 +61,7 @@ export function useVideoGenerator(
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [taskId, setTaskId] = useState<string | null>(null);
+  const [, setTaskId] = useState<string | null>(null);
 
   // Refs for polling
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
