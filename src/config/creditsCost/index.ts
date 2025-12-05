@@ -40,7 +40,7 @@ export type {
 } from './types';
 
 /** 语音类型 */
-export type VoiceType = 'standard' | 'professional' | 'special' | 'clone';
+export type VoiceType = 'standard' | 'professional' | 'celebrity' | 'special' | 'clone';
 
 /**
  * 计算积分消耗的选项参数
