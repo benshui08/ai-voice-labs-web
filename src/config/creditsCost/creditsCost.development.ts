@@ -24,6 +24,7 @@ export const voiceCostConfig: VoiceCostConfig = {
   unit_chars: 100,
   standard: 1,
   professional: 1,
+  celebrity: 2,
   special: 2,
   clone: 3,
 };
