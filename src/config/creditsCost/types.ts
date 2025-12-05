@@ -29,6 +29,8 @@ export interface VoiceCostConfig {
   standard: number;
   /** 专业语音每单位消耗积分 */
   professional: number;
+  /** 明星语音每单位消耗积分 */
+  celebrity: number;
   /** 特殊语音每单位消耗积分 */
   special: number;
   /** 克隆语音每单位消耗积分 */

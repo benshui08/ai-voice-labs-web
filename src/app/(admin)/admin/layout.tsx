@@ -6,16 +6,40 @@ import Link from 'next/link';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { ADMIN_EMAILS } from '@/config/admin';
 
-// 导航菜单配置
-const NAV_ITEMS = [
-  { href: '/admin/users', label: '用户管理' },
-  { href: '/admin/tts-records', label: 'TTS 记录' },
-  { href: '/admin/voices', label: '语音管理' },
-  { href: '/admin/voices/sync', label: 'Azure 同步' },
-  { href: '/admin/voices/sync-google', label: 'Google 同步' },
-  { href: '/admin/voices/sync-fish', label: 'Fish 同步' },
-  { href: '/admin/database', label: '数据库管理' },
+// 菜单分组配置
+const MENU_GROUPS = [
+  {
+    title: '用户',
+    items: [
+      { href: '/admin/users', label: '用户管理', icon: '👥' },
+    ],
+  },
+  {
+    title: '内容',
+    items: [
+      { href: '/admin/tts-records', label: 'TTS 记录', icon: '🎙️' },
+      { href: '/admin/voices', label: '语音管理', icon: '🔊' },
+    ],
+  },
+  {
+    title: '同步',
+    items: [
+      { href: '/admin/voices/sync', label: 'Azure 同步', icon: '☁️' },
+      { href: '/admin/voices/sync-google', label: 'Google 同步', icon: '🔍' },
+      { href: '/admin/voices/sync-fish', label: 'Fish 同步', icon: '🐟' },
+    ],
+  },
+  {
+    title: '系统',
+    items: [
+      { href: '/admin/app-releases', label: 'App 版本', icon: '📱' },
+      { href: '/admin/database', label: '数据库', icon: '🗄️' },
+    ],
+  },
 ];
+
+// 扁平化菜单用于移动端
+const NAV_ITEMS = MENU_GROUPS.flatMap(group => group.items);
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -64,15 +88,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* 顶部导航 */}
+      {/* 顶部导航栏 */}
       <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-8">
+        <div className="px-4 lg:px-6">
+          <div className="flex justify-between items-center h-14">
+            <div className="flex items-center gap-4">
               {/* 移动端汉堡菜单按钮 */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden p-2 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+                className="lg:hidden p-2 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
                 aria-label="打开菜单"
               >
                 {isMobileMenuOpen ? (
@@ -86,26 +110,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 )}
               </button>
 
-              <Link href="/admin" className="text-xl font-bold text-gray-900">
+              <Link href="/admin" className="text-lg font-bold text-gray-900">
                 管理后台
               </Link>
-
-              {/* 桌面端导航 */}
-              <nav className="hidden md:flex items-center gap-6">
-                {NAV_ITEMS.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`transition-colors ${
-                      pathname === item.href
-                        ? 'text-purple-600 font-medium'
-                        : 'text-gray-600 hover:text-purple-600'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
             </div>
 
             <div className="flex items-center gap-4">
@@ -119,19 +126,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* 移动端下拉菜单 */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 bg-white">
+          <div className="lg:hidden border-t border-gray-200 bg-white">
             <nav className="px-4 py-3 space-y-1">
               {NAV_ITEMS.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`block px-3 py-2 rounded-lg transition-colors ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                     pathname === item.href
                       ? 'bg-purple-50 text-purple-600 font-medium'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  {item.label}
+                  <span>{item.icon}</span>
+                  <span>{item.label}</span>
                 </Link>
               ))}
               <div className="border-t border-gray-200 mt-2 pt-2">
@@ -145,13 +153,44 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {/* 点击遮罩关闭菜单 */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/20 z-40 md:hidden"
+          className="fixed inset-0 bg-black/20 z-40 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
-      {/* 主内容区 */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
+      <div className="flex">
+        {/* 桌面端左侧边栏 */}
+        <aside className="hidden lg:block w-56 flex-shrink-0 bg-white border-r border-gray-200 min-h-[calc(100vh-56px)] sticky top-14 self-start">
+          <nav className="p-4 space-y-6">
+            {MENU_GROUPS.map((group) => (
+              <div key={group.title}>
+                <h3 className="px-3 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  {group.title}
+                </h3>
+                <div className="space-y-1">
+                  {group.items.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                        pathname === item.href
+                          ? 'bg-purple-50 text-purple-600 font-medium'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <span className="text-base">{item.icon}</span>
+                      <span>{item.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </nav>
+        </aside>
+
+        {/* 主内容区 */}
+        <main className="flex-1 p-6 lg:p-8 overflow-auto">{children}</main>
+      </div>
     </div>
   );
 }
