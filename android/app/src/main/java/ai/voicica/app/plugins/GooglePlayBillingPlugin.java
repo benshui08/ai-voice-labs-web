@@ -15,6 +15,7 @@ import com.android.billingclient.api.ProductDetailsResponseListener;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.PurchasesUpdatedListener;
 import com.android.billingclient.api.QueryProductDetailsParams;
+import com.android.billingclient.api.QueryProductDetailsResult;
 import com.android.billingclient.api.QueryPurchasesParams;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -27,8 +28,6 @@ import java.util.List;
 
 /**
  * Google Play Billing Plugin for Capacitor
- *
- * 简单直接的 Google Play 内购实现
  */
 @CapacitorPlugin(name = "GooglePlayBilling")
 public class GooglePlayBillingPlugin extends Plugin implements PurchasesUpdatedListener {
@@ -101,8 +100,9 @@ public class GooglePlayBillingPlugin extends Plugin implements PurchasesUpdatedL
 
         billingClient.queryProductDetailsAsync(params, new ProductDetailsResponseListener() {
             @Override
-            public void onProductDetailsResponse(@NonNull BillingResult billingResult, @NonNull List<ProductDetails> list) {
-                if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+            public void onProductDetailsResponse(@NonNull BillingResult billingResult, @NonNull QueryProductDetailsResult queryResult) {
+                List<ProductDetails> list = queryResult.getProductDetailsList();
+                if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK && list != null) {
                     JSObject result = new JSObject();
                     StringBuilder productsJson = new StringBuilder("[");
                     for (int i = 0; i < list.size(); i++) {
@@ -161,8 +161,9 @@ public class GooglePlayBillingPlugin extends Plugin implements PurchasesUpdatedL
 
         billingClient.queryProductDetailsAsync(queryParams, new ProductDetailsResponseListener() {
             @Override
-            public void onProductDetailsResponse(@NonNull BillingResult billingResult, @NonNull List<ProductDetails> list) {
-                if (billingResult.getResponseCode() != BillingClient.BillingResponseCode.OK || list.isEmpty()) {
+            public void onProductDetailsResponse(@NonNull BillingResult billingResult, @NonNull QueryProductDetailsResult queryResult) {
+                List<ProductDetails> list = queryResult.getProductDetailsList();
+                if (billingResult.getResponseCode() != BillingClient.BillingResponseCode.OK || list == null || list.isEmpty()) {
                     if (pendingPurchaseCall != null) {
                         pendingPurchaseCall.reject("Product not found: " + productId);
                         pendingPurchaseCall = null;
