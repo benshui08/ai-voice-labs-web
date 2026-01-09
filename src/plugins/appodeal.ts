@@ -2,6 +2,7 @@
  * Appodeal Capacitor Plugin
  *
  * TypeScript 定义和封装，用于调用原生 Appodeal SDK
+ * 支持连续播放多个广告，带顶部进度条和计数器
  */
 
 import { registerPlugin } from '@capacitor/core';
@@ -17,27 +18,29 @@ export interface AppodealInitOptions {
 }
 
 /**
- * 显示激励视频的结果
+ * 设置广告数量选项
  */
-export interface ShowRewardedVideoResult {
-  /** 是否成功获得奖励（用户完整观看视频） */
-  rewarded: boolean;
-  /** 奖励数量（如果有） */
-  amount?: number;
-  /** 奖励名称（如果有） */
-  name?: string;
-  /** 错误信息（如果失败） */
-  error?: string;
-  /** 是否是超时强制给的奖励 */
-  timeout?: boolean;
+export interface SetAdCountOptions {
+  /** 连续播放的广告数量（1-5） */
+  count: number;
 }
 
 /**
- * 设置超时时间选项
+ * 显示激励视频的结果
  */
-export interface SetAdTimeoutOptions {
-  /** 超时时间（秒） */
-  timeout: number;
+export interface ShowRewardedVideoResult {
+  /** 是否成功获得奖励 */
+  rewarded: boolean;
+  /** 完成的广告数量 */
+  completedAds?: number;
+  /** 总广告数量 */
+  totalAds?: number;
+  /** 奖励数量（累计） */
+  amount?: number;
+  /** 奖励名称 */
+  name?: string;
+  /** 错误信息（如果失败） */
+  error?: string;
 }
 
 /**
@@ -71,13 +74,19 @@ export interface AppodealPlugin {
   initialize(options: AppodealInitOptions): Promise<void>;
 
   /**
+   * 设置连续播放的广告数量
+   * @param options 包含 count 字段（1-5）
+   */
+  setAdCount(options: SetAdCountOptions): Promise<void>;
+
+  /**
    * 检查激励视频是否已加载
    */
   isRewardedVideoLoaded(): Promise<IsLoadedResult>;
 
   /**
-   * 显示激励视频广告
-   * @returns 返回是否获得奖励
+   * 显示激励视频广告（连续播放配置的数量）
+   * @returns 返回是否获得奖励及完成情况
    */
   showRewardedVideo(): Promise<ShowRewardedVideoResult>;
 
@@ -92,13 +101,7 @@ export interface AppodealPlugin {
   canShow(): Promise<CanShowResult>;
 
   /**
-   * 设置广告超时时间（秒）
-   * 超时后会强制关闭广告并给予奖励
-   */
-  setAdTimeout(options: SetAdTimeoutOptions): Promise<void>;
-
-  /**
-   * 检查是否有悬浮窗权限（用于显示广告超时进度条）
+   * 检查是否有悬浮窗权限（用于显示广告进度条）
    */
   checkOverlayPermission(): Promise<OverlayPermissionResult>;
 
