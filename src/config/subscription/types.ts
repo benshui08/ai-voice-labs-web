@@ -38,6 +38,8 @@ export interface CreditTier {
     'zh-CN': string;
     'zh-TW': string;
     'th-TH'?: string;
+    'my-MM'?: string;
+    'id-ID'?: string;
   }>;
 }
 
@@ -56,6 +58,8 @@ export interface SubscriptionPlanConfig {
     'zh-CN': string;
     'zh-TW': string;
     'th-TH'?: string;
+    'my-MM'?: string;
+    'id-ID'?: string;
   };
 
   // 计费周期
@@ -72,6 +76,8 @@ export interface SubscriptionPlanConfig {
     'zh-CN': string;
     'zh-TW': string;
     'th-TH'?: string;
+    'my-MM'?: string;
+    'id-ID'?: string;
   };
 
   // 状态
@@ -87,6 +93,8 @@ export interface SubscriptionPlanConfig {
     'zh-CN': string;
     'zh-TW': string;
     'th-TH'?: string;
+    'my-MM'?: string;
+    'id-ID'?: string;
   }>;
 }
 
