@@ -34,6 +34,17 @@
     "deleteConfirmTitle": "Delete Story",
     "deleteConfirmMessage": "Are you sure you want to delete this story?",
     "deleteWarning": "This action cannot be undone.",
+    "paragraphs": "paragraphs",
+    "hasIllustration": "Illustrated",
+    "hasAudio": "Audio",
+    "audio": {
+      "title": "Generate Audio",
+      "selectVoice": "Select Voice",
+      "selectVoiceFirst": "Please select a voice first",
+      "generated": "Generated",
+      "generateThis": "Generate this",
+      "generateAll": "Generate All"
+    },
     "illustration": {
       "title": "Generate Illustrations",
       "selectType": "Select generation type",
