@@ -3,109 +3,293 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { BookOpen, Volume2, Image as ImageLucide, MoreVertical, Trash2, Clock, FileText, Play, Pause, Loader2, X, Pencil, AlertTriangle, Download, Sparkles, ImageIcon, LayoutGrid, Check } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useStudio } from '@/contexts/StudioContext';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { getUserStories, deleteStory } from '@/actions/story';
-import type { UserStory } from '@/actions/story';
+import type { UserStory, StoryParagraph } from '@/actions/story';
 import { generateIllustrations, getStoryIllustrations } from '@/actions/illustration';
 import type { IllustrationType, IllustrationData } from '@/actions/illustration';
+import { createTtsTask } from '@/actions/tts';
 import LoginModal from '@/components/features/auth/LoginModal';
+import VoiceSelectButton from '@/components/features/studio/tts/components/VoiceSelectButton';
+import type { Voice } from '@/types/voice';
+
+// 动态导入语音选择器弹窗
+const VoiceSelectorBottomSheet = dynamic(
+  () => import('@/components/features/studio/tts/components/mobile/VoiceSelectorBottomSheet'),
+  { ssr: false }
+);
 
 /**
- * Audio Generation Confirm Modal
+ * Story Audio Generation Modal - 显示段落并选择语音生成
  */
-function AudioConfirmModal({
+function StoryAudioModal({
   story,
   isOpen,
   onClose,
-  onConfirm,
+  onSuccess,
   t,
 }: {
   story: UserStory | null;
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onSuccess: () => void;
   t: (key: string) => string;
 }) {
+  const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
+  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
+  const [isVoiceSelectorOpen, setIsVoiceSelectorOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [generatingParagraphId, setGeneratingParagraphId] = useState<string | null>(null);
+
+  // 从 localStorage 恢复上次选择的语音
+  useEffect(() => {
+    if (isOpen && !selectedVoice) {
+      const lastVoiceStr = localStorage.getItem('lastSelectedVoice');
+      if (lastVoiceStr) {
+        try {
+          const lastVoice = JSON.parse(lastVoiceStr) as Voice;
+          setSelectedVoice(lastVoice);
+        } catch (err) {
+          console.error('Failed to parse last selected voice:', err);
+        }
+      }
+    }
+  }, [isOpen, selectedVoice]);
+
   if (!isOpen || !story) return null;
 
-  // Truncate content for preview
-  const previewContent = story.content.length > 200
-    ? story.content.substring(0, 200) + '...'
-    : story.content;
+  const handleVoiceSelect = (voice: Voice, style: string | null = null) => {
+    setSelectedVoice(voice);
+    setSelectedStyle(style);
+    setError(null);
+    // 保存到 localStorage
+    localStorage.setItem('lastSelectedVoice', JSON.stringify(voice));
+  };
+
+  // 生成整个故事的语音
+  const handleGenerateAll = async () => {
+    if (!selectedVoice) {
+      setError(t('story.audio.selectVoiceFirst') || 'Please select a voice first');
+      return;
+    }
+
+    setIsGenerating(true);
+    setError(null);
+
+    try {
+      const result = await createTtsTask({
+        text: story.content,
+        voice_name: selectedVoice.name,
+        language: selectedVoice.locale,
+        style: selectedStyle || undefined,
+        story_id: story.id,
+      });
+
+      if (result.status === 'FAILURE' && result.errorCode) {
+        setError(result.error || 'Failed to generate audio');
+        setIsGenerating(false);
+        return;
+      }
+
+      // 成功
+      setIsGenerating(false);
+      onSuccess();
+      onClose();
+    } catch (err) {
+      console.error('Failed to generate audio:', err);
+      setError(err instanceof Error ? err.message : 'Failed to generate audio');
+      setIsGenerating(false);
+    }
+  };
+
+  // 生成单个段落的语音
+  const handleGenerateParagraph = async (paragraph: StoryParagraph) => {
+    if (!selectedVoice) {
+      setError(t('story.audio.selectVoiceFirst') || 'Please select a voice first');
+      return;
+    }
+
+    setGeneratingParagraphId(paragraph.id);
+    setError(null);
+
+    try {
+      const result = await createTtsTask({
+        text: paragraph.content,
+        voice_name: selectedVoice.name,
+        language: selectedVoice.locale,
+        style: selectedStyle || undefined,
+        story_id: story.id,
+        // TODO: Add paragraph_id when backend supports it
+      });
+
+      if (result.status === 'FAILURE' && result.errorCode) {
+        setError(result.error || 'Failed to generate audio');
+        setGeneratingParagraphId(null);
+        return;
+      }
+
+      // 成功
+      setGeneratingParagraphId(null);
+    } catch (err) {
+      console.error('Failed to generate paragraph audio:', err);
+      setError(err instanceof Error ? err.message : 'Failed to generate audio');
+      setGeneratingParagraphId(null);
+    }
+  };
+
+  const paragraphs = story.paragraphs || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-900">
-            {t('story.confirmAudioTitle') || 'Generate Audio'}
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-400" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-4 space-y-4">
-          {/* Story Title */}
-          <div>
-            <p className="text-sm text-gray-500 mb-1">{t('story.title') || 'Title'}</p>
-            <p className="font-medium text-gray-900">{story.title}</p>
+        <div className="relative bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {t('story.audio.title') || 'Generate Audio'}
+              </h3>
+              <p className="text-sm text-gray-500 truncate">{story.title}</p>
+            </div>
+            <button
+              onClick={onClose}
+              disabled={isGenerating}
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors ml-4 disabled:opacity-50"
+            >
+              <X className="w-5 h-5 text-gray-400" />
+            </button>
           </div>
 
-          {/* Content Preview */}
-          <div>
-            <p className="text-sm text-gray-500 mb-1">{t('story.contentPreview') || 'Content Preview'}</p>
-            <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 max-h-32 overflow-y-auto">
-              {previewContent}
+          {/* Voice Selector */}
+          <div className="p-4 border-b border-gray-100 shrink-0">
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              {t('story.audio.selectVoice') || 'Select Voice'}
             </p>
+            <VoiceSelectButton
+              voice={selectedVoice}
+              selectedStyle={selectedStyle}
+              onClick={() => setIsVoiceSelectorOpen(true)}
+              disabled={isGenerating}
+              size="medium"
+            />
           </div>
 
-          {/* Character Count */}
-          <div className="flex items-center gap-2 text-sm">
-            <FileText className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-600">
-              {story.wordCount} {t('story.characters') || 'characters'}
-            </span>
+          {/* Paragraphs List */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {paragraphs.length === 0 ? (
+              // 没有段落时显示完整内容
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                  {story.content}
+                </p>
+              </div>
+            ) : (
+              paragraphs.map((paragraph, index) => (
+                <div
+                  key={paragraph.id}
+                  className="bg-gray-50 rounded-xl p-4"
+                >
+                  <div className="flex items-start gap-3">
+                    {/* 段落编号 */}
+                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium text-purple-700 bg-purple-100 rounded-full flex-shrink-0 mt-0.5">
+                      {index + 1}
+                    </span>
+
+                    {/* 段落内容 */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                        {paragraph.content}
+                      </p>
+
+                      {/* 段落音频状态/操作 */}
+                      <div className="flex items-center gap-2 mt-2">
+                        {paragraph.audioUrl && paragraph.audioStatus === 'completed' ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                            <Check className="w-3 h-3" />
+                            {t('story.audio.generated') || 'Generated'}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleGenerateParagraph(paragraph)}
+                            disabled={!selectedVoice || generatingParagraphId !== null}
+                            className="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {generatingParagraphId === paragraph.id ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                {t('common.generating') || 'Generating...'}
+                              </>
+                            ) : (
+                              <>
+                                <Volume2 className="w-3 h-3" />
+                                {t('story.audio.generateThis') || 'Generate this'}
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
-          {/* Info Message */}
-          <p className="text-xs text-gray-500">
-            {t('story.audioConfirmMessage') || 'You will be redirected to the TTS page to select a voice and generate audio.'}
-          </p>
-        </div>
+          {/* Error */}
+          {error && (
+            <div className="mx-4 mb-4 p-3 bg-red-50 rounded-xl flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
 
-        {/* Actions */}
-        <div className="flex gap-3 p-4 border-t border-gray-100">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
-          >
-            {t('common.cancel') || 'Cancel'}
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl transition-all shadow-sm"
-          >
-            {t('common.confirm') || 'Confirm'}
-          </button>
+          {/* Footer */}
+          <div className="flex gap-3 p-4 border-t border-gray-100 shrink-0">
+            <button
+              onClick={onClose}
+              disabled={isGenerating}
+              className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors disabled:opacity-50"
+            >
+              {t('common.cancel') || 'Cancel'}
+            </button>
+            <button
+              onClick={handleGenerateAll}
+              disabled={!selectedVoice || isGenerating}
+              className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {t('common.generating') || 'Generating...'}
+                </>
+              ) : (
+                <>
+                  <Volume2 className="w-4 h-4" />
+                  {t('story.audio.generateAll') || 'Generate All'}
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Voice Selector Bottom Sheet */}
+      {isVoiceSelectorOpen && (
+        <VoiceSelectorBottomSheet
+          isOpen={isVoiceSelectorOpen}
+          onClose={() => setIsVoiceSelectorOpen(false)}
+          selectedVoice={selectedVoice}
+          onSelect={handleVoiceSelect}
+        />
+      )}
+    </>
   );
 }
 
@@ -649,123 +833,6 @@ function IllustrationGalleryModal({
 }
 
 /**
- * Story Edit/View Modal - Displays story paragraphs with illustrations
- */
-function StoryEditModal({
-  story,
-  isOpen,
-  onClose,
-  t,
-}: {
-  story: UserStory | null;
-  isOpen: boolean;
-  onClose: () => void;
-  t: (key: string) => string;
-}) {
-  if (!isOpen || !story) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-
-      <div className="relative bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 truncate">
-              {story.title}
-            </h3>
-            <p className="text-sm text-gray-500">
-              {story.paragraphs.length} {t('story.paragraphs') || 'paragraphs'} · {story.wordCount} {t('story.characters') || 'characters'}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors ml-4"
-          >
-            <X className="w-5 h-5 text-gray-400" />
-          </button>
-        </div>
-
-        {/* Content - Paragraphs List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {story.paragraphs.length === 0 ? (
-            // Fallback: show full content if no paragraphs
-            <div className="prose prose-sm max-w-none">
-              <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                {story.content}
-              </p>
-            </div>
-          ) : (
-            story.paragraphs.map((paragraph, index) => (
-              <div
-                key={paragraph.id}
-                className="bg-gray-50 rounded-xl overflow-hidden"
-              >
-                {/* Paragraph with optional illustration */}
-                <div className="flex gap-4 p-4">
-                  {/* Illustration thumbnail (if exists) */}
-                  {paragraph.illustrationUrl && (
-                    <div className="flex-shrink-0">
-                      <div className="relative w-24 h-24 rounded-lg overflow-hidden bg-gray-200">
-                        <Image
-                          src={paragraph.illustrationUrl}
-                          alt={`Illustration for paragraph ${index + 1}`}
-                          fill
-                          unoptimized
-                          className="object-cover"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Paragraph content */}
-                  <div className="flex-1 min-w-0">
-                    {/* Paragraph number */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium text-purple-700 bg-purple-100 rounded-full">
-                        {index + 1}
-                      </span>
-                      {paragraph.illustrationUrl && (
-                        <span className="inline-flex items-center gap-1 text-xs text-green-600">
-                          <ImageLucide className="w-3 h-3" />
-                          {t('story.hasIllustration') || 'Illustrated'}
-                        </span>
-                      )}
-                      {paragraph.audioUrl && paragraph.audioStatus === 'completed' && (
-                        <span className="inline-flex items-center gap-1 text-xs text-blue-600">
-                          <Volume2 className="w-3 h-3" />
-                          {t('story.hasAudio') || 'Audio'}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Paragraph text */}
-                    <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
-                      {paragraph.content}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex gap-3 p-4 border-t border-gray-100 shrink-0">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
-          >
-            {t('common.close') || 'Close'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
  * Story Card Component
  */
 function StoryCard({
@@ -1039,14 +1106,12 @@ export default function MyStoriesPage() {
   // State
   const [stories, setStories] = useState<UserStory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [audioConfirmStory, setAudioConfirmStory] = useState<UserStory | null>(null);
   const [deleteConfirmStory, setDeleteConfirmStory] = useState<UserStory | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [illustrationStory, setIllustrationStory] = useState<UserStory | null>(null);
   const [galleryStory, setGalleryStory] = useState<UserStory | null>(null);
-  const [editStory, setEditStory] = useState<UserStory | null>(null);
 
   // 设置页面标题
   useEffect(() => {
@@ -1062,7 +1127,6 @@ export default function MyStoriesPage() {
       }
 
       setIsLoading(true);
-      setError(null);
 
       try {
         const result = await getUserStories();
@@ -1071,14 +1135,14 @@ export default function MyStoriesPage() {
           if (result.errorCode === 'LOGIN_REQUIRED') {
             setIsLoginModalOpen(true);
           } else {
-            setError(result.error || 'Failed to fetch stories');
+            console.error('Failed to fetch stories:', result.error);
           }
           return;
         }
 
         setStories(result.stories || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch stories');
+        console.error('Failed to fetch stories:', err);
       } finally {
         setIsLoading(false);
       }
@@ -1260,12 +1324,15 @@ export default function MyStoriesPage() {
         />
       )}
 
-      {/* Audio Confirm Modal */}
-      <AudioConfirmModal
+      {/* Story Audio Generation Modal */}
+      <StoryAudioModal
         story={audioConfirmStory}
         isOpen={!!audioConfirmStory}
         onClose={() => setAudioConfirmStory(null)}
-        onConfirm={handleConfirmGenerateAudio}
+        onSuccess={() => {
+          // 刷新故事列表以获取新的音频状态
+          setAudioConfirmStory(null);
+        }}
         t={t}
       />
 

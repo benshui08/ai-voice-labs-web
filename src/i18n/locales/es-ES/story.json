@@ -34,6 +34,17 @@
     "deleteConfirmTitle": "Eliminar historia",
     "deleteConfirmMessage": "¿Estás seguro de que quieres eliminar esta historia?",
     "deleteWarning": "Esta acción no se puede deshacer.",
+    "paragraphs": "párrafos",
+    "hasIllustration": "Ilustrado",
+    "hasAudio": "Audio",
+    "audio": {
+      "title": "Generar audio",
+      "selectVoice": "Seleccionar voz",
+      "selectVoiceFirst": "Por favor, selecciona una voz primero",
+      "generated": "Generado",
+      "generateThis": "Generar este",
+      "generateAll": "Generar todo"
+    },
     "illustration": {
       "title": "Generar ilustraciones",
       "selectType": "Seleccionar tipo de generación",

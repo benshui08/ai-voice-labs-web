@@ -34,6 +34,17 @@
     "deleteConfirmTitle": "删除故事",
     "deleteConfirmMessage": "确定要删除这个故事吗？",
     "deleteWarning": "此操作无法撤销。",
+    "paragraphs": "段落",
+    "hasIllustration": "有插图",
+    "hasAudio": "有语音",
+    "audio": {
+      "title": "生成语音",
+      "selectVoice": "选择语音",
+      "selectVoiceFirst": "请先选择语音",
+      "generated": "已生成",
+      "generateThis": "生成此段",
+      "generateAll": "全部生成"
+    },
     "illustration": {
       "title": "生成插图",
       "selectType": "选择生成类型",
