@@ -44,7 +44,9 @@
       "generated": "已生成",
       "generateThis": "生成此段",
       "generateAll": "全部生成",
-      "paragraphs": "段语音"
+      "paragraphs": "段语音",
+      "downloadAll": "下载全部",
+      "downloading": "下载中..."
     },
     "illustration": {
       "title": "生成插图",

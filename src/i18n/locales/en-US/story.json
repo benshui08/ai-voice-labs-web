@@ -44,7 +44,9 @@
       "generated": "Generated",
       "generateThis": "Generate this",
       "generateAll": "Generate All",
-      "paragraphs": "paragraphs"
+      "paragraphs": "paragraphs",
+      "downloadAll": "Download All",
+      "downloading": "Downloading..."
     },
     "illustration": {
       "title": "Generate Illustrations",

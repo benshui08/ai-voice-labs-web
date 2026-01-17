@@ -13,6 +13,8 @@ import {
   ChevronUp,
   Download,
 } from 'lucide-react';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import { createTtsTask, getTtsTaskStatus, updateParagraphAudio } from '@/actions/tts';
 import VoiceSelectButton from '@/components/features/studio/tts/components/VoiceSelectButton';
 import type { Voice } from '@/types/voice';
@@ -60,6 +62,8 @@ export default function StoryAudioModal({
   // 当前播放的音频
   const [playingParagraphId, setPlayingParagraphId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // 下载全部状态
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
 
   // 从 localStorage 恢复上次选择的语音
   useEffect(() => {
@@ -349,7 +353,52 @@ export default function StoryAudioModal({
     }
   };
 
+  // 下载全部音频（打包成 zip）
+  const handleDownloadAll = async () => {
+    const allParagraphs = story.paragraphs || [];
+
+    // 收集所有有音频的段落
+    const audioItems: { url: string; index: number }[] = [];
+    allParagraphs.forEach((p, index) => {
+      const audioState = paragraphAudio[p.id];
+      if (audioState?.status === 'SUCCESS' && audioState.audioUrl) {
+        audioItems.push({ url: audioState.audioUrl, index });
+      } else if (p.audioUrl && p.audioStatus === 'completed') {
+        audioItems.push({ url: p.audioUrl, index });
+      }
+    });
+
+    if (audioItems.length === 0) return;
+
+    setIsDownloadingAll(true);
+    try {
+      const zip = new JSZip();
+
+      // 下载所有音频并添加到 zip
+      for (const item of audioItems) {
+        const response = await fetch(item.url);
+        const blob = await response.blob();
+        zip.file(`${item.index + 1}.mp3`, blob);
+      }
+
+      // 生成并下载 zip 文件
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, `${story.title}-音频.zip`);
+    } catch (err) {
+      console.error('Failed to download all audio:', err);
+    } finally {
+      setIsDownloadingAll(false);
+    }
+  };
+
   const paragraphs = story.paragraphs || [];
+
+  // 计算有音频的段落数量
+  const audioCount = paragraphs.filter((p) => {
+    const audioState = paragraphAudio[p.id];
+    return (audioState?.status === 'SUCCESS' && audioState.audioUrl) ||
+           (p.audioUrl && p.audioStatus === 'completed');
+  }).length;
 
   return (
     <>
@@ -556,31 +605,55 @@ export default function StoryAudioModal({
           )}
 
           {/* Footer */}
-          <div className="flex gap-3 p-4 border-t border-gray-100 shrink-0">
-            <button
-              onClick={onClose}
-              disabled={isGenerating}
-              className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors disabled:opacity-50"
-            >
-              {t('common.cancel') || 'Cancel'}
-            </button>
-            <button
-              onClick={handleGenerateAll}
-              disabled={!selectedVoice || isGenerating}
-              className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {t('common.generating') || 'Generating...'}
-                </>
-              ) : (
-                <>
-                  <Volume2 className="w-4 h-4" />
-                  {t('story.audio.generateAll') || 'Generate All'}
-                </>
-              )}
-            </button>
+          <div className="p-4 border-t border-gray-100 shrink-0 space-y-3">
+            {/* 下载全部按钮 - 只在有音频时显示 */}
+            {audioCount > 0 && (
+              <button
+                onClick={handleDownloadAll}
+                disabled={isDownloadingAll}
+                className="w-full px-4 py-2.5 text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDownloadingAll ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {t('story.audio.downloading') || 'Downloading...'}
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    {t('story.audio.downloadAll') || 'Download All'} ({audioCount})
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* 取消和生成按钮 */}
+            <div className="flex gap-3">
+              <button
+                onClick={onClose}
+                disabled={isGenerating}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors disabled:opacity-50"
+              >
+                {t('common.cancel') || 'Cancel'}
+              </button>
+              <button
+                onClick={handleGenerateAll}
+                disabled={!selectedVoice || isGenerating}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {t('common.generating') || 'Generating...'}
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className="w-4 h-4" />
+                    {t('story.audio.generateAll') || 'Generate All'}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
