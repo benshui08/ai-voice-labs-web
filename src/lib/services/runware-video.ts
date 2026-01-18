@@ -164,9 +164,7 @@ export async function generateVideo(params: GenerateVideoParams): Promise<Genera
 
     // 如果有输入图片（image-to-video）
     if (inputImage) {
-      requestParams.inputs = {
-        image: inputImage,
-      };
+      requestParams.frameImages = [inputImage];
     }
 
     const result = await client.videoInference(requestParams as Parameters<typeof client.videoInference>[0]);

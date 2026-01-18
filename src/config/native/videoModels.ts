@@ -161,7 +161,7 @@ export const videoModelsConfig: VideoModel[] = [
     name: 'Pixverse V5',
     description: 'Lightning-fast videos with crisp detail',
     icon: 'pixverse',
-    apiModelId: 'pixverse-v5',
+    apiModelId: 'pixverse:1@5-fast',
     enabled: { development: true, production: true },
     qualityOptions: [
       { value: '360p', label: '360p', credits: 25 },
