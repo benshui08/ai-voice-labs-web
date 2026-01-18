@@ -149,6 +149,7 @@ async function handleVideoTask(req: NextRequest) {
         progress: 100,
         video_url: videoUrl,
         actual_duration: duration, // 实际时长等于请求时长
+        api_cost: runwareResult.cost, // 实际 API 成本
         completed_at: new Date(),
       },
     });
@@ -162,7 +163,7 @@ async function handleVideoTask(req: NextRequest) {
       },
     });
 
-    console.log(`✅ [VideoQueue] 视频任务处理成功: ${taskId}`);
+    console.log(`✅ [VideoQueue] 视频任务处理成功: ${taskId}, api_cost=${runwareResult.cost}`);
 
     return NextResponse.json({
       success: true,

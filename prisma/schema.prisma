@@ -253,6 +253,7 @@ model video_records {
   seed            Int?      // Random seed for reproducibility
   is_public       Boolean   @default(false) // Public visibility
   credits_cost    Int       // Credits deducted
+  api_cost        Float?    // Actual API cost from provider (e.g., Runware)
   status          String    @db.VarChar(20) // PENDING, PROCESSING, SUCCESS, FAILURE
   progress        Int       @default(0) // 0-100 progress indicator
   video_url       String?   // R2 URL after success
