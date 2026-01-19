@@ -22,9 +22,10 @@ export const creditsCostConfig: CreditsCostConfig = {
  * 语音成本配置 - 生产环境
  *
  * 计费规则：每 unit_chars 个字符消耗对应积分，不足也按一个单位计算
+ * 100个字符 = 1积分
  */
 export const voiceCostConfig: VoiceCostConfig = {
-  unit_chars: 1,
+  unit_chars: 100,
   standard: 1,
   professional: 1,
   celebrity: 2,

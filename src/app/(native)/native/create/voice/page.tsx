@@ -10,6 +10,7 @@ import { calculateVoiceCost, type VoiceType } from '@/config/creditsCost';
 import GradientButton from '@/components/native/common/GradientButton';
 import CreditsIcon from '@/components/native/common/CreditsIcon';
 import NativeVoiceSelectorSheet from '@/components/native/create/voice/VoiceSelectorSheet';
+import LoginModal from '@/components/native/LoginModal';
 
 // 返回图标
 const BackIcon = () => (
@@ -52,6 +53,7 @@ export default function NativeTTSPage() {
   const { credits } = useCredits();
 
   const [isVoiceSelectorOpen, setIsVoiceSelectorOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [text, setText] = useState('');
   const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -80,21 +82,22 @@ export default function NativeTTSPage() {
     setError(null);
   };
 
-  // 计算预计消耗积分
+  // 将 role 转换为 VoiceType
+  const mapRoleToVoiceType = (role: string): VoiceType => {
+    const normalizedRole = role.toLowerCase();
+    if (normalizedRole === 'celebrity') return 'celebrity';
+    if (normalizedRole === 'professional') return 'professional';
+    if (normalizedRole === 'special') return 'special';
+    if (normalizedRole === 'clone') return 'clone';
+    return 'standard';
+  };
+
+  // 计算预计消耗积分（输入文字后即显示，未选择语音时使用 standard 计算）
   const estimatedCredits = (() => {
     const trimmedText = text?.trim() || '';
-    if (trimmedText.length === 0 || !selectedVoice) return 0;
+    if (trimmedText.length === 0) return 0;
 
-    const mapRoleToVoiceType = (role: string): VoiceType => {
-      const normalizedRole = role.toLowerCase();
-      if (normalizedRole === 'celebrity') return 'celebrity';
-      if (normalizedRole === 'professional') return 'professional';
-      if (normalizedRole === 'special') return 'special';
-      if (normalizedRole === 'clone') return 'clone';
-      return 'standard';
-    };
-
-    const voiceType = mapRoleToVoiceType(selectedVoice.role);
+    const voiceType = selectedVoice ? mapRoleToVoiceType(selectedVoice.role) : 'standard';
     return calculateVoiceCost(trimmedText.length, voiceType);
   })();
 
@@ -104,6 +107,12 @@ export default function NativeTTSPage() {
   // 处理生成
   const handleGenerate = async () => {
     if (!canGenerate || !selectedVoice) return;
+
+    // 检查是否已登录
+    if (!user) {
+      setIsLoginModalOpen(true);
+      return;
+    }
 
     setIsGenerating(true);
     setError(null);
@@ -212,16 +221,9 @@ export default function NativeTTSPage() {
         </button>
 
         {/* Credits Info */}
-        <div className="flex items-center justify-between px-1 mb-3">
-          <div className="flex items-center gap-1.5 text-gray-400 text-xs">
-            <CreditsIcon className="w-3.5 h-3.5" />
-            <span>Balance: {credits}</span>
-          </div>
-          {estimatedCredits > 0 && (
-            <div className="text-gray-400 text-xs">
-              Cost: {estimatedCredits}
-            </div>
-          )}
+        <div className="flex items-center gap-1.5 text-gray-400 text-xs px-1 mb-3">
+          <CreditsIcon className="w-3.5 h-3.5" />
+          <span>Credits: {credits}</span>
         </div>
 
         {/* Generate Button */}
@@ -263,6 +265,13 @@ export default function NativeTTSPage() {
           handleVoiceSelect(voice);
           setIsVoiceSelectorOpen(false);
         }}
+      />
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLoginSuccess={() => setIsLoginModalOpen(false)}
       />
     </div>
   );
