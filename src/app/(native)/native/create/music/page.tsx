@@ -96,11 +96,13 @@ export default function NativeMusicPage() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
+  const [isParameterSheetOpen, setIsParameterSheetOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState<MusicTab>('simple');
   const [prompt, setPrompt] = useState('');
   const [model, setModel] = useState(defaultMusicModelId);
   const [isPublic, setIsPublic] = useState(true);
+  const [isInstrumental, setIsInstrumental] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,6 +118,8 @@ export default function NativeMusicPage() {
         if (parsed.prompt) setPrompt(parsed.prompt);
         if (parsed.model) setModel(parsed.model);
         if (parsed.activeTab) setActiveTab(parsed.activeTab);
+        if (typeof parsed.isInstrumental === 'boolean') setIsInstrumental(parsed.isInstrumental);
+        if (typeof parsed.isPublic === 'boolean') setIsPublic(parsed.isPublic);
       } catch {
         // 忽略解析错误
       }
@@ -124,8 +128,8 @@ export default function NativeMusicPage() {
 
   // 保存到 localStorage
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ prompt, model, activeTab }));
-  }, [prompt, model, activeTab]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ prompt, model, activeTab, isInstrumental, isPublic }));
+  }, [prompt, model, activeTab, isInstrumental, isPublic]);
 
   // 处理文本变化
   const handlePromptChange = (text: string) => {
@@ -179,6 +183,7 @@ export default function NativeMusicPage() {
         prompt: prompt.trim(),
         model,
         isPublic,
+        instrumental: isInstrumental,
       });
 
       if (result.status === 'FAILURE') {
@@ -271,7 +276,7 @@ export default function NativeMusicPage() {
               onClick={() => setIsModelSelectorOpen(!isModelSelectorOpen)}
               className="flex items-center gap-1.5 text-gray-400 text-sm"
             >
-              <SettingsIcon />
+              <MusicIcon />
               <span>{selectedModel?.name || model}</span>
               {selectedModel?.isPremium && (
                 <span className="text-yellow-400">
@@ -321,14 +326,16 @@ export default function NativeMusicPage() {
             </button>
           </div>
 
-          {/* Public/Private Toggle */}
+          {/* Parameters Trigger */}
           <button
-            onClick={() => setIsPublic(!isPublic)}
+            onClick={() => setIsParameterSheetOpen(true)}
             className="w-full flex items-center justify-between p-3 bg-gray-800/60 rounded-xl"
           >
             <div className="flex items-center gap-2">
               <ShieldIcon />
-              <span className="text-white text-sm">{isPublic ? 'Public' : 'Private'}</span>
+              <span className="text-white text-sm">
+                {isInstrumental ? 'Instrumental' : 'Vocal'} · {isPublic ? 'Public' : 'Private'}
+              </span>
             </div>
             <ChevronDownIcon />
           </button>
@@ -423,7 +430,7 @@ export default function NativeMusicPage() {
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <SettingsIcon />
+                      <MusicIcon />
                       <span className="text-white font-medium">{m.name}</span>
                       {m.isPremium && (
                         <span className="text-yellow-400">
@@ -446,6 +453,100 @@ export default function NativeMusicPage() {
                   <p className="text-gray-400 text-sm pl-7">{m.description}</p>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Parameter Settings Sheet */}
+      {isParameterSheetOpen && (
+        <div className="fixed inset-0 z-50">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setIsParameterSheetOpen(false)}
+          />
+          {/* Sheet */}
+          <div
+            className="absolute bottom-0 left-0 right-0 bg-[#1a1a2e] rounded-t-3xl"
+            style={{ paddingBottom: 'var(--safe-area-inset-bottom, 0px)' }}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="w-10 h-1 bg-gray-600 rounded-full" />
+            </div>
+            {/* Header */}
+            <div className="flex items-center justify-center px-4 pb-4">
+              <h3 className="text-white font-semibold text-lg">Parameter Settings</h3>
+            </div>
+            {/* Content */}
+            <div className="px-4 pb-6 space-y-6">
+              {/* Instrumental */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-white font-medium">Instrumental</span>
+                  <InfoIcon />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setIsInstrumental(true)}
+                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${
+                      isInstrumental
+                        ? 'bg-white text-black'
+                        : 'bg-gray-700/50 text-gray-400'
+                    }`}
+                  >
+                    on
+                  </button>
+                  <button
+                    onClick={() => setIsInstrumental(false)}
+                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${
+                      !isInstrumental
+                        ? 'bg-white text-black'
+                        : 'bg-gray-700/50 text-gray-400'
+                    }`}
+                  >
+                    off
+                  </button>
+                </div>
+              </div>
+
+              {/* Visibility */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-white font-medium">Visibility</span>
+                  <InfoIcon />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setIsPublic(true)}
+                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${
+                      isPublic
+                        ? 'bg-white text-black'
+                        : 'bg-gray-700/50 text-gray-400'
+                    }`}
+                  >
+                    Public
+                  </button>
+                  <button
+                    onClick={() => setIsPublic(false)}
+                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${
+                      !isPublic
+                        ? 'bg-white text-black'
+                        : 'bg-gray-700/50 text-gray-400'
+                    }`}
+                  >
+                    Private
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Button */}
+            <div className="px-4 pb-4">
+              <GradientButton onClick={() => setIsParameterSheetOpen(false)}>
+                <span>Done</span>
+              </GradientButton>
             </div>
           </div>
         </div>
