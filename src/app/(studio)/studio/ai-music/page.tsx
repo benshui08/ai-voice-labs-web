@@ -93,6 +93,7 @@ export default function StudioAiMusicPage() {
   const [title, setTitle_] = useState('');
   const [vocalGender, setVocalGender] = useState<'m' | 'f' | ''>('');
   const maxLyricsCharacters = 5000;
+  const maxStyleCharacters = 500;
 
   // Set page title
   useEffect(() => {
@@ -509,11 +510,12 @@ export default function StudioAiMusicPage() {
                             <span>Generate Style</span>
                           </button>
                         </div>
+                        <span className="text-xs text-gray-400">{style.length}/{maxStyleCharacters}</span>
                       </div>
                       <input
                         type="text"
                         value={style}
-                        onChange={(e) => setStyle(e.target.value)}
+                        onChange={(e) => e.target.value.length <= maxStyleCharacters && setStyle(e.target.value)}
                         placeholder="pop, rock, jazz, electronic..."
                         className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
                         disabled={isGenerating}
@@ -894,11 +896,12 @@ export default function StudioAiMusicPage() {
                         <span>Generate</span>
                       </button>
                     </div>
+                    <span className="text-xs text-gray-400">{style.length}/{maxStyleCharacters}</span>
                   </div>
                   <input
                     type="text"
                     value={style}
-                    onChange={(e) => setStyle(e.target.value)}
+                    onChange={(e) => e.target.value.length <= maxStyleCharacters && setStyle(e.target.value)}
                     placeholder="pop, rock, jazz..."
                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400"
                     disabled={isGenerating}
