@@ -133,6 +133,14 @@ export default function MusicDetailModal({
     try {
       const result = await createShareLink('music', music.task_id);
 
+      // 检查是否支持分享
+      const canShare = await Share.canShare();
+      if (!canShare.value) {
+        // 回退到复制链接
+        await navigator.clipboard.writeText(result.url);
+        return;
+      }
+
       // 使用 Capacitor Share 插件
       await Share.share({
         title: displayTitle,
@@ -142,6 +150,13 @@ export default function MusicDetailModal({
       });
     } catch (error) {
       console.error('Share failed:', error);
+      // 回退到复制链接
+      try {
+        const result = await createShareLink('music', music.task_id);
+        await navigator.clipboard.writeText(result.url);
+      } catch (e) {
+        console.error('Fallback copy failed:', e);
+      }
     } finally {
       setIsSharing(false);
     }
