@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Download, Pencil, Share2 } from 'lucide-react';
 import type { MusicRecord } from '@/actions/music';
+import { Share } from '@capacitor/share';
 import { createShareLink } from '@/actions/share';
 import GradientButton from '@/components/ui/GradientButton';
 import DeleteConfirmDialog from '@/components/native/ui/DeleteConfirmDialog';
@@ -132,19 +133,30 @@ export default function MusicDetailModal({
     try {
       const result = await createShareLink('music', music.task_id);
 
-      // 尝试使用原生分享 API
-      if (navigator.share) {
-        await navigator.share({
-          title: displayTitle,
-          text: `Check out this AI-generated music: ${displayTitle}`,
-          url: result.url,
-        });
-      } else {
+      // 检查是否支持分享
+      const canShare = await Share.canShare();
+      if (!canShare.value) {
         // 回退到复制链接
         await navigator.clipboard.writeText(result.url);
+        return;
       }
+
+      // 使用 Capacitor Share 插件
+      await Share.share({
+        title: displayTitle,
+        text: `Check out this AI-generated music: ${displayTitle}`,
+        url: result.url,
+        dialogTitle: 'Share Music',
+      });
     } catch (error) {
       console.error('Share failed:', error);
+      // 回退到复制链接
+      try {
+        const result = await createShareLink('music', music.task_id);
+        await navigator.clipboard.writeText(result.url);
+      } catch (e) {
+        console.error('Fallback copy failed:', e);
+      }
     } finally {
       setIsSharing(false);
     }
