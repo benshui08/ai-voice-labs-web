@@ -72,13 +72,21 @@ const LoadingIcon = () => (
 /**
  * AI Video 创建页面
  */
+const VIDEO_PROMPT_STORAGE_KEY = 'video_draft_prompt';
+
 export default function CreateVideoPage() {
   const router = useRouter();
   const { token } = useFirebaseAuth();
   const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
   const [isParamsSheetOpen, setIsParamsSheetOpen] = useState(false);
   const [mode, setMode] = useState<ModeType>('generate');
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState(() => {
+    // 从 localStorage 恢复 prompt
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(VIDEO_PROMPT_STORAGE_KEY) || '';
+    }
+    return '';
+  });
   const [selectedModel, setSelectedModel] = useState<VideoModel>(defaultVideoModel);
   const [startFrame, setStartFrame] = useState<string | null>(null);
   const [endFrame, setEndFrame] = useState<string | null>(null);
@@ -94,6 +102,13 @@ export default function CreateVideoPage() {
       visibility: 'public',
     };
   });
+
+  // 保存 prompt 到 localStorage
+  useEffect(() => {
+    if (prompt) {
+      localStorage.setItem(VIDEO_PROMPT_STORAGE_KEY, prompt);
+    }
+  }, [prompt]);
 
   // 当模型变化时，重置参数为新模型的默认值，并清空图片
   useEffect(() => {
@@ -179,7 +194,8 @@ export default function CreateVideoPage() {
         throw new Error(data.error || 'Failed to create video');
       }
 
-      // 成功，跳转到任务详情页
+      // 成功，清除草稿并跳转到任务详情页
+      localStorage.removeItem(VIDEO_PROMPT_STORAGE_KEY);
       console.log('Video task created:', data.taskId);
       router.push(`/native/video/task/${data.taskId}`);
     } catch (err) {
@@ -357,8 +373,6 @@ export default function CreateVideoPage() {
         model={selectedModel}
         params={params}
         onParamsChange={setParams}
-        onCreateVideo={handleCreateVideo}
-        generateAudio={generateAudio}
       />
     </div>
   );
