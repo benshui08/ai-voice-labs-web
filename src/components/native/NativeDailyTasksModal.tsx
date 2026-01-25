@@ -184,7 +184,7 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
   }, [checkinLoading, claiming, doCheckin, onCreditsUpdated, t, clearAdTimeout]);
 
   // 处理看广告
-  const handleWatchAd = useCallback(async () => {
+  const handleWatchAd = useCallback(async (bonusMode: boolean = false) => {
     if (adLoading || claiming) return;
 
     cancelledRef.current = false;
@@ -203,7 +203,7 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
     }, AD_LOADING_TIMEOUT);
 
     try {
-      const result = await doClaimAdReward();
+      const result = await doClaimAdReward(bonusMode);
       if (cancelledRef.current) return;
       clearAdTimeout();
 
@@ -448,7 +448,7 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
 
           {status.nextAdReward !== null ? (
             <button
-              onClick={handleWatchAd}
+              onClick={() => handleWatchAd(false)}
               disabled={claiming || adLoading}
               className="w-full py-3 bg-green-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
             >
@@ -465,9 +465,23 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
               )}
             </button>
           ) : (
-            <div className="w-full py-3 bg-white/10 text-gray-500 font-semibold rounded-xl text-center">
-              {t('dailyTasks.allAdsClaimed')}
-            </div>
+            <button
+              onClick={() => handleWatchAd(true)}
+              disabled={claiming || adLoading}
+              className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {(claiming || adLoading) ? (
+                <>
+                  <LoaderIcon className="w-5 h-5" />
+                  <span>{t('dailyTasks.loadingAd') || 'Loading ad...'}</span>
+                </>
+              ) : (
+                <>
+                  <RefreshIcon />
+                  {t('dailyTasks.watchMore') || 'Watch More +1'}
+                </>
+              )}
+            </button>
           )}
         </div>
       </div>
@@ -554,14 +568,30 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
           </div>
 
           {!isConfigLoading && !isDisabled && (
-            <div className="px-6 pb-5 text-center space-y-2">
-              <p className="text-xs text-gray-500">{t('dailyTasks.resetTip')}</p>
+            <div className="px-6 pb-5 space-y-4">
+              <p className="text-xs text-gray-500 text-center">{t('dailyTasks.resetTip')}</p>
+
+              {/* 会员推广卡片 - 更加醒目 */}
               <button
                 onClick={handleUpgrade}
-                className="inline-flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                className="w-full p-4 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-pink-500/20 border border-amber-500/30 hover:from-amber-500/30 hover:via-orange-500/30 hover:to-pink-500/30 transition-all active:scale-[0.98]"
               >
-                <CrownIcon />
-                <span>{t('dailyTasks.noAdsPromo') || "Don't want to watch ads? Become a member!"}</span>
+                <div className="flex items-center justify-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                    <CrownIcon />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-white">
+                      {t('dailyTasks.noAdsTitle') || "Skip the ads, get unlimited!"}
+                    </p>
+                    <p className="text-xs text-amber-400/80">
+                      {t('dailyTasks.noAdsSubtitle') || "Become a VIP member today"}
+                    </p>
+                  </div>
+                  <svg className="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                </div>
               </button>
             </div>
           )}
