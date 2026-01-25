@@ -1,7 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { getMenuItemsByCategory, CreateMenuIcon } from '@/config/native/createMenuConfig';
+import {
+  getAvailableMenuItems,
+  getCategoryConfig,
+  CreateMenuIcon,
+} from '@/config/native/createMenuConfig';
 
 // 图标组件 (w-6 h-6 for FeatureGrid)
 const MusicIcon = () => (
@@ -63,38 +67,89 @@ const DialogueIcon = () => (
   </svg>
 );
 
+const VideoIcon = () => (
+  <svg
+    className="w-6 h-6"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+  >
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+const CloneIcon = () => (
+  <svg
+    className="w-6 h-6"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+  >
+    <circle cx="12" cy="7" r="4" />
+    <path d="M5.5 21a6.5 6.5 0 0113 0" />
+    <path d="M16 11l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const TiktokIcon = () => (
+  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" />
+  </svg>
+);
+
+const YoutubeIcon = () => (
+  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+  </svg>
+);
+
 // 图标映射
 const iconMap: Record<CreateMenuIcon, React.FC> = {
   music: MusicIcon,
   cover: CoverIcon,
   voice: VoiceIcon,
   dialogue: DialogueIcon,
+  video: VideoIcon,
+  clone: CloneIcon,
+  tiktok: TiktokIcon,
+  youtube: YoutubeIcon,
+};
+
+// 颜色映射 - 图标颜色和背景渐变（按类别）
+const colorMap: Record<string, { icon: string; bg: string }> = {
+  purple: { icon: 'text-purple-400', bg: 'bg-purple-500/20' },
+  pink: { icon: 'text-pink-400', bg: 'bg-pink-500/20' },
+  blue: { icon: 'text-blue-400', bg: 'bg-blue-500/20' },
+  emerald: { icon: 'text-emerald-400', bg: 'bg-emerald-500/20' },
 };
 
 /**
  * 功能入口网格
- * 单行横向滚动显示
+ * 4 列统一网格 + 按类别彩色图标
  */
 export default function FeatureGrid() {
-  const musicItems = getMenuItemsByCategory('music');
-  const voiceItems = getMenuItemsByCategory('voice');
-  const allItems = [...musicItems, ...voiceItems];
+  const items = getAvailableMenuItems();
 
   return (
-    <div className="py-5">
-      <div className="flex gap-2 px-4 overflow-x-auto scrollbar-hide">
-        {allItems.map((feature) => {
+    <div className="py-4 px-4">
+      <div className="grid grid-cols-4 gap-3">
+        {items.map((feature) => {
           const IconComponent = iconMap[feature.icon];
+          const categoryConfig = getCategoryConfig(feature.category);
+          const colors = colorMap[categoryConfig?.color || 'purple'];
           return (
             <Link
               key={feature.id}
               href={feature.href}
-              className="flex flex-col items-center justify-center w-[72px] h-[72px] flex-shrink-0 bg-gray-800/60 rounded-xl hover:bg-gray-700/60 transition-colors"
+              className={`flex flex-col items-center justify-center aspect-square rounded-2xl ${colors.bg} hover:opacity-80 transition-opacity`}
             >
-              <div className="text-gray-300 mb-1.5">
+              <div className={`${colors.icon} mb-1.5`}>
                 <IconComponent />
               </div>
-              <span className="text-[10px] text-gray-300 font-medium whitespace-nowrap">
+              <span className="text-[10px] text-gray-300 font-medium text-center leading-tight px-1">
                 {feature.shortName}
               </span>
             </Link>

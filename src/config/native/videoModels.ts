@@ -29,8 +29,18 @@ export interface AspectRatioOption {
 // 图片引导配置
 export interface ImageGuidanceConfig {
   enabled: boolean;
-  /** 'single' = 单图, 'startEnd' = 首尾帧 */
-  mode: 'single' | 'startEnd';
+  /** 'single' = 单图, 'startEnd' = 首尾帧, 'multi' = 多图参考 */
+  mode: 'single' | 'startEnd' | 'multi';
+  /** 多图模式下最大图片数量 */
+  maxImages?: number;
+}
+
+// 模型特有选项配置
+export interface ModelOptionsConfig {
+  /** 固定镜头选项 */
+  fixedLens?: boolean;
+  /** 生成音频选项 */
+  generateAudio?: boolean;
 }
 
 // 模型配置
@@ -38,9 +48,11 @@ export interface VideoModel {
   id: string;
   name: string;
   description: string;
-  icon: 'google' | 'openai' | 'vidu' | 'pixverse' | 'wan' | 'kling';
+  icon: 'google' | 'openai' | 'vidu' | 'pixverse' | 'wan' | 'kling' | 'seedance';
   /** 后端 API 使用的模型 ID */
   apiModelId: string;
+  /** API 后端类型：runware (默认) 或 kie */
+  apiBackend?: 'runware' | 'kie';
   enabled: {
     development: boolean;
     production: boolean;
@@ -56,6 +68,8 @@ export interface VideoModel {
   defaultAspectRatio: string;
   // 图片引导配置
   imageGuidance?: ImageGuidanceConfig;
+  // 模型特有选项
+  modelOptions?: ModelOptionsConfig;
 }
 
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -74,6 +88,16 @@ const extendedAspectRatios: AspectRatioOption[] = [
   { value: '9:16', label: '9:16', icon: 'portrait' },
 ];
 
+// Seedance 扩展宽高比 (包含 21:9)
+const seedanceAspectRatios: AspectRatioOption[] = [
+  { value: '16:9', label: '16:9', icon: 'landscape' },
+  { value: '21:9', label: '21:9', icon: 'landscape' },
+  { value: '4:3', label: '4:3', icon: 'classic' },
+  { value: '1:1', label: '1:1', icon: 'square' },
+  { value: '3:4', label: '3:4', icon: 'portrait' },
+  { value: '9:16', label: '9:16', icon: 'portrait' },
+];
+
 export const videoModelsConfig: VideoModel[] = [
   {
     id: 'veo-3.1',
@@ -81,7 +105,7 @@ export const videoModelsConfig: VideoModel[] = [
     description: 'The most capable model',
     icon: 'google',
     apiModelId: 'google:3@2', // Runware model ID
-    enabled: { development: true, production: true },
+    enabled: { development: true, production: false },
     qualityOptions: [
       { value: '512p', label: '512p', credits: 100 },
       { value: '768p', label: '768p', credits: 125 },
@@ -158,7 +182,7 @@ export const videoModelsConfig: VideoModel[] = [
   },
   {
     id: 'pixverse-v5',
-    name: 'Pixverse V5',
+    name: 'PixVerse v5 Fast',
     description: 'Lightning-fast videos with crisp detail',
     icon: 'pixverse',
     apiModelId: 'pixverse:1@5-fast',
@@ -239,6 +263,35 @@ export const videoModelsConfig: VideoModel[] = [
     defaultAspectRatio: '16:9',
     imageGuidance: { enabled: true, mode: 'single' },
   },
+  {
+    id: 'seedance-1.5-pro',
+    name: 'Seedance 1.5 Pro',
+    description: 'Cinematic video with character consistency',
+    icon: 'seedance',
+    apiModelId: 'bytedance/seedance-1.5-pro',
+    apiBackend: 'kie',
+    enabled: { development: true, production: true },
+    qualityOptions: [
+      { value: '480p', label: '480p', credits: 40 },
+      { value: '720p', label: '720p', credits: 80 },
+    ],
+    durationOptions: [
+      { value: '4s', label: '4s' },
+      { value: '8s', label: '8s' },
+      { value: '12s', label: '12s' },
+    ],
+    aspectRatioOptions: seedanceAspectRatios,
+    // 基础积分（无音频），有音频时 x2
+    creditsMatrix: {
+      '480p': { '4s': 20, '8s': 40, '12s': 60 },
+      '720p': { '4s': 40, '8s': 80, '12s': 120 },
+    },
+    defaultQuality: '480p',
+    defaultDuration: '4s',
+    defaultAspectRatio: '16:9',
+    imageGuidance: { enabled: true, mode: 'multi', maxImages: 2 },
+    modelOptions: { fixedLens: true, generateAudio: true },
+  },
 ];
 
 // 根据环境过滤可用的模型
@@ -246,11 +299,22 @@ export const videoModels = videoModelsConfig.filter(
   (model) => (isDevelopment ? model.enabled.development : model.enabled.production)
 );
 
-export const defaultVideoModel = videoModels[0];
+// 默认选择 Seedance 1.5 Pro，如果不可用则选第一个
+export const defaultVideoModel = videoModels.find(m => m.id === 'seedance-1.5-pro') || videoModels[0];
 
-// 根据模型、画质和时长计算积分
-export function calculateCredits(model: VideoModel, quality: string, duration: string): number {
-  return model.creditsMatrix[quality]?.[duration] || 0;
+// 根据模型、画质、时长和音频选项计算积分
+export function calculateCredits(
+  model: VideoModel,
+  quality: string,
+  duration: string,
+  generateAudio?: boolean
+): number {
+  const baseCredits = model.creditsMatrix[quality]?.[duration] || 0;
+  // 如果模型支持音频生成且启用了音频，积分翻倍
+  if (model.modelOptions?.generateAudio && generateAudio) {
+    return baseCredits * 2;
+  }
+  return baseCredits;
 }
 
 // 获取模型的默认参数

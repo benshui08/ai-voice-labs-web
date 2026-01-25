@@ -97,7 +97,7 @@ export default function SharedMusicPlayer({ music }: SharedMusicPlayerProps) {
       )}
 
       {/* Header */}
-      <header className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/10">
+      <header className="flex-shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-white/10">
         <Link href="/">
           <Image
             src="/logo/voice-labs-logo-light.svg"
@@ -109,18 +109,18 @@ export default function SharedMusicPlayer({ music }: SharedMusicPlayerProps) {
         </Link>
         <Link
           href="/"
-          className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-full hover:opacity-90 transition-opacity"
+          className="inline-flex items-center justify-center px-4 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-full hover:opacity-90 transition-opacity"
         >
           Try Free
         </Link>
       </header>
 
       {/* Content */}
-      <main className="flex-1 flex flex-col items-center px-6 py-6 min-h-0 overflow-hidden">
+      <main className="flex-1 flex flex-col items-center px-6 py-4 min-h-0 overflow-hidden">
         {/* 上半部分：封面 + 标题 */}
         <div className="flex-shrink-0 flex flex-col items-center">
           {/* 封面 */}
-          <div className="relative w-52 h-52 mb-4 rounded-2xl overflow-hidden shadow-2xl">
+          <div className="relative w-44 h-44 mb-3 rounded-2xl overflow-hidden shadow-2xl">
             {music.cover_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -130,7 +130,7 @@ export default function SharedMusicPlayer({ music }: SharedMusicPlayerProps) {
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                <svg className="w-20 h-20 text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <svg className="w-16 h-16 text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M9 18V5l12-2v13" />
                   <circle cx="6" cy="18" r="3" />
                   <circle cx="18" cy="16" r="3" />
@@ -138,18 +138,18 @@ export default function SharedMusicPlayer({ music }: SharedMusicPlayerProps) {
               </div>
             )}
             {/* AI 标签 */}
-            <div className="absolute top-3 right-3 px-2 py-0.5 bg-purple-500 rounded text-white text-xs font-medium">
+            <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-purple-500 rounded text-white text-[10px] font-medium">
               AI
             </div>
           </div>
 
           {/* 标题 */}
-          <h1 className="text-2xl font-bold text-white mb-2 text-center">{displayTitle}</h1>
+          <h1 className="text-xl font-bold text-white mb-1 text-center">{displayTitle}</h1>
         </div>
 
         {/* 歌词区域 - 弹性空间，可滚动 */}
         {displayLyrics && (
-          <div className="flex-1 w-full max-w-sm overflow-y-auto my-4 min-h-0">
+          <div className="flex-1 w-full max-w-sm overflow-y-auto my-3 min-h-[80px]">
             <p className="text-gray-300 text-sm text-center whitespace-pre-wrap leading-relaxed">
               {displayLyrics}
             </p>
@@ -162,12 +162,12 @@ export default function SharedMusicPlayer({ music }: SharedMusicPlayerProps) {
           <button
             onClick={togglePlay}
             disabled={!music.audio_url}
-            className="mx-auto mb-3 w-14 h-14 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="mx-auto mb-2 w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {isPlaying ? (
-              <Pause className="w-7 h-7 text-white" fill="white" />
+              <Pause className="w-6 h-6 text-white" fill="white" />
             ) : (
-              <Play className="w-7 h-7 text-white ml-1" fill="white" />
+              <Play className="w-6 h-6 text-white ml-0.5" fill="white" />
             )}
           </button>
 
@@ -185,17 +185,17 @@ export default function SharedMusicPlayer({ music }: SharedMusicPlayerProps) {
           </div>
 
           {/* 时间显示 */}
-          <div className="flex justify-between text-gray-500 text-xs mb-4">
+          <div className="flex justify-between text-gray-500 text-xs mb-3">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>
 
           {/* CTA */}
           <div className="text-center">
-            <p className="text-gray-400 text-sm mb-2">Create your own AI music</p>
+            <p className="text-gray-400 text-xs mb-1.5">Create your own AI music</p>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-full hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 px-5 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-full hover:opacity-90 transition-opacity"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 5v14M5 12h14" />
@@ -207,7 +207,7 @@ export default function SharedMusicPlayer({ music }: SharedMusicPlayerProps) {
       </main>
 
       {/* Footer */}
-      <footer className="flex-shrink-0 py-3 flex items-center justify-center gap-2 border-t border-white/10">
+      <footer className="flex-shrink-0 py-2.5 flex items-center justify-center gap-2 border-t border-white/10">
         <span className="text-gray-500 text-xs">Powered by</span>
         <Link href="/">
           <Image
