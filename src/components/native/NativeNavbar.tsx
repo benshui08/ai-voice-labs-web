@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useCredits } from '@/contexts/CreditsContext';
 import { useBottomNav } from '@/contexts/BottomNavContext';
+import { useDailyTasks } from '@/hooks/useDailyTasks';
 import LoginModal from './LoginModal';
 import NativeDailyTasksModal from './NativeDailyTasksModal';
 import CrownIcon from './common/CrownIcon';
@@ -31,10 +32,25 @@ export default function NativeNavbar() {
   const { user } = useFirebaseAuth();
   const { credits, refreshCredits } = useCredits();
   const { isTopNavVisible } = useBottomNav();
+  const { shouldShowPopup, status, config } = useDailyTasks();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDailyTasksOpen, setIsDailyTasksOpen] = useState(false);
+  const [hasAutoShown, setHasAutoShown] = useState(false);
 
   const isLoggedIn = !!user;
+
+  // 自动弹出每日任务弹窗（每30分钟，有未领奖励时）
+  useEffect(() => {
+    if (shouldShowPopup && !isDailyTasksOpen && !hasAutoShown) {
+      setIsDailyTasksOpen(true);
+      setHasAutoShown(true);
+    }
+  }, [shouldShowPopup, isDailyTasksOpen, hasAutoShown]);
+
+  // 判断是否有未领取的奖励（用于显示小红点）
+  const hasUnclaimedRewards = status
+    ? !status.checkinDone || status.adRewardsClaimed < (config?.ad_reward_tiers?.length || 0)
+    : true; // 未加载时默认显示
 
   // 通过 Context 控制隐藏
   if (!isTopNavVisible) return null;
@@ -66,8 +82,10 @@ export default function NativeNavbar() {
             >
               <TreasureIcon />
               <span className="text-xs font-bold text-amber-400">FREE</span>
-              {/* 小红点提示（可选，表示有未领取的奖励） */}
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              {/* 小红点提示 - 有未领取的奖励时显示 */}
+              {hasUnclaimedRewards && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              )}
             </button>
           </div>
 
