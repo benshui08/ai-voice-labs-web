@@ -8,6 +8,9 @@ import { useBottomNav } from '@/contexts/BottomNavContext';
 import { useVoices } from '@/components/features/studio/voices/hooks/useVoices';
 import { getAllLocaleOptions } from '@/utils/localeMapper';
 import type { LocaleOption } from '@/types/config';
+import { TTS_GENDER_OPTIONS, TTS_PROVIDER_OPTIONS, isTTSProvider } from '@/config/ttsVoiceFilters';
+import ProviderIcon from '@/components/ui/icons/ProviderIcon';
+import { User, UserRound, Users, Layers } from 'lucide-react';
 
 interface VoiceSelectorSheetProps {
   isOpen: boolean;
@@ -98,7 +101,11 @@ export default function NativeVoiceSelectorSheet({
   const { user, loading: authLoading } = useFirebaseAuth();
   const { hideAll, showAll } = useBottomNav();
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
+  const [isGenderDropdownOpen, setIsGenderDropdownOpen] = useState(false);
+  const [isProviderDropdownOpen, setIsProviderDropdownOpen] = useState(false);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
+  const genderDropdownRef = useRef<HTMLDivElement>(null);
+  const providerDropdownRef = useRef<HTMLDivElement>(null);
 
   // 隐藏顶部和底部导航栏
   useEffect(() => {
@@ -118,12 +125,19 @@ export default function NativeVoiceSelectorSheet({
     setSelectedLanguage,
     selectedGender,
     setSelectedGender,
+    selectedProvider,
+    setSelectedProvider,
+    usedOnly,
+    setUsedOnly,
     playingVoiceId,
     handlePlayVoice,
     hasMore,
     loadMoreVoices,
     loadingMore,
   } = useVoices({ locale, user, authLoading });
+
+  // 仅显示 TTS 供应商的语音（Microsoft, Google）
+  const ttsFilteredVoices = filteredVoices.filter(voice => isTTSProvider(voice.provider));
 
   // 获取所有可用语言，但优先显示常用语言
   const allLanguages = getAllLocaleOptions();
@@ -143,16 +157,28 @@ export default function NativeVoiceSelectorSheet({
       ) {
         setIsLanguageDropdownOpen(false);
       }
+      if (
+        genderDropdownRef.current &&
+        !genderDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsGenderDropdownOpen(false);
+      }
+      if (
+        providerDropdownRef.current &&
+        !providerDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsProviderDropdownOpen(false);
+      }
     };
 
-    if (isLanguageDropdownOpen) {
+    if (isLanguageDropdownOpen || isGenderDropdownOpen || isProviderDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isLanguageDropdownOpen]);
+  }, [isLanguageDropdownOpen, isGenderDropdownOpen, isProviderDropdownOpen]);
 
   // 处理语言选择
   const handleLanguageSelect = (language: LocaleOption) => {
@@ -160,6 +186,18 @@ export default function NativeVoiceSelectorSheet({
     // 保存到 localStorage
     localStorage.setItem('voiceLanguageFilter', language.code);
     setIsLanguageDropdownOpen(false);
+  };
+
+  // 处理性别选择
+  const handleGenderSelect = (gender: string) => {
+    setSelectedGender(gender);
+    setIsGenderDropdownOpen(false);
+  };
+
+  // 处理供应商选择
+  const handleProviderSelect = (provider: string) => {
+    setSelectedProvider(provider);
+    setIsProviderDropdownOpen(false);
   };
 
   // 禁止背景滚动
@@ -290,21 +328,95 @@ export default function NativeVoiceSelectorSheet({
           </div>
         </div>
 
-        {/* Gender Filter */}
-        <div className="px-4 pb-3 flex gap-2">
-          {['all', 'Female', 'Male'].map((gender) => (
+        {/* Filter Row: Gender, Provider, Used */}
+        <div className="px-4 pb-3 flex items-center gap-2">
+          {/* Gender Dropdown */}
+          <div className="relative" ref={genderDropdownRef}>
             <button
-              key={gender}
-              onClick={() => setSelectedGender(gender)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                selectedGender === gender
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }`}
+              onClick={() => setIsGenderDropdownOpen(!isGenderDropdownOpen)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 text-white rounded-lg text-sm"
             >
-              {gender === 'all' ? 'All' : gender}
+              {selectedGender === 'male' && <User className="w-4 h-4 text-blue-400" />}
+              {selectedGender === 'female' && <UserRound className="w-4 h-4 text-pink-400" />}
+              {selectedGender === 'all' && <Users className="w-4 h-4 text-gray-400" />}
+              <ChevronDownIcon />
             </button>
-          ))}
+
+            {isGenderDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-gray-800 rounded-xl shadow-xl z-10 p-2 min-w-[120px]">
+                {TTS_GENDER_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => handleGenderSelect(option.value)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      selectedGender === option.value
+                        ? 'bg-purple-600 text-white'
+                        : 'text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    {option.value === 'male' && <User className="w-4 h-4 text-blue-400" />}
+                    {option.value === 'female' && <UserRound className="w-4 h-4 text-pink-400" />}
+                    {option.value === 'all' && <Users className="w-4 h-4 text-gray-400" />}
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Provider Dropdown */}
+          <div className="relative" ref={providerDropdownRef}>
+            <button
+              onClick={() => setIsProviderDropdownOpen(!isProviderDropdownOpen)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 text-white rounded-lg text-sm"
+            >
+              {selectedProvider === 'all' ? (
+                <Layers className="w-4 h-4 text-gray-400" />
+              ) : (
+                <ProviderIcon provider={selectedProvider.toLowerCase()} className="w-4 h-4" />
+              )}
+              <ChevronDownIcon />
+            </button>
+
+            {isProviderDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-gray-800 rounded-xl shadow-xl z-10 p-2 min-w-[130px]">
+                {TTS_PROVIDER_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => handleProviderSelect(option.value)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      selectedProvider === option.value
+                        ? 'bg-purple-600 text-white'
+                        : 'text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    {option.value === 'all' ? (
+                      <Layers className="w-4 h-4 text-gray-400" />
+                    ) : (
+                      <ProviderIcon provider={option.value.toLowerCase()} className="w-4 h-4" />
+                    )}
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Used Toggle */}
+          <button
+            onClick={() => setUsedOnly(!usedOnly)}
+            className={`ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+              usedOnly
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-800 text-gray-400'
+            }`}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 6v6l4 2" />
+            </svg>
+            Used
+          </button>
         </div>
 
         {/* Voice List */}
@@ -317,13 +429,13 @@ export default function NativeVoiceSelectorSheet({
             <div className="flex items-center justify-center py-12">
               <div className="w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : filteredVoices.length === 0 ? (
+          ) : ttsFilteredVoices.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               No voices found
             </div>
           ) : (
             <div className="space-y-2 pb-6">
-              {filteredVoices.map((voice) => {
+              {ttsFilteredVoices.map((voice) => {
                 const isSelected = selectedVoice?.name === voice.name;
                 const isPlaying = playingVoiceId === voice.id;
 
@@ -360,11 +472,14 @@ export default function NativeVoiceSelectorSheet({
                       <div className="text-white font-medium text-sm truncate">
                         {voice.display_name}
                       </div>
-                      <div className="text-gray-400 text-xs">
-                        {voice.locale} · {voice.gender}
-                        {voice.role && voice.role !== 'Standard' && (
-                          <span className="ml-1 text-purple-400">· {voice.role}</span>
-                        )}
+                      <div className="flex items-center gap-1.5 text-gray-400 text-xs">
+                        <span>{voice.locale}</span>
+                        <span>·</span>
+                        {voice.gender === 'male' && <User className="w-3 h-3 text-blue-400" />}
+                        {voice.gender === 'female' && <UserRound className="w-3 h-3 text-pink-400" />}
+                        {voice.gender === 'neutral' && <Users className="w-3 h-3 text-gray-400" />}
+                        <span>·</span>
+                        <ProviderIcon provider={voice.provider.toLowerCase()} className="w-3.5 h-3.5" />
                       </div>
                     </div>
 
