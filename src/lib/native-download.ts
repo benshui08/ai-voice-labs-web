@@ -41,7 +41,7 @@ export async function downloadFile(options: DownloadOptions): Promise<DownloadRe
 
 /**
  * 原生平台下载
- * 使用 fetch + Filesystem.writeFile 方式，兼容性更好
+ * 使用 Filesystem 下载文件到设备 Downloads 目录
  */
 async function downloadNative(
   url: string,
@@ -52,17 +52,6 @@ async function downloadNative(
     const { Filesystem, Directory } = await import('@capacitor/filesystem');
 
     console.log('📥 [Native Download] 开始下载:', url);
-
-    // 确保目录存在
-    try {
-      await Filesystem.mkdir({
-        directory: Directory.Documents,
-        path: 'Voicica',
-        recursive: true,
-      });
-    } catch {
-      // 目录可能已存在，忽略错误
-    }
 
     // 使用 fetch 下载文件
     const response = await fetch(url);
@@ -96,20 +85,30 @@ async function downloadNative(
     }
 
     // 合并 chunks 并转为 base64
-    const blob = new Blob(chunks as BlobPart[]);
-    const base64Data = await blobToBase64(blob);
+    const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+    const mergedArray = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      mergedArray.set(chunk, offset);
+      offset += chunk.length;
+    }
+    const base64 = btoa(
+      mergedArray.reduce(
+        (data, byte) => data + String.fromCharCode(byte),
+        ''
+      )
+    );
 
-    // 写入文件
+    console.log('📥 [Native Download] 文件下载完成，正在保存...');
+
+    // 保存到 Documents 目录（Downloads 可能不可用）
     const result = await Filesystem.writeFile({
-      path: `Voicica/${fileName}`,
-      data: base64Data,
+      path: fileName,
+      data: base64,
       directory: Directory.Documents,
     });
 
-    console.log('✅ [Native Download] 下载完成:', result.uri);
-
-    // 显示保存成功提示
-    alert(`File saved to Documents/Voicica/${fileName}`);
+    console.log('✅ [Native Download] 文件已保存:', result.uri);
 
     return {
       success: true,
@@ -117,28 +116,22 @@ async function downloadNative(
     };
   } catch (error) {
     console.error('❌ [Native Download] 下载失败:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Download failed',
-    };
-  }
-}
 
-/**
- * 将 Blob 转换为 base64 字符串
- */
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result as string;
-      // 移除 data:xxx;base64, 前缀
-      const base64Data = base64.split(',')[1];
-      resolve(base64Data);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
+    // 如果 Filesystem 失败，回退到使用 Browser 打开
+    try {
+      const { Browser } = await import('@capacitor/browser');
+      console.log('📥 [Native Download] 回退到外部浏览器下载');
+      await Browser.open({ url });
+      return {
+        success: true,
+      };
+    } catch {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Download failed',
+      };
+    }
+  }
 }
 
 /**
@@ -184,7 +177,14 @@ async function downloadWeb(
     }
 
     // 合并 chunks
-    const blob = new Blob(chunks as BlobPart[]);
+    const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+    const mergedArray = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      mergedArray.set(chunk, offset);
+      offset += chunk.length;
+    }
+    const blob = new Blob([mergedArray]);
     const blobUrl = URL.createObjectURL(blob);
 
     // 触发下载
@@ -218,16 +218,14 @@ export async function downloadWithToast(
   fileName: string,
   type: 'audio' | 'video' | 'image' = 'video'
 ): Promise<boolean> {
+  const { showToast } = await import('@/lib/native-toast');
   const result = await downloadFile({ url, fileName, type });
 
   if (result.success) {
-    // 可以在这里添加成功提示
-    console.log('✅ 下载成功:', fileName);
+    showToast({ text: 'Download completed', duration: 'short' });
     return true;
   } else {
-    // 可以在这里添加失败提示
-    console.error('❌ 下载失败:', result.error);
-    alert(`Download failed: ${result.error}`);
+    showToast({ text: `Download failed: ${result.error}`, duration: 'long' });
     return false;
   }
 }
