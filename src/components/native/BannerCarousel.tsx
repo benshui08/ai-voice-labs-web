@@ -23,6 +23,54 @@ interface Banner {
   image: string;
 }
 
+// 缓存相关常量
+const BANNER_CACHE_KEY = 'native_banners_cache';
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24小时（毫秒）
+
+interface BannerCache {
+  data: ApiBanner[];
+  timestamp: number;
+}
+
+// 从 localStorage 读取缓存
+function getCachedBanners(): ApiBanner[] | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const cached = localStorage.getItem(BANNER_CACHE_KEY);
+    if (!cached) return null;
+
+    const { data, timestamp }: BannerCache = JSON.parse(cached);
+    const now = Date.now();
+
+    // 检查缓存是否在24小时内
+    if (now - timestamp < CACHE_DURATION) {
+      return data;
+    }
+
+    // 缓存过期，删除
+    localStorage.removeItem(BANNER_CACHE_KEY);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// 保存到 localStorage 缓存
+function setCachedBanners(data: ApiBanner[]): void {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const cache: BannerCache = {
+      data,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(BANNER_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    // localStorage 可能已满或不可用，忽略错误
+  }
+}
+
 /**
  * Banner 轮播组件
  * 从 API 加载数据，支持多语言、自动轮播和手动滑动切换
@@ -48,21 +96,40 @@ export default function BannerCarousel() {
     [locale]
   );
 
-  // 加载 Banner 数据
+  // 将 API 数据转换为本地化 Banner
+  const transformBanners = useCallback(
+    (apiBanners: ApiBanner[]): Banner[] => {
+      return apiBanners.map((b) => ({
+        id: b.id,
+        title: getLocalizedText(b.titles, ''),
+        subtitle: getLocalizedText(b.subtitles, ''),
+        buttonText: getLocalizedText(b.buttonTexts, t('native.common.learnMore') || 'Learn More'),
+        buttonLink: b.linkUrl || '#',
+        image: b.imageUrl,
+      }));
+    },
+    [getLocalizedText, t]
+  );
+
+  // 加载 Banner 数据（带24小时缓存）
   useEffect(() => {
+    // 先检查缓存
+    const cached = getCachedBanners();
+    if (cached) {
+      setBanners(transformBanners(cached));
+      setIsLoading(false);
+      return;
+    }
+
+    // 无缓存或缓存过期，从 API 加载
     fetch('/api/v1/native/banners')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.banners) {
-          const localizedBanners: Banner[] = data.banners.map((b: ApiBanner) => ({
-            id: b.id,
-            title: getLocalizedText(b.titles, ''),
-            subtitle: getLocalizedText(b.subtitles, ''),
-            buttonText: getLocalizedText(b.buttonTexts, t('native.common.learnMore') || 'Learn More'),
-            buttonLink: b.linkUrl || '#',
-            image: b.imageUrl,
-          }));
-          setBanners(localizedBanners);
+          // 保存到缓存
+          setCachedBanners(data.banners);
+          // 设置状态
+          setBanners(transformBanners(data.banners));
         }
         setIsLoading(false);
       })
@@ -70,7 +137,7 @@ export default function BannerCarousel() {
         console.error('Failed to load banners:', err);
         setIsLoading(false);
       });
-  }, [locale, getLocalizedText, t]);
+  }, [transformBanners]);
 
   // 自动轮播
   useEffect(() => {
