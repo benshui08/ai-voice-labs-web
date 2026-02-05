@@ -49,15 +49,21 @@ export function useNativeBannerAd(): UseNativeBannerAdReturn {
   const [error, setError] = useState<string | null>(null);
   const [adData, setAdData] = useState<NativeAdData | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const listenerCleanupRef = useRef<(() => void) | null>(null);
 
-  // 检测是否在原生环境
-  const isNative = Capacitor.isNativePlatform();
+  // 客户端挂载后才检测平台，避免 Hydration 错误
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // 检测是否在原生环境（只在客户端检测）
+  const isNative = isMounted ? Capacitor.isNativePlatform() : false;
 
   // 是否启用
   const isEnabled = isAdMobNativeBannerEnabled() && isNative;
 
-  log('Hook state:', { isNative, isEnabled, isInitialized, status });
+  log('Hook state:', { isMounted, isNative, isEnabled, isInitialized, status });
 
   // 获取当前平台的广告单元 ID
   const getAdUnitId = useCallback(() => {
