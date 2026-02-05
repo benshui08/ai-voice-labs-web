@@ -11,6 +11,9 @@ import {
   getDefaultExploreTab,
   type ExploreTabId,
 } from '@/config/native/exploreTabsConfig';
+import ProviderIcon from '@/components/ui/icons/ProviderIcon';
+import { getCountryFlag } from '@/utils/countryFlags';
+import { User, UserRound } from 'lucide-react';
 
 // 播放图标
 const PlayIcon = () => (
@@ -30,32 +33,73 @@ const gradients = [
 ];
 
 /**
- * 语音卡片组件
+ * 语音卡片组件 - 新设计
+ * 显示头像、性别图标、国家旗帜、供应商图标
  */
 function VoiceCard({ voice, index, onClick }: { voice: PublicVoiceData; index: number; onClick: () => void }) {
-  const displayText = voice.text.length > 30 ? voice.text.substring(0, 30) + '...' : voice.text;
+  const displayText = voice.text.length > 50 ? voice.text.substring(0, 50) + '...' : voice.text;
   const gradient = gradients[index % gradients.length];
+  const voiceDetails = voice.voice;
+  const displayName = voiceDetails?.displayName || voice.voiceName;
 
   return (
     <div
       onClick={onClick}
-      className="relative rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform aspect-square"
+      className="relative rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform bg-gray-800/50 border border-gray-700/50"
     >
-      {/* 渐变背景 */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+      {/* 顶部区域：头像和基本信息 */}
+      <div className="p-3 flex items-start gap-3">
+        {/* 头像 */}
+        <div className={`relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 ${!voiceDetails?.avatarUrl ? `bg-gradient-to-br ${gradient}` : ''}`}>
+          {voiceDetails?.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={voiceDetails.avatarUrl}
+              alt={displayName}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-white/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              </svg>
+            </div>
+          )}
+        </div>
 
-      {/* 语音图标 */}
-      <div className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-        <svg className="w-5 h-5 text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-        </svg>
+        {/* 名称和图标 */}
+        <div className="flex-1 min-w-0">
+          <p className="text-white text-sm font-medium truncate">{displayName}</p>
+          {/* 图标行：国家 · 性别 · 供应商 */}
+          <div className="flex items-center gap-1.5 mt-1">
+            {voiceDetails?.country && (
+              <span className="text-sm">{getCountryFlag(voiceDetails.country)}</span>
+            )}
+            {voiceDetails?.gender && (
+              voiceDetails.gender === 'male' ? (
+                <User className="w-3.5 h-3.5 text-blue-400" />
+              ) : voiceDetails.gender === 'female' ? (
+                <UserRound className="w-3.5 h-3.5 text-pink-400" />
+              ) : null
+            )}
+            {voiceDetails?.provider && (
+              <ProviderIcon provider={voiceDetails.provider.toLowerCase()} className="w-3.5 h-3.5" />
+            )}
+          </div>
+        </div>
+
+        {/* 播放图标 */}
+        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+          <svg className="w-4 h-4 text-white/80 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </div>
       </div>
 
-      {/* 底部信息 */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent">
-        <p className="text-white text-sm font-medium truncate">{displayText}</p>
-        <p className="text-white/60 text-xs truncate">{voice.voiceName}</p>
+      {/* 文本内容区域 */}
+      <div className="px-3 pb-3">
+        <p className="text-gray-400 text-xs leading-relaxed line-clamp-2">{displayText}</p>
       </div>
     </div>
   );
@@ -288,31 +332,34 @@ export default function ExploreSection() {
       {/* 内容区域 */}
       {activeTab === 'voices' ? (
         isLoading ? (
-          // 加载骨架屏 - 带渐变背景
-          <div className="grid grid-cols-2 gap-3">
+          // 加载骨架屏 - 新设计
+          <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className={`relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br ${gradients[i % gradients.length]}`}
+                className="rounded-2xl overflow-hidden bg-gray-800/50 border border-gray-700/50"
               >
-                {/* 语音图标占位 */}
-                <div className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                  </svg>
+                <div className="p-3 flex items-start gap-3">
+                  {/* 头像骨架 */}
+                  <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${gradients[i % gradients.length]}`} />
+                  {/* 文字骨架 */}
+                  <div className="flex-1">
+                    <div className="h-4 w-24 bg-gray-700 rounded animate-pulse mb-2" />
+                    <div className="h-3 w-16 bg-gray-700/50 rounded animate-pulse" />
+                  </div>
+                  {/* 播放按钮骨架 */}
+                  <div className="w-8 h-8 rounded-full bg-white/10" />
                 </div>
-                {/* 底部加载动画 */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent">
-                  <div className="h-4 w-24 bg-white/20 rounded animate-pulse mb-1" />
-                  <div className="h-3 w-16 bg-white/10 rounded animate-pulse" />
+                <div className="px-3 pb-3">
+                  <div className="h-3 w-full bg-gray-700/30 rounded animate-pulse mb-1" />
+                  <div className="h-3 w-3/4 bg-gray-700/30 rounded animate-pulse" />
                 </div>
               </div>
             ))}
           </div>
         ) : voiceList.length > 0 ? (
-          // 语音网格
-          <div className="grid grid-cols-2 gap-3">
+          // 语音列表 - 单列布局
+          <div className="space-y-3">
             {voiceList.map((voice, index) => (
               <VoiceCard
                 key={voice.id}

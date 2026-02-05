@@ -7,6 +7,18 @@ import { createShareLink } from '@/actions/share';
 import PlayerModalHeader from './PlayerModalHeader';
 
 /**
+ * Voice 详情接口
+ */
+export interface VoiceDetails {
+  displayName: string | null;
+  avatarUrl: string;
+  gender: string;
+  provider: string;
+  locale: string;
+  country: string;
+}
+
+/**
  * 公开语音数据接口（用于 Explore 展示）
  */
 export interface PublicVoiceData {
@@ -19,6 +31,7 @@ export interface PublicVoiceData {
   audioUrl: string | null;
   user: string;
   createdAt: string;
+  voice: VoiceDetails | null;
 }
 
 interface VoicePlayerModalProps {
