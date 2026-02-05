@@ -38,16 +38,23 @@ const log = (...args: unknown[]) => DEBUG && console.log('[useBannerAd]', ...arg
 export function useBannerAd(): UseBannerAdReturn {
   const [status, setStatus] = useState<BannerAdStatus>('idle');
   const [bannerHeight, setBannerHeight] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
   const isInitializedRef = useRef(false);
   const { isSubscribed } = useSubscription();
 
-  const isNative = Capacitor.isNativePlatform();
-  const platform = Capacitor.getPlatform();
+  // 客户端挂载后才检测平台，避免 Hydration 错误
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // 只在客户端检测平台
+  const isNative = isMounted ? Capacitor.isNativePlatform() : false;
+  const platform = isMounted ? Capacitor.getPlatform() : 'web';
 
   // 是否应该显示广告
   const isEnabled = isBannerAdEnabled() && isNative && !isSubscribed;
 
-  log('Hook state:', { isNative, isEnabled, status, isSubscribed });
+  log('Hook state:', { isMounted, isNative, isEnabled, status, isSubscribed });
 
   // 获取广告单元 ID
   const getAdUnitId = useCallback(() => {
