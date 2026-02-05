@@ -16,6 +16,10 @@ import { useBannerAd } from '@/hooks/useBannerAd';
 import { isBannerAdEnabled, isAdMobNativeBannerEnabled } from '@/config/ads';
 import BannerCarousel from './BannerCarousel';
 
+// 调试日志
+const DEBUG = true;
+const log = (...args: unknown[]) => DEBUG && console.log('[NativeBannerAd]', ...args);
+
 /**
  * 首页横幅广告
  */
@@ -23,17 +27,22 @@ export default function NativeBannerAd() {
   const bannerAdEnabled = isBannerAdEnabled();
   const nativeBannerEnabled = isAdMobNativeBannerEnabled();
 
+  log('Config check:', { bannerAdEnabled, nativeBannerEnabled });
+
   // 如果 Banner 广告启用，使用 Banner 广告
   if (bannerAdEnabled) {
+    log('Using BannerAdContent');
     return <BannerAdContent />;
   }
 
   // 如果原生广告启用，使用原生广告
   if (nativeBannerEnabled) {
+    log('Using NativeAdContent');
     return <NativeAdContent />;
   }
 
   // 都禁用，显示 BannerCarousel
+  log('All ads disabled, using BannerCarousel');
   return <BannerCarousel />;
 }
 
@@ -66,27 +75,33 @@ function BannerAdContent() {
  * 原生广告内容（在页面内容中）
  */
 function NativeAdContent() {
-  const { isEnabled, adData, status, recordClick, recordImpression } = useNativeBannerAd();
+  const { isEnabled, isNative, adData, status, recordClick, recordImpression } = useNativeBannerAd();
+
+  log('NativeAdContent state:', { isEnabled, isNative, status, hasAdData: !!adData });
 
   // 记录广告展示
   useEffect(() => {
     if (status === 'loaded' && adData) {
+      log('Recording impression');
       recordImpression();
     }
   }, [status, adData, recordImpression]);
 
   // 未启用时显示 BannerCarousel
   if (!isEnabled) {
+    log('Not enabled (isNative:', isNative, '), showing BannerCarousel');
     return <BannerCarousel />;
   }
 
   // 加载中显示骨架屏
   if (status === 'loading' || status === 'idle') {
+    log('Loading or idle, showing skeleton');
     return <BannerSkeleton />;
   }
 
   // 加载失败时回退到 BannerCarousel
   if (status === 'error' || !adData) {
+    log('Error or no data, showing BannerCarousel');
     return <BannerCarousel />;
   }
 
