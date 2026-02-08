@@ -19,8 +19,10 @@ interface VoiceFiltersProps {
 export default function VoiceFilters({
   selectedGender,
   onGenderChange,
-  selectedRole: _selectedRole,
-  onRoleChange: _onRoleChange,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  selectedRole,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onRoleChange,
   usedOnly,
   onUsedOnlyChange,
   selectedProvider = 'all',
