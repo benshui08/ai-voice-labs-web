@@ -38,7 +38,6 @@ yarn-error.log*
 .env
 .env.local
 .env.production
-.env.cloudflare
 .env.*.local
 .env.development
 

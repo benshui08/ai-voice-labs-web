@@ -1,89 +1,81 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 
 REM ============================================
-REM Cloudflare Pages 部署脚本
+REM Cloudflare Pages 手动部署脚本
+REM
 REM 用法:
-REM   deploy-cloudflare.bat              -- 部署到 production
-REM   deploy-cloudflare.bat preview      -- 部署到 preview
+REM   deploy-cloudflare.bat              -- 完整构建 + 部署
+REM   deploy-cloudflare.bat --deploy-only    -- 跳过构建，直接部署
+REM
+REM 前置条件:
+REM   1. npm install -g wrangler
+REM   2. wrangler login
+REM   3. Cloudflare Dashboard 创建 Pages 项目 (voicica)
+REM   4. .env.production 已配置好
 REM ============================================
 
 set PROJECT_NAME=voicica
-set BRANCH=%1
-if "%BRANCH%"=="" set BRANCH=production
+set DEPLOY_ONLY=0
+
+if "%~1"=="--deploy-only" set DEPLOY_ONLY=1
 
 echo.
 echo ========================================
 echo  Cloudflare Pages Deploy
 echo  Project: %PROJECT_NAME%
-echo  Target:  %BRANCH%
+if "%DEPLOY_ONLY%"=="1" echo  Mode:    deploy-only (skip build)
 echo ========================================
 echo.
 
-REM --- Step 0: 检查依赖 ---
-where npx >nul 2>nul
+REM --- 检查前置条件 ---
+where wrangler >nul 2>nul
 if %errorlevel% neq 0 (
-    echo [ERROR] npx not found. Please install Node.js first.
+    echo [ERROR] wrangler not found!
+    echo         Run: npm install -g wrangler
     exit /b 1
 )
 
-REM 检查 wrangler 是否可用
-call npx wrangler --version >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [INFO] Installing wrangler...
-    call npm install -g wrangler
-)
-
-REM --- Step 1: 加载环境变量 ---
-echo [1/5] Loading .env.cloudflare...
-if not exist .env.cloudflare (
-    echo [ERROR] .env.cloudflare not found!
-    echo        Copy .env.production to .env.cloudflare and update values.
-    exit /b 1
-)
-
-for /f "usebackq tokens=1,* delims==" %%a in (".env.cloudflare") do (
-    set "line=%%a"
-    REM 跳过注释和空行
-    if not "!line:~0,1!"=="#" (
-        if not "!line!"=="" (
-            set "%%a=%%b"
-        )
+if "%DEPLOY_ONLY%"=="1" (
+    if not exist .next (
+        echo [ERROR] .next directory not found! Run without --deploy-only first.
+        exit /b 1
     )
+    goto :deploy
 )
-echo     Done.
 
-REM --- Step 2: 安装依赖 ---
-echo [2/5] Installing dependencies...
-call npm install
+REM --- Step 1: 安装依赖 ---
+echo [1/3] Installing dependencies...
+call npm install --prefer-offline
 if %errorlevel% neq 0 (
     echo [ERROR] npm install failed!
     exit /b 1
 )
 
-REM --- Step 3: Prisma generate ---
-echo [3/5] Generating Prisma client...
+REM --- Step 2: Prisma generate ---
+echo [2/3] Generating Prisma client...
 call npx prisma generate
 if %errorlevel% neq 0 (
     echo [ERROR] Prisma generate failed!
     exit /b 1
 )
 
-REM --- Step 4: Next.js build ---
-echo [4/5] Building Next.js app...
+REM --- Step 3: Next.js build ---
+echo [3/3] Building Next.js...
 call npx next build
 if %errorlevel% neq 0 (
     echo [ERROR] Next.js build failed!
     exit /b 1
 )
 
-REM --- Step 5: 部署到 Cloudflare Pages ---
-echo [5/5] Deploying to Cloudflare Pages...
-if "%BRANCH%"=="production" (
-    call npx wrangler pages deploy .next --project-name=%PROJECT_NAME% --branch=main
-) else (
-    call npx wrangler pages deploy .next --project-name=%PROJECT_NAME% --branch=%BRANCH%
-)
+:deploy
+REM --- 清理构建缓存（超过 Cloudflare 25MB 限制）---
+echo Cleaning build cache...
+if exist .next\cache rd /s /q .next\cache
+
+REM --- 部署到 Cloudflare Pages ---
+echo Deploying to Cloudflare Pages...
+call wrangler pages deploy .next --project-name=%PROJECT_NAME% --commit-dirty=true
 
 if %errorlevel% neq 0 (
     echo [ERROR] Deployment failed!
@@ -92,7 +84,8 @@ if %errorlevel% neq 0 (
 
 echo.
 echo ========================================
-echo  Deploy complete!
+echo  Deploy successful!
+echo  https://%PROJECT_NAME%.pages.dev
 echo ========================================
 echo.
 
