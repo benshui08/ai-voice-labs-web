@@ -7,7 +7,7 @@ import prisma from '@/lib/prisma';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 import { v4 as uuidv4 } from 'uuid';
 import { nanoid } from 'nanoid';
-import { videoQueue } from '@/lib/queue/video-queue';
+import { createKieVideoTask } from '@/lib/services/kie-video';
 import { InsufficientCreditsError, errorToResponse } from '@/lib/errors';
 import { calculateVideoCost, type VideoResolution, type VideoDuration } from '@/config/creditsCost';
 import { checkCredits } from '@/lib/credits';
@@ -120,35 +120,9 @@ export async function createVideoTask(request: VideoGenerationRequest): Promise<
 
     // 3. 生成任务 ID
     const taskId = uuidv4();
-    const model = request.model || 'veo-3.1-generate-001';
+    const model = request.model || 'bytedance/seedance-1.5-pro';
 
-    // 4. 创建任务队列记录
-    await prisma.task_queue.create({
-      data: {
-        task_id: taskId,
-        task_type: 'TEXT_TO_VIDEO',
-        user_id: userId,
-        status: 'PENDING',
-        priority: 5,
-        payload: {
-          prompt: request.prompt,
-          prompt_zh: request.prompt_zh || null,
-          negative_prompt: request.negative_prompt || null,
-          resolution: request.resolution,
-          duration: request.duration,
-          aspect_ratio: request.aspect_ratio,
-          model,
-          seed: request.seed,
-          credits_cost: requiredCredits,
-          is_anonymous: isAnonymous,
-        },
-        retry_count: 0,
-        max_retries: 2,
-        timeout_seconds: 600, // 10 分钟超时
-      },
-    });
-
-    // 5. 创建视频记录
+    // 4. 创建视频记录
     const shareId = generateShareId();
     await prisma.video_records.create({
       data: {
@@ -172,29 +146,84 @@ export async function createVideoTask(request: VideoGenerationRequest): Promise<
       },
     });
 
-    console.log(`视频任务已创建: ${taskId}, 用户: ${userId}, 积分: ${requiredCredits}`);
-
-    // 6. 触发后台处理任务
-    await videoQueue.enqueue({
-      taskId,
-      userId,
-      prompt: request.prompt,
-      negativePrompt: request.negative_prompt,
-      resolution: request.resolution,
-      duration: request.duration,
-      aspectRatio: request.aspect_ratio,
-      model,
-      seed: request.seed,
-      creditsCost: requiredCredits,
-      isAnonymous,
+    // 5. 创建任务队列记录
+    await prisma.task_queue.create({
+      data: {
+        task_id: taskId,
+        task_type: 'TEXT_TO_VIDEO',
+        user_id: userId,
+        status: 'PENDING',
+        priority: 5,
+        payload: {
+          prompt: request.prompt,
+          prompt_zh: request.prompt_zh || null,
+          negative_prompt: request.negative_prompt || null,
+          resolution: request.resolution,
+          duration: request.duration,
+          aspect_ratio: request.aspect_ratio,
+          model,
+          seed: request.seed,
+          credits_cost: requiredCredits,
+          is_anonymous: isAnonymous,
+        },
+        retry_count: 0,
+        max_retries: 2,
+        timeout_seconds: 600,
+      },
     });
 
-    console.log(`📤 视频队列任务已添加: ${taskId}`);
+    console.log(`视频任务已创建: ${taskId}, 用户: ${userId}, 积分: ${requiredCredits}`);
+
+    // 6. 直接调用 Kie.ai API（参照 music.ts 的直调模式）
+    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.voicica.ai'}/api/webhooks/kie-video`;
+
+    const externalTaskId = await createKieVideoTask({
+      prompt: request.prompt,
+      aspectRatio: request.aspect_ratio as '1:1' | '21:9' | '4:3' | '3:4' | '16:9' | '9:16',
+      resolution: request.resolution as '480p' | '720p',
+      duration: String(request.duration) as '4' | '8' | '12',
+      callBackUrl: callbackUrl,
+    });
+
+    // 7. API 成功后扣减积分
+    if (isAnonymous) {
+      await prisma.anonymous_users.update({
+        where: { user_id: userId },
+        data: { credits: { decrement: requiredCredits } },
+      });
+    } else {
+      await prisma.users.update({
+        where: { user_id: userId },
+        data: { credits: { decrement: requiredCredits } },
+      });
+    }
+
+    await prisma.credit_history.create({
+      data: {
+        user_id: userId,
+        amount: -requiredCredits,
+        task_id: taskId,
+        description: `AI Video generation (Seedance 1.5 Pro)`,
+        product_type: 'text_to_video',
+      },
+    });
+
+    // 8. 保存外部任务 ID，更新状态为 PROCESSING
+    await prisma.video_records.update({
+      where: { task_id: taskId },
+      data: {
+        external_task_id: externalTaskId,
+        status: 'PROCESSING',
+        progress: 10,
+      },
+    });
+
+    console.log(`✅ 视频任务已提交到 Kie.ai: ${taskId} -> ${externalTaskId}`);
 
     return {
       task_id: taskId,
-      status: 'PENDING',
-      progress: 0,
+      status: 'PROCESSING' as const,
+      progress: 10,
       result: null,
       error: null,
     };

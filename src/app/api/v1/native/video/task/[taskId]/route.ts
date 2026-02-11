@@ -11,7 +11,6 @@ import prisma from '@/lib/prisma';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 import { queryKieVideoTaskStatus } from '@/lib/services/kie-video';
 import { uploadVideo } from '@/lib/services/r2-storage';
-import { videoModelsConfig } from '@/config/native/videoModels';
 import { refundCreditsSimple } from '@/lib/credits';
 import { ProductType } from '@/config/productType';
 
@@ -74,17 +73,12 @@ export async function GET(
       );
     }
 
-    // 5. 对于 KIE 后端的 PROCESSING 任务，主动查询 KIE API
-    // 检查任务是否使用 KIE 后端
-    const modelConfig = videoModelsConfig.find((m) => m.apiModelId === task.model || m.id === task.model);
-    const isKieBackend = modelConfig?.apiBackend === 'kie';
-
+    // 5. 对于 PROCESSING 任务，主动查询 KIE API
     // 任务超时判断：只在任务创建后 30 分钟内查询 KIE API
     const taskAgeMinutes = (Date.now() - new Date(task.created_at).getTime()) / 1000 / 60;
     const isWithinTimeout = taskAgeMinutes < 30;
 
     if (
-      isKieBackend &&
       task.external_task_id &&
       task.status === 'PROCESSING' &&
       isWithinTimeout
@@ -244,7 +238,7 @@ export async function GET(
       });
     }
 
-    // 6. 直接从数据库读取状态（非 KIE 任务或已完成的任务）
+    // 6. 直接从数据库读取状态（已完成的任务或没有 external_task_id 的任务）
     return NextResponse.json({
       success: true,
       task: {
