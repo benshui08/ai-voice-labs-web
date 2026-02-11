@@ -1,11 +1,10 @@
  /**
- * TTS 任务队列处理函数 (Upstash QStash)
+ * TTS 任务队列处理函数 (Cloudflare Queues)
  *
- * 由 QStash 调用，处理异步 TTS 生成任务
+ * 由 Cloudflare Queue Consumer Worker 通过 Service Binding 调用
  * 支持 Azure、Google 和 Fish Audio TTS 服务
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySignatureAppRouter } from '@upstash/qstash/nextjs';
 import prisma from '@/lib/prisma';
 import { synthesizeSpeech as azureSynthesize } from '@/lib/services/azure-tts';
 import { synthesizeSpeech as googleSynthesize } from '@/lib/services/google-tts';
@@ -268,9 +267,14 @@ async function handleTTSTask(req: NextRequest) {
 }
 
 // 导出 POST 函数
-// 生产环境：使用 QStash 签名验证（确保只有 QStash 可以调用）
+// 生产环境：验证 X-Queue-Secret header（确保只有 Consumer Worker 可以调用）
 // 开发环境：跳过验证（方便本地测试）
-export const POST =
-  process.env.NODE_ENV === 'production' && process.env.QSTASH_CURRENT_SIGNING_KEY
-    ? verifySignatureAppRouter(handleTTSTask)
-    : handleTTSTask;
+export async function POST(req: NextRequest) {
+  if (process.env.NODE_ENV === 'production') {
+    const secret = req.headers.get('X-Queue-Secret');
+    if (!secret || secret !== process.env.QUEUE_CONSUMER_SECRET) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+  }
+  return handleTTSTask(req);
+}

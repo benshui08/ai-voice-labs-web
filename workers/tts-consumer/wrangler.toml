@@ -1,0 +1,14 @@
+name = "tts-consumer"
+main = "src/index.ts"
+compatibility_date = "2025-12-30"
+compatibility_flags = ["nodejs_compat"]
+
+[[queues.consumers]]
+queue = "tts-tasks"
+max_batch_size = 1
+max_retries = 2
+dead_letter_queue = "tts-tasks-dlq"
+
+[[services]]
+binding = "MAIN_APP"
+service = "voicica"

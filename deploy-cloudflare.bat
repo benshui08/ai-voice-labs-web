@@ -68,18 +68,36 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-REM --- 部署到 Cloudflare Workers ---
+REM --- 部署主应用到 Cloudflare Workers ---
 echo.
-echo [Deploy] Deploying to Cloudflare...
+echo [Deploy] Deploying main app to Cloudflare...
 call npx opennextjs-cloudflare deploy
 if %errorlevel% neq 0 (
-    echo [ERROR] Deployment failed!
+    echo [ERROR] Main app deployment failed!
     exit /b 1
 )
 
+REM --- 部署 TTS Consumer Worker ---
+echo.
+echo [Deploy] Deploying TTS Consumer Worker...
+pushd workers\tts-consumer
+call npm install --prefer-offline
+if %errorlevel% neq 0 (
+    echo [ERROR] TTS Consumer npm install failed!
+    popd
+    exit /b 1
+)
+call npx wrangler deploy
+if %errorlevel% neq 0 (
+    echo [ERROR] TTS Consumer deployment failed!
+    popd
+    exit /b 1
+)
+popd
+
 echo.
 echo ========================================
-echo  Deploy successful!
+echo  Deploy successful! (main app + tts-consumer)
 echo ========================================
 echo.
 

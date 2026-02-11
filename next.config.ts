@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
 // @ts-ignore - next-pwa doesn't have TypeScript definitions
 import withPWA from 'next-pwa';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+
+// 初始化 Cloudflare 绑定（开发环境下让 getCloudflareContext() 可用）
+initOpenNextCloudflareForDev();
 
 // 读取版本号
 const packageJson = JSON.parse(

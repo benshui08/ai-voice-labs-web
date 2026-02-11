@@ -1,7 +1,7 @@
 /**
- * TTS 任务队列配置 - 使用 Upstash QStash
+ * TTS 任务队列配置 - 使用 Cloudflare Queues
  */
-import { Client } from '@upstash/qstash';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 // TTS 任务队列负载
 export interface TtsQueuePayload {
@@ -18,58 +18,37 @@ export interface TtsQueuePayload {
   isAnonymous: boolean;
 }
 
-// 初始化 QStash 客户端
-const getQStashClient = () => {
-  const token = process.env.QSTASH_TOKEN;
-  if (!token) {
-    console.warn('[Queue] QSTASH_TOKEN 未配置，使用 fallback HTTP 调用');
-    return null;
-  }
-  return new Client({ token });
-};
-
 /**
  * TTS 任务队列实现
- * 生产环境：使用 Upstash QStash（真正的后台队列）
- * 开发环境：使用 HTTP 调用（方便本地测试）
+ * 生产环境：使用 Cloudflare Queues（通过 Service Binding 消费）
+ * 开发环境：使用 HTTP 调用（方便本地测试，无需 consumer worker）
  */
 export const ttsQueue = {
   async enqueue(payload: TtsQueuePayload): Promise<void> {
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const qstashClient = getQStashClient();
 
-    // 生产环境 + QStash 配置：使用 QStash
-    if (!isDevelopment && qstashClient) {
+    if (!isDevelopment) {
+      // 生产环境：通过 Cloudflare Queue 发送消息
       try {
-        console.log('[Queue] 📤 使用 QStash 提交任务:', payload.taskId);
+        console.log('[Queue] 📤 使用 Cloudflare Queue 提交任务:', payload.taskId);
 
-        const callbackUrl = `https://${process.env.QSTASH_NEXT_CALL_BACK_URL || 'voicica.ai'}/api/queue/tts`;
+        const { env } = await getCloudflareContext({ async: true });
+        await env.TTS_QUEUE.send(payload);
 
-        const result = await qstashClient.publishJSON({
-          url: callbackUrl,
-          body: payload,
-          retries: 2, // 失败重试 2 次
-        });
-
-        console.log('[Queue] ✅ QStash 任务已提交:', {
-          messageId: result.messageId,
-          taskId: payload.taskId,
-        });
-
+        console.log('[Queue] ✅ Cloudflare Queue 任务已提交:', payload.taskId);
         return;
       } catch (err) {
-        console.error('[Queue] ❌ QStash 提交失败:', err);
+        console.error('[Queue] ❌ Cloudflare Queue 提交失败:', err);
         throw err;
       }
     }
 
-    // 开发环境或 QStash 未配置：使用 HTTP fallback
+    // 开发环境：使用 HTTP fallback 直接调用本地 handler
     console.log('[Queue] 📤 使用 HTTP 调用提交任务:', payload.taskId);
-    const baseUrl = isDevelopment ? 'http://localhost:3000' : 'https://voicica.ai';
 
     // 异步触发（不等待完成）
     setTimeout(() => {
-      fetch(`${baseUrl}/api/queue/tts`, {
+      fetch('http://localhost:3000/api/queue/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
