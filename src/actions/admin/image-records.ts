@@ -3,7 +3,9 @@
 /**
  * Image 记录管理 Server Actions
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { imageRecords } from '@/db/schema';
+import { eq, and, or, ilike, desc, count, sum, gte, lte, inArray } from 'drizzle-orm';
 import { verifyAdminWithoutDb } from '@/lib/auth-admin';
 
 /**
@@ -58,75 +60,71 @@ export async function getImageRecords(query: ImageRecordsQuery = {}) {
     endDate,
   } = query;
 
-  // 构建查询条件
-  const where: Record<string, unknown> = {};
+  const conditions = [];
 
   if (status) {
-    where.status = status;
+    conditions.push(eq(imageRecords.status, status));
   }
 
   if (model) {
-    where.model = model;
+    conditions.push(eq(imageRecords.model, model));
   }
 
   if (userId) {
-    where.user_id = {
-      contains: userId,
-      mode: 'insensitive',
-    };
+    conditions.push(ilike(imageRecords.userId, `%${userId}%`));
   }
 
   if (search) {
-    where.OR = [
-      { prompt: { contains: search, mode: 'insensitive' } },
-      { task_id: { contains: search, mode: 'insensitive' } },
-    ];
+    conditions.push(
+      or(
+        ilike(imageRecords.prompt, `%${search}%`),
+        ilike(imageRecords.taskId, `%${search}%`),
+      )
+    );
   }
 
-  if (startDate || endDate) {
-    where.created_at = {};
-    if (startDate) {
-      (where.created_at as Record<string, Date>).gte = new Date(startDate);
-    }
-    if (endDate) {
-      (where.created_at as Record<string, Date>).lte = new Date(endDate + 'T23:59:59.999Z');
-    }
+  if (startDate) {
+    conditions.push(gte(imageRecords.createdAt, new Date(startDate).toISOString()));
+  }
+  if (endDate) {
+    conditions.push(lte(imageRecords.createdAt, new Date(endDate + 'T23:59:59.999Z').toISOString()));
   }
 
-  const [total, records] = await Promise.all([
-    prisma.image_records.count({ where }),
-    prisma.image_records.findMany({
-      where,
-      orderBy: { created_at: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [[{ total }], records] = await Promise.all([
+    db.select({ total: count() }).from(imageRecords).where(whereClause),
+    db.select().from(imageRecords)
+      .where(whereClause)
+      .orderBy(desc(imageRecords.createdAt))
+      .offset((page - 1) * pageSize)
+      .limit(pageSize),
   ]);
 
   const items: ImageRecordItem[] = records.map((record) => ({
     id: record.id,
-    taskId: record.task_id,
-    userId: record.user_id,
+    taskId: record.taskId,
+    userId: record.userId,
     model: record.model,
     prompt: record.prompt,
-    aspectRatio: record.aspect_ratio,
+    aspectRatio: record.aspectRatio,
     quality: record.quality,
-    isPublic: record.is_public,
-    creditsUsed: record.credits_used,
+    isPublic: record.isPublic,
+    creditsUsed: record.creditsUsed,
     status: record.status,
     progress: record.progress,
-    imageUrl: record.image_url,
+    imageUrl: record.imageUrl,
     error: record.error,
-    createdAt: record.created_at.toISOString(),
-    completedAt: record.completed_at?.toISOString() || null,
+    createdAt: record.createdAt,
+    completedAt: record.completedAt || null,
   }));
 
   return {
     items,
-    total,
+    total: Number(total),
     page,
     pageSize,
-    totalPages: Math.ceil(total / pageSize),
+    totalPages: Math.ceil(Number(total) / pageSize),
   };
 }
 
@@ -137,39 +135,38 @@ export async function getImageRecordsStats() {
   await verifyAdminWithoutDb();
 
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekStart = new Date(todayStart);
-  weekStart.setDate(weekStart.getDate() - 7);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString();
 
   const [
-    totalRecords,
-    successRecords,
-    failedRecords,
-    processingRecords,
-    todayRecords,
-    weekRecords,
-    totalCredits,
-    publicRecords,
+    [{ total: totalRecords }],
+    [{ total: successRecords }],
+    [{ total: failedRecords }],
+    [{ total: processingRecords }],
+    [{ total: todayRecords }],
+    [{ total: weekRecords }],
+    [{ total: totalCredits }],
+    [{ total: publicRecords }],
   ] = await Promise.all([
-    prisma.image_records.count(),
-    prisma.image_records.count({ where: { status: 'SUCCESS' } }),
-    prisma.image_records.count({ where: { status: 'FAILURE' } }),
-    prisma.image_records.count({ where: { status: { in: ['PENDING', 'PROCESSING'] } } }),
-    prisma.image_records.count({ where: { created_at: { gte: todayStart } } }),
-    prisma.image_records.count({ where: { created_at: { gte: weekStart } } }),
-    prisma.image_records.aggregate({ _sum: { credits_used: true } }),
-    prisma.image_records.count({ where: { is_public: true } }),
+    db.select({ total: count() }).from(imageRecords),
+    db.select({ total: count() }).from(imageRecords).where(eq(imageRecords.status, 'SUCCESS')),
+    db.select({ total: count() }).from(imageRecords).where(eq(imageRecords.status, 'FAILURE')),
+    db.select({ total: count() }).from(imageRecords).where(or(eq(imageRecords.status, 'PENDING'), eq(imageRecords.status, 'PROCESSING'))),
+    db.select({ total: count() }).from(imageRecords).where(gte(imageRecords.createdAt, todayStart)),
+    db.select({ total: count() }).from(imageRecords).where(gte(imageRecords.createdAt, weekStart)),
+    db.select({ total: sum(imageRecords.creditsUsed) }).from(imageRecords),
+    db.select({ total: count() }).from(imageRecords).where(eq(imageRecords.isPublic, true)),
   ]);
 
   return {
-    totalRecords,
-    successRecords,
-    failedRecords,
-    processingRecords,
-    todayRecords,
-    weekRecords,
-    totalCredits: totalCredits._sum.credits_used || 0,
-    publicRecords,
+    totalRecords: Number(totalRecords),
+    successRecords: Number(successRecords),
+    failedRecords: Number(failedRecords),
+    processingRecords: Number(processingRecords),
+    todayRecords: Number(todayRecords),
+    weekRecords: Number(weekRecords),
+    totalCredits: Number(totalCredits) || 0,
+    publicRecords: Number(publicRecords),
   };
 }
 
@@ -180,17 +177,11 @@ export async function deleteImageRecord(id: number) {
   await verifyAdminWithoutDb();
 
   try {
-    await prisma.image_records.delete({
-      where: { id },
-    });
-
+    await db.delete(imageRecords).where(eq(imageRecords.id, id));
     return { success: true, message: '删除成功' };
   } catch (error) {
     console.error('删除 Image 记录失败:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : '删除失败',
-    };
+    return { success: false, message: error instanceof Error ? error.message : '删除失败' };
   }
 }
 
@@ -201,20 +192,14 @@ export async function deleteImageRecords(ids: number[]) {
   await verifyAdminWithoutDb();
 
   try {
-    const result = await prisma.image_records.deleteMany({
-      where: { id: { in: ids } },
-    });
-
+    const result = await db.delete(imageRecords).where(inArray(imageRecords.id, ids)).returning();
     return {
       success: true,
-      message: `成功删除 ${result.count} 条记录`,
-      deleted: result.count,
+      message: `成功删除 ${result.length} 条记录`,
+      deleted: result.length,
     };
   } catch (error) {
     console.error('批量删除 Image 记录失败:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : '删除失败',
-    };
+    return { success: false, message: error instanceof Error ? error.message : '删除失败' };
   }
 }

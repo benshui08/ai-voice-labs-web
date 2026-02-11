@@ -4,7 +4,9 @@
  * Image 模块 Server Actions
  * 使用 KIE API 生成图片
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { imageRecords, users, creditHistory } from '@/db/schema';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 import { checkCredits } from '@/lib/credits';
 import { ProductType } from '@/config/productType';
@@ -161,35 +163,31 @@ export async function createImageTask(
 
     const taskId = result.data.taskId;
 
-    // 扣除积分
-    await prisma.$transaction([
-      prisma.users.update({
-        where: { user_id: user_id },
-        data: { credits: { decrement: model.credits } },
-      }),
-      prisma.credit_history.create({
-        data: {
-          user_id: user_id,
-          amount: -model.credits,
-          product_type: ProductType.IMAGE,
-          description: `AI Image generation (${model.name})`,
-        },
-      }),
-    ]);
+    // 扣除积分（使用事务）
+    await db.transaction(async (tx) => {
+      await tx.update(users)
+        .set({ credits: sql`${users.credits} - ${model.credits}` })
+        .where(eq(users.userId, user_id));
+
+      await tx.insert(creditHistory).values({
+        userId: user_id,
+        amount: -model.credits,
+        productType: ProductType.IMAGE,
+        description: `AI Image generation (${model.name})`,
+      });
+    });
 
     // 创建图片记录
-    await prisma.image_records.create({
-      data: {
-        user_id: user_id,
-        task_id: taskId,
-        model: params.modelId,
-        prompt: params.prompt,
-        aspect_ratio: params.aspectRatio,
-        quality: params.quality,
-        status: 'PENDING',
-        is_public: params.isPublic ?? false,
-        credits_used: model.credits,
-      },
+    await db.insert(imageRecords).values({
+      userId: user_id,
+      taskId,
+      model: params.modelId,
+      prompt: params.prompt,
+      aspectRatio: params.aspectRatio,
+      quality: params.quality,
+      status: 'PENDING',
+      isPublic: params.isPublic ?? false,
+      creditsUsed: model.credits,
     });
 
     return { success: true, taskId };
@@ -271,22 +269,20 @@ export async function getImageTaskStatus(taskId: string): Promise<ImageTaskStatu
 
     // 更新数据库记录
     if (status === 'SUCCESS' && imageUrl) {
-      await prisma.image_records.updateMany({
-        where: { task_id: taskId },
-        data: {
+      await db.update(imageRecords)
+        .set({
           status: 'SUCCESS',
-          image_url: imageUrl,
-          completed_at: new Date(),
-        },
-      });
+          imageUrl,
+          completedAt: new Date().toISOString(),
+        })
+        .where(eq(imageRecords.taskId, taskId));
     } else if (status === 'FAILURE') {
-      await prisma.image_records.updateMany({
-        where: { task_id: taskId },
-        data: {
+      await db.update(imageRecords)
+        .set({
           status: 'FAILURE',
           error: task.failMsg || 'Generation failed',
-        },
-      });
+        })
+        .where(eq(imageRecords.taskId, taskId));
     }
 
     return {
@@ -335,13 +331,28 @@ export async function getImageRecords(limit: number = 50): Promise<ImageRecord[]
       return [];
     }
 
-    const records = await prisma.image_records.findMany({
-      where: { user_id },
-      orderBy: { created_at: 'desc' },
-      take: limit,
-    });
+    const records = await db.select().from(imageRecords)
+      .where(eq(imageRecords.userId, user_id))
+      .orderBy(desc(imageRecords.createdAt))
+      .limit(limit);
 
-    return records as ImageRecord[];
+    return records.map(r => ({
+      id: r.id,
+      user_id: r.userId,
+      task_id: r.taskId,
+      model: r.model,
+      prompt: r.prompt,
+      aspect_ratio: r.aspectRatio,
+      quality: r.quality,
+      status: r.status,
+      progress: r.progress,
+      image_url: r.imageUrl,
+      is_public: r.isPublic,
+      credits_used: r.creditsUsed,
+      error: r.error,
+      completed_at: r.completedAt ? new Date(r.completedAt) : null,
+      created_at: new Date(r.createdAt),
+    }));
   } catch (error) {
     console.error('❌ [getImageRecords] Error:', error);
     return [];
@@ -358,12 +369,8 @@ export async function deleteImageRecord(id: number): Promise<boolean> {
       return false;
     }
 
-    await prisma.image_records.deleteMany({
-      where: {
-        id,
-        user_id,
-      },
-    });
+    await db.delete(imageRecords)
+      .where(and(eq(imageRecords.id, id), eq(imageRecords.userId, user_id)));
 
     return true;
   } catch (error) {
@@ -382,14 +389,31 @@ export async function getImageRecordByTaskId(taskId: string): Promise<ImageRecor
       return null;
     }
 
-    const record = await prisma.image_records.findFirst({
-      where: {
-        task_id: taskId,
-        user_id,
-      },
-    });
+    const [record] = await db.select().from(imageRecords)
+      .where(and(eq(imageRecords.taskId, taskId), eq(imageRecords.userId, user_id)))
+      .limit(1);
 
-    return record as ImageRecord | null;
+    if (!record) {
+      return null;
+    }
+
+    return {
+      id: record.id,
+      user_id: record.userId,
+      task_id: record.taskId,
+      model: record.model,
+      prompt: record.prompt,
+      aspect_ratio: record.aspectRatio,
+      quality: record.quality,
+      status: record.status,
+      progress: record.progress,
+      image_url: record.imageUrl,
+      is_public: record.isPublic,
+      credits_used: record.creditsUsed,
+      error: record.error,
+      completed_at: record.completedAt ? new Date(record.completedAt) : null,
+      created_at: new Date(record.createdAt),
+    };
   } catch (error) {
     console.error('❌ [getImageRecordByTaskId] Error:', error);
     return null;

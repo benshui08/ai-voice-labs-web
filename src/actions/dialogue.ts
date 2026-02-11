@@ -5,7 +5,9 @@
  * 使用 kie.ai 的 elevenlabs/text-to-dialogue-v3 API
  */
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { dialogueRecords, users, creditHistory } from '@/db/schema';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { calculateDialogueCost } from '@/config/creditsCost';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadAudio } from '@/lib/services/r2-storage';
@@ -110,10 +112,10 @@ export async function createDialogueTask(
   const creditsRequired = calculateDialogueCost(totalCharacters);
 
   // 检查用户积分
-  const user = await prisma.users.findUnique({
-    where: { user_id: userId },
-    select: { credits: true },
-  });
+  const [user] = await db.select({ credits: users.credits })
+    .from(users)
+    .where(eq(users.userId, userId))
+    .limit(1);
 
   if (!user) {
     throw new Error('User not found');
@@ -128,16 +130,14 @@ export async function createDialogueTask(
   const callbackUrl = getCallbackUrl();
 
   // 创建数据库记录
-  await prisma.dialogue_records.create({
-    data: {
-      user_id: userId,
-      task_id: taskId,
-      dialogue_json: JSON.stringify(request.dialogue),
-      total_characters: totalCharacters,
-      credits_cost: creditsRequired,
-      status: 'PENDING',
-      progress: 0,
-    },
+  await db.insert(dialogueRecords).values({
+    userId,
+    taskId,
+    dialogueJson: JSON.stringify(request.dialogue),
+    totalCharacters,
+    creditsCost: creditsRequired,
+    status: 'PENDING',
+    progress: 0,
   });
 
   // 调用 kie.ai API
@@ -175,13 +175,12 @@ export async function createDialogueTask(
     console.error('kie.ai API error:', response.status, errorText);
 
     // 更新记录状态为失败
-    await prisma.dialogue_records.update({
-      where: { task_id: taskId },
-      data: {
+    await db.update(dialogueRecords)
+      .set({
         status: 'FAILURE',
-        error_message: `API request failed: ${response.status}`,
-      },
-    });
+        errorMessage: `API request failed: ${response.status}`,
+      })
+      .where(eq(dialogueRecords.taskId, taskId));
 
     if (response.status === 401) {
       throw new Error('API authentication failed');
@@ -199,45 +198,38 @@ export async function createDialogueTask(
   const result = await response.json();
 
   if (result.code !== 200) {
-    await prisma.dialogue_records.update({
-      where: { task_id: taskId },
-      data: {
+    await db.update(dialogueRecords)
+      .set({
         status: 'FAILURE',
-        error_message: result.msg || 'API returned error',
-      },
-    });
+        errorMessage: result.msg || 'API returned error',
+      })
+      .where(eq(dialogueRecords.taskId, taskId));
     throw new Error(result.msg || 'API returned error');
   }
 
   const externalTaskId = result.data.taskId;
 
   // 更新记录，保存外部任务 ID
-  await prisma.dialogue_records.update({
-    where: { task_id: taskId },
-    data: {
-      external_task_id: externalTaskId,
+  await db.update(dialogueRecords)
+    .set({
+      externalTaskId,
       status: 'PROCESSING',
       progress: 10,
-    },
-  });
+    })
+    .where(eq(dialogueRecords.taskId, taskId));
 
   // 扣除积分
-  await prisma.users.update({
-    where: { user_id: userId },
-    data: {
-      credits: { decrement: creditsRequired },
-    },
-  });
+  await db.update(users)
+    .set({ credits: sql`${users.credits} - ${creditsRequired}` })
+    .where(eq(users.userId, userId));
 
   // 记录积分消费历史
-  await prisma.credit_history.create({
-    data: {
-      user_id: userId,
-      amount: -creditsRequired,
-      task_id: taskId,
-      description: `Dialogue generation (${totalCharacters} chars)`,
-      product_type: 'dialogue',
-    },
+  await db.insert(creditHistory).values({
+    userId,
+    amount: -creditsRequired,
+    taskId,
+    description: `Dialogue generation (${totalCharacters} chars)`,
+    productType: 'dialogue',
   });
 
   return {
@@ -256,9 +248,9 @@ export async function getDialogueTaskStatus(
   await getUserOrAnonymous();
 
   // 先从数据库获取记录
-  const record = await prisma.dialogue_records.findUnique({
-    where: { task_id: taskId },
-  });
+  const [record] = await db.select().from(dialogueRecords)
+    .where(eq(dialogueRecords.taskId, taskId))
+    .limit(1);
 
   if (!record) {
     throw new Error('Task not found');
@@ -270,18 +262,18 @@ export async function getDialogueTaskStatus(
       task_id: taskId,
       status: record.status as DialogueTaskStatus['status'],
       progress: record.progress,
-      audioUrl: record.audio_url || undefined,
-      error: record.error_message || undefined,
+      audioUrl: record.audioUrl || undefined,
+      error: record.errorMessage || undefined,
     };
   }
 
   // 如果还在处理中，查询 kie.ai API 获取最新状态
-  if (record.external_task_id) {
+  if (record.externalTaskId) {
     const token = getKieApiToken();
 
     try {
       const response = await fetch(
-        `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(record.external_task_id)}`,
+        `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(record.externalTaskId)}`,
         {
           method: 'GET',
           headers: { Authorization: `Bearer ${token}` },
@@ -311,15 +303,14 @@ export async function getDialogueTaskStatus(
             const finalAudioUrl = r2Url || audioUrl; // 如果 R2 上传失败，使用原始 URL
 
             // 更新数据库
-            await prisma.dialogue_records.update({
-              where: { id: record.id },
-              data: {
+            await db.update(dialogueRecords)
+              .set({
                 status: 'SUCCESS',
                 progress: 100,
-                audio_url: finalAudioUrl,
-                completed_at: new Date(),
-              },
-            });
+                audioUrl: finalAudioUrl,
+                completedAt: new Date().toISOString(),
+              })
+              .where(eq(dialogueRecords.id, record.id));
 
             return {
               task_id: taskId,
@@ -329,13 +320,12 @@ export async function getDialogueTaskStatus(
             };
           } else if (taskState === 'fail') {
             const errorMsg = result.data.failMsg || 'Generation failed';
-            await prisma.dialogue_records.update({
-              where: { id: record.id },
-              data: {
+            await db.update(dialogueRecords)
+              .set({
                 status: 'FAILURE',
-                error_message: errorMsg,
-              },
-            });
+                errorMessage: errorMsg,
+              })
+              .where(eq(dialogueRecords.id, record.id));
 
             return {
               task_id: taskId,
@@ -347,10 +337,9 @@ export async function getDialogueTaskStatus(
             // 更新进度
             const progress = taskState === 'generating' ? 60 : taskState === 'queuing' ? 30 : record.progress;
             if (progress !== record.progress) {
-              await prisma.dialogue_records.update({
-                where: { id: record.id },
-                data: { progress },
-              });
+              await db.update(dialogueRecords)
+                .set({ progress })
+                .where(eq(dialogueRecords.id, record.id));
             }
 
             return {
@@ -371,8 +360,8 @@ export async function getDialogueTaskStatus(
     task_id: taskId,
     status: record.status as DialogueTaskStatus['status'],
     progress: record.progress,
-    audioUrl: record.audio_url || undefined,
-    error: record.error_message || undefined,
+    audioUrl: record.audioUrl || undefined,
+    error: record.errorMessage || undefined,
   };
 }
 
@@ -398,26 +387,36 @@ export interface DialogueRecord {
 export async function getDialogueRecordByTaskId(taskId: string): Promise<DialogueRecord | null> {
   const { user_id: userId } = await getUserOrAnonymous();
 
-  const record = await prisma.dialogue_records.findFirst({
-    where: {
-      task_id: taskId,
-      user_id: userId,
-    },
-    select: {
-      id: true,
-      task_id: true,
-      status: true,
-      progress: true,
-      audio_url: true,
-      dialogue_json: true,
-      total_characters: true,
-      credits_cost: true,
-      duration: true,
-      created_at: true,
-    },
-  });
+  const [record] = await db.select({
+    id: dialogueRecords.id,
+    taskId: dialogueRecords.taskId,
+    status: dialogueRecords.status,
+    progress: dialogueRecords.progress,
+    audioUrl: dialogueRecords.audioUrl,
+    dialogueJson: dialogueRecords.dialogueJson,
+    totalCharacters: dialogueRecords.totalCharacters,
+    creditsCost: dialogueRecords.creditsCost,
+    duration: dialogueRecords.duration,
+    createdAt: dialogueRecords.createdAt,
+  })
+    .from(dialogueRecords)
+    .where(and(eq(dialogueRecords.taskId, taskId), eq(dialogueRecords.userId, userId)))
+    .limit(1);
 
-  return record;
+  if (!record) return null;
+
+  return {
+    id: record.id,
+    task_id: record.taskId,
+    status: record.status,
+    progress: record.progress,
+    audio_url: record.audioUrl,
+    dialogue_json: record.dialogueJson,
+    total_characters: record.totalCharacters,
+    credits_cost: record.creditsCost,
+    duration: record.duration,
+    created_at: new Date(record.createdAt),
+  };
 }
 
 /**
@@ -433,21 +432,27 @@ export async function getDialogueHistory(limit: number = 20): Promise<Array<{
 }>> {
   const { user_id: userId } = await getUserOrAnonymous();
 
-  const records = await prisma.dialogue_records.findMany({
-    where: { user_id: userId },
-    orderBy: { created_at: 'desc' },
-    take: limit,
-    select: {
-      task_id: true,
-      status: true,
-      audio_url: true,
-      total_characters: true,
-      credits_cost: true,
-      created_at: true,
-    },
-  });
+  const records = await db.select({
+    taskId: dialogueRecords.taskId,
+    status: dialogueRecords.status,
+    audioUrl: dialogueRecords.audioUrl,
+    totalCharacters: dialogueRecords.totalCharacters,
+    creditsCost: dialogueRecords.creditsCost,
+    createdAt: dialogueRecords.createdAt,
+  })
+    .from(dialogueRecords)
+    .where(eq(dialogueRecords.userId, userId))
+    .orderBy(desc(dialogueRecords.createdAt))
+    .limit(limit);
 
-  return records;
+  return records.map(r => ({
+    task_id: r.taskId,
+    status: r.status,
+    audio_url: r.audioUrl,
+    total_characters: r.totalCharacters,
+    credits_cost: r.creditsCost,
+    created_at: new Date(r.createdAt),
+  }));
 }
 
 /**
@@ -456,25 +461,35 @@ export async function getDialogueHistory(limit: number = 20): Promise<Array<{
 export async function getDialogueRecords(limit: number = 50): Promise<DialogueRecord[]> {
   const { user_id: userId } = await getUserOrAnonymous();
 
-  const records = await prisma.dialogue_records.findMany({
-    where: { user_id: userId },
-    orderBy: { created_at: 'desc' },
-    take: limit,
-    select: {
-      id: true,
-      task_id: true,
-      status: true,
-      progress: true,
-      audio_url: true,
-      dialogue_json: true,
-      total_characters: true,
-      credits_cost: true,
-      duration: true,
-      created_at: true,
-    },
-  });
+  const records = await db.select({
+    id: dialogueRecords.id,
+    taskId: dialogueRecords.taskId,
+    status: dialogueRecords.status,
+    progress: dialogueRecords.progress,
+    audioUrl: dialogueRecords.audioUrl,
+    dialogueJson: dialogueRecords.dialogueJson,
+    totalCharacters: dialogueRecords.totalCharacters,
+    creditsCost: dialogueRecords.creditsCost,
+    duration: dialogueRecords.duration,
+    createdAt: dialogueRecords.createdAt,
+  })
+    .from(dialogueRecords)
+    .where(eq(dialogueRecords.userId, userId))
+    .orderBy(desc(dialogueRecords.createdAt))
+    .limit(limit);
 
-  return records;
+  return records.map(r => ({
+    id: r.id,
+    task_id: r.taskId,
+    status: r.status,
+    progress: r.progress,
+    audio_url: r.audioUrl,
+    dialogue_json: r.dialogueJson,
+    total_characters: r.totalCharacters,
+    credits_cost: r.creditsCost,
+    duration: r.duration,
+    created_at: new Date(r.createdAt),
+  }));
 }
 
 /**
@@ -484,15 +499,13 @@ export async function deleteDialogueRecord(id: number): Promise<void> {
   const { user_id: userId } = await getUserOrAnonymous();
 
   // 验证记录属于当前用户
-  const record = await prisma.dialogue_records.findFirst({
-    where: { id, user_id: userId },
-  });
+  const [record] = await db.select().from(dialogueRecords)
+    .where(and(eq(dialogueRecords.id, id), eq(dialogueRecords.userId, userId)))
+    .limit(1);
 
   if (!record) {
     throw new Error('Record not found or not authorized to delete');
   }
 
-  await prisma.dialogue_records.delete({
-    where: { id },
-  });
+  await db.delete(dialogueRecords).where(eq(dialogueRecords.id, id));
 }

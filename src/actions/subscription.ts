@@ -4,7 +4,9 @@
  * 订阅模块 Server Actions
  */
 import Stripe from 'stripe';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { userSubscriptions } from '@/db/schema';
+import { eq, and, gte, desc } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 import type { UserSubscription, UserSubscriptionListResponse } from '@/types/subscription';
 import {
@@ -81,69 +83,66 @@ export async function getMySubscriptions(params?: {
   const { status, product_type, platform } = params || {};
 
   // 构建查询条件
-  const where: Record<string, unknown> = {
-    user_id: userId,
-  };
+  const conditions = [eq(userSubscriptions.userId, userId)];
 
   if (status) {
-    where.status = status;
+    conditions.push(eq(userSubscriptions.status, status));
   }
 
   if (product_type) {
-    where.product_type = product_type;
+    conditions.push(eq(userSubscriptions.productType, product_type));
   }
 
   if (platform) {
-    where.platform = platform;
+    conditions.push(eq(userSubscriptions.platform, platform));
   }
 
   // 查询订阅列表
-  const subscriptions = await prisma.user_subscriptions.findMany({
-    where,
-    orderBy: { created_at: 'desc' },
-    take: 100,
-  });
+  const subscriptions = await db.select().from(userSubscriptions)
+    .where(and(...conditions))
+    .orderBy(desc(userSubscriptions.createdAt))
+    .limit(100);
 
   // 查询活跃订阅
   const now = new Date();
-  const activeSubscription = await prisma.user_subscriptions.findFirst({
-    where: {
-      user_id: userId,
-      status: 'ACTIVE',
-      end_date: { gte: now },
-    },
-  });
+  const [activeSubscription] = await db.select().from(userSubscriptions)
+    .where(and(
+      eq(userSubscriptions.userId, userId),
+      eq(userSubscriptions.status, 'ACTIVE'),
+      gte(userSubscriptions.endDate, now.toISOString()),
+    ))
+    .limit(1);
 
   // 转换为响应格式
   const toResponse = (sub: typeof subscriptions[0]): UserSubscription => {
     const isActive = sub.status === 'ACTIVE';
     let daysRemaining: number | null = null;
 
-    if (isActive && sub.end_date) {
-      daysRemaining = Math.max(0, Math.floor((sub.end_date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    if (isActive && sub.endDate) {
+      daysRemaining = Math.max(0, Math.floor((new Date(sub.endDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
     }
 
     // 从配置文件获取 display_name
-    const plan = getPlanByProductId(sub.product_id);
+    const plan = getPlanByProductId(sub.productId);
 
     return {
       id: String(sub.id),
-      user_id: sub.user_id,
-      product_id: sub.product_id,
-      product_type: sub.product_type,
+      user_id: sub.userId,
+      product_id: sub.productId,
+      product_type: sub.productType,
       platform: sub.platform,
       status: sub.status,
-      start_date: sub.start_date.toISOString(),
-      end_date: sub.end_date.toISOString(),
-      credits_allocated: sub.credits_allocated,
+      start_date: sub.startDate,
+      end_date: sub.endDate,
+      credits_allocated: sub.creditsAllocated,
       amount: sub.amount ?? undefined,
       currency: sub.currency ?? undefined,
-      auto_renew: sub.auto_renew,
-      created_at: sub.created_at.toISOString(),
+      auto_renew: sub.autoRenew,
+      created_at: sub.createdAt,
       display_name: plan?.display_name ?? null,
       is_active: isActive,
       days_remaining: daysRemaining,
-      external_subscription_id: sub.external_subscription_id,
+      external_subscription_id: sub.externalSubscriptionId,
     };
   };
 
@@ -161,13 +160,13 @@ export async function getMyActiveSubscription(): Promise<UserSubscription | null
   const { user_id: userId } = await getUserOrAnonymous();
 
   const now = new Date();
-  const activeSubscription = await prisma.user_subscriptions.findFirst({
-    where: {
-      user_id: userId,
-      status: 'ACTIVE',
-      end_date: { gte: now },
-    },
-  });
+  const [activeSubscription] = await db.select().from(userSubscriptions)
+    .where(and(
+      eq(userSubscriptions.userId, userId),
+      eq(userSubscriptions.status, 'ACTIVE'),
+      gte(userSubscriptions.endDate, now.toISOString()),
+    ))
+    .limit(1);
 
   if (!activeSubscription) {
     return null;
@@ -175,30 +174,30 @@ export async function getMyActiveSubscription(): Promise<UserSubscription | null
 
   const daysRemaining = Math.max(
     0,
-    Math.floor((activeSubscription.end_date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    Math.floor((new Date(activeSubscription.endDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
   );
 
   // 从配置文件获取 display_name
-  const plan = getPlanByProductId(activeSubscription.product_id);
+  const plan = getPlanByProductId(activeSubscription.productId);
 
   return {
     id: String(activeSubscription.id),
-    user_id: activeSubscription.user_id,
-    product_id: activeSubscription.product_id,
-    product_type: activeSubscription.product_type,
+    user_id: activeSubscription.userId,
+    product_id: activeSubscription.productId,
+    product_type: activeSubscription.productType,
     platform: activeSubscription.platform,
     status: activeSubscription.status,
-    start_date: activeSubscription.start_date.toISOString(),
-    end_date: activeSubscription.end_date.toISOString(),
-    credits_allocated: activeSubscription.credits_allocated,
+    start_date: activeSubscription.startDate,
+    end_date: activeSubscription.endDate,
+    credits_allocated: activeSubscription.creditsAllocated,
     amount: activeSubscription.amount ?? undefined,
     currency: activeSubscription.currency ?? undefined,
-    auto_renew: activeSubscription.auto_renew,
-    created_at: activeSubscription.created_at.toISOString(),
+    auto_renew: activeSubscription.autoRenew,
+    created_at: activeSubscription.createdAt,
     display_name: plan?.display_name ?? null,
     is_active: true,
     days_remaining: daysRemaining,
-    external_subscription_id: activeSubscription.external_subscription_id,
+    external_subscription_id: activeSubscription.externalSubscriptionId,
   };
 }
 
@@ -217,12 +216,12 @@ export async function cancelSubscription(
   const { user_id: userId } = await getUserOrAnonymous();
 
   // 查找订阅
-  const subscription = await prisma.user_subscriptions.findFirst({
-    where: {
-      id: parseInt(subscriptionId),
-      user_id: userId,
-    },
-  });
+  const [subscription] = await db.select().from(userSubscriptions)
+    .where(and(
+      eq(userSubscriptions.id, parseInt(subscriptionId)),
+      eq(userSubscriptions.userId, userId),
+    ))
+    .limit(1);
 
   if (!subscription) {
     throw new Error('订阅不存在或无权操作');
@@ -235,17 +234,17 @@ export async function cancelSubscription(
   const now = new Date();
 
   // 如果有 Stripe 订阅 ID，调用 Stripe API 取消
-  if (subscription.external_subscription_id && subscription.platform === 'stripe') {
+  if (subscription.externalSubscriptionId && subscription.platform === 'stripe') {
     try {
-      console.log(`🔄 取消 Stripe 订阅: ${subscription.external_subscription_id}`);
+      console.log(`🔄 取消 Stripe 订阅: ${subscription.externalSubscriptionId}`);
 
-      await stripe.subscriptions.cancel(subscription.external_subscription_id, {
+      await stripe.subscriptions.cancel(subscription.externalSubscriptionId, {
         cancellation_details: {
           comment: data?.cancellation_reason,
         },
       });
 
-      console.log(`✅ Stripe 订阅已取消: ${subscription.external_subscription_id}`);
+      console.log(`✅ Stripe 订阅已取消: ${subscription.externalSubscriptionId}`);
     } catch (error) {
       console.error('❌ Stripe 取消失败:', error);
       // 如果 Stripe 取消失败，仍然更新本地状态（可能是测试数据或已取消的订阅）
@@ -253,16 +252,15 @@ export async function cancelSubscription(
   }
 
   // 更新订阅状态
-  await prisma.user_subscriptions.update({
-    where: { id: subscription.id },
-    data: {
+  await db.update(userSubscriptions)
+    .set({
       status: 'CANCELLED',
-      auto_renew: false,
-      cancelled_at: now,
-      cancellation_reason: data?.cancellation_reason || null,
-      updated_at: now,
-    },
-  });
+      autoRenew: false,
+      cancelledAt: now.toISOString(),
+      cancellationReason: data?.cancellation_reason || null,
+      updatedAt: now.toISOString(),
+    })
+    .where(eq(userSubscriptions.id, subscription.id));
 
   console.log(`✅ 订阅已取消: ${subscriptionId}`);
 

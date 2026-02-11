@@ -6,41 +6,36 @@
  * 所有积分的检查、扣除、增加操作都应该通过此服务
  */
 
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { anonymousUsers, users, creditHistory } from '@/db/schema';
+import { eq, sql, and, gte } from 'drizzle-orm';
 import { ProductType } from '@/config/productType';
 
 /**
- * 清理 description 字符串，移除可能导致 Prisma 转义问题的字符
- *
- * Prisma 会将 \x 解释为十六进制转义序列，当用户输入包含 emoji 或其他
- * 特殊字符时可能会导致 "unexpected end of hex escape" 错误
+ * 清理 description 字符串，移除可能导致问题的字符
  */
 function sanitizeDescription(description: string): string {
-  // 移除所有 emoji 和其他非 ASCII 可打印字符，只保留基本 ASCII
-  // 或者更宽松一些，保留常见的多语言字符但移除可能导致问题的控制字符
   return description
-    // 移除可能导致转义问题的反斜杠序列
     .replace(/\\/g, '/')
-    // 移除 emoji（Unicode surrogate pairs 和 emoji 范围）
-    .replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Emoticons
-    .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // Misc Symbols and Pictographs
-    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Transport and Map
-    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '') // Flags
-    .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Misc symbols
-    .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Dingbats
-    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')   // Variation Selectors
-    .replace(/[\u{1F900}-\u{1F9FF}]/gu, '') // Supplemental Symbols
-    .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '') // Chess Symbols
-    .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '') // Symbols and Pictographs Extended-A
-    .replace(/[\u{231A}-\u{231B}]/gu, '')   // Watch, Hourglass
-    .replace(/[\u{23E9}-\u{23F3}]/gu, '')   // Various symbols
-    .replace(/[\u{23F8}-\u{23FA}]/gu, '')   // Various symbols
-    .replace(/[\u{25AA}-\u{25AB}]/gu, '')   // Squares
-    .replace(/[\u{25B6}]/gu, '')            // Play button
-    .replace(/[\u{25C0}]/gu, '')            // Reverse button
-    .replace(/[\u{25FB}-\u{25FE}]/gu, '')   // Squares
-    .replace(/[\u{200D}]/gu, '')            // Zero Width Joiner
-    .replace(/[\u{20E3}]/gu, '')            // Combining Enclosing Keycap
+    .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
+    .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
+    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
+    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '')
+    .replace(/[\u{2600}-\u{26FF}]/gu, '')
+    .replace(/[\u{2700}-\u{27BF}]/gu, '')
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')
+    .replace(/[\u{1F900}-\u{1F9FF}]/gu, '')
+    .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '')
+    .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '')
+    .replace(/[\u{231A}-\u{231B}]/gu, '')
+    .replace(/[\u{23E9}-\u{23F3}]/gu, '')
+    .replace(/[\u{23F8}-\u{23FA}]/gu, '')
+    .replace(/[\u{25AA}-\u{25AB}]/gu, '')
+    .replace(/[\u{25B6}]/gu, '')
+    .replace(/[\u{25C0}]/gu, '')
+    .replace(/[\u{25FB}-\u{25FE}]/gu, '')
+    .replace(/[\u{200D}]/gu, '')
+    .replace(/[\u{20E3}]/gu, '')
     .trim();
 }
 
@@ -54,13 +49,6 @@ export interface CheckCreditsResult {
 
 /**
  * 检查用户积分是否足够
- *
- * 正式用户总可用积分 = credits（永久积分） + monthly_credits（当月积分）
- *
- * @param userId 用户 ID
- * @param required 所需积分
- * @param isAnonymous 是否为匿名用户
- * @returns 检查结果（是否足够、当前积分）
  */
 export async function checkCredits(
   userId: string,
@@ -68,63 +56,46 @@ export async function checkCredits(
   isAnonymous: boolean
 ): Promise<CheckCreditsResult> {
   if (isAnonymous) {
-    const user = await prisma.anonymous_users.findUnique({
-      where: { user_id: userId },
-      select: { credits: true },
-    });
+    const [user] = await db.select({ credits: anonymousUsers.credits })
+      .from(anonymousUsers)
+      .where(eq(anonymousUsers.userId, userId))
+      .limit(1);
     const current = user?.credits ?? 0;
     return { hasEnough: current >= required, current };
   } else {
-    const user = await prisma.users.findUnique({
-      where: { user_id: userId },
-      select: { credits: true, monthly_credits: true },
-    });
-    // 总可用积分 = 永久积分 + 当月积分
-    const current = (user?.credits ?? 0) + (user?.monthly_credits ?? 0);
+    const [user] = await db.select({ credits: users.credits, monthlyCredits: users.monthlyCredits })
+      .from(users)
+      .where(eq(users.userId, userId))
+      .limit(1);
+    const current = (user?.credits ?? 0) + (user?.monthlyCredits ?? 0);
     return { hasEnough: current >= required, current };
   }
 }
 
 /**
  * 获取用户当前积分
- *
- * 正式用户总可用积分 = credits（永久积分） + monthly_credits（当月积分）
- *
- * @param userId 用户 ID
- * @param isAnonymous 是否为匿名用户
- * @returns 当前积分数量
  */
 export async function getCredits(
   userId: string,
   isAnonymous: boolean
 ): Promise<number> {
   if (isAnonymous) {
-    const user = await prisma.anonymous_users.findUnique({
-      where: { user_id: userId },
-      select: { credits: true },
-    });
+    const [user] = await db.select({ credits: anonymousUsers.credits })
+      .from(anonymousUsers)
+      .where(eq(anonymousUsers.userId, userId))
+      .limit(1);
     return user?.credits ?? 0;
   } else {
-    const user = await prisma.users.findUnique({
-      where: { user_id: userId },
-      select: { credits: true, monthly_credits: true },
-    });
-    // 总可用积分 = 永久积分 + 当月积分
-    return (user?.credits ?? 0) + (user?.monthly_credits ?? 0);
+    const [user] = await db.select({ credits: users.credits, monthlyCredits: users.monthlyCredits })
+      .from(users)
+      .where(eq(users.userId, userId))
+      .limit(1);
+    return (user?.credits ?? 0) + (user?.monthlyCredits ?? 0);
   }
 }
 
 /**
  * 扣除积分并记录到历史
- *
- * 扣减顺序：先扣当月积分(monthly_credits)，再扣永久积分(credits)
- *
- * @param userId 用户 ID
- * @param amount 扣除数量
- * @param productType 产品类型
- * @param isAnonymous 是否为匿名用户
- * @param description 描述信息
- * @param taskId 任务 ID（可选）
  */
 export async function deductCredits(
   userId: string,
@@ -136,50 +107,41 @@ export async function deductCredits(
 ): Promise<void> {
   const tableName = isAnonymous ? 'anonymous_users' : 'users';
 
-  // 扣除积分并更新累计使用量
   if (isAnonymous) {
-    // 匿名用户：直接从 credits 扣减（匿名用户没有分类积分）
-    await prisma.anonymous_users.update({
-      where: { user_id: userId },
-      data: {
-        credits: { decrement: amount },
-        total_credits_used: { increment: amount },
-      },
-    });
+    await db.update(anonymousUsers)
+      .set({
+        credits: sql`${anonymousUsers.credits} - ${amount}`,
+        totalCreditsUsed: sql`${anonymousUsers.totalCreditsUsed} + ${amount}`,
+      })
+      .where(eq(anonymousUsers.userId, userId));
   } else {
-    // 正式用户：先扣当月积分，再扣永久积分(credits)
-    const user = await prisma.users.findUnique({
-      where: { user_id: userId },
-      select: { monthly_credits: true, credits: true },
-    });
+    const [user] = await db.select({ monthlyCredits: users.monthlyCredits, credits: users.credits })
+      .from(users)
+      .where(eq(users.userId, userId))
+      .limit(1);
 
     if (!user) {
       throw new Error('用户不存在');
     }
 
-    // 计算扣减分配：先扣当月积分，再扣永久积分
-    const fromMonthly = Math.min(user.monthly_credits, amount);
+    const fromMonthly = Math.min(user.monthlyCredits, amount);
     const fromCredits = amount - fromMonthly;
 
-    await prisma.users.update({
-      where: { user_id: userId },
-      data: {
-        credits: { decrement: fromCredits },
-        monthly_credits: { decrement: fromMonthly },
-        total_credits_used: { increment: amount },
-      },
-    });
+    await db.update(users)
+      .set({
+        credits: sql`${users.credits} - ${fromCredits}`,
+        monthlyCredits: sql`${users.monthlyCredits} - ${fromMonthly}`,
+        totalCreditsUsed: sql`${users.totalCreditsUsed} + ${amount}`,
+      })
+      .where(eq(users.userId, userId));
   }
 
-  // 记录到 credit_history
-  await prisma.credit_history.create({
-    data: {
-      user_id: userId,
-      amount: -amount,
-      description: sanitizeDescription(description),
-      product_type: productType,
-      task_id: taskId,
-    },
+  await db.insert(creditHistory).values({
+    userId,
+    amount: -amount,
+    description: sanitizeDescription(description),
+    productType,
+    taskId,
   });
 
   console.log(`✅ [deductCredits] 扣除积分成功: ${amount}, 用户: ${userId}, 表: ${tableName}`);
@@ -187,16 +149,6 @@ export async function deductCredits(
 
 /**
  * 增加积分并记录到历史
- *
- * 购买/订阅/退款增加的积分会加到 credits（永久积分，永不过期）
- *
- * @param userId 用户 ID
- * @param amount 增加数量
- * @param productType 产品类型
- * @param isAnonymous 是否为匿名用户
- * @param description 描述信息
- * @param taskId 任务 ID（可选）
- * @param updateTotalUsed 是否更新累计使用量（默认 false，用于退款场景）
  */
 export async function addCredits(
   userId: string,
@@ -209,36 +161,28 @@ export async function addCredits(
 ): Promise<void> {
   const tableName = isAnonymous ? 'anonymous_users' : 'users';
 
-  // 增加积分，并根据需要更新累计使用量（退款时需要减少累计使用量）
   if (isAnonymous) {
-    // 匿名用户：只有一个 credits 字段
-    await prisma.anonymous_users.update({
-      where: { user_id: userId },
-      data: {
-        credits: { increment: amount },
-        ...(updateTotalUsed ? { total_credits_used: { decrement: amount } } : {}),
-      },
-    });
+    await db.update(anonymousUsers)
+      .set({
+        credits: sql`${anonymousUsers.credits} + ${amount}`,
+        ...(updateTotalUsed ? { totalCreditsUsed: sql`${anonymousUsers.totalCreditsUsed} - ${amount}` } : {}),
+      })
+      .where(eq(anonymousUsers.userId, userId));
   } else {
-    // 正式用户：购买/订阅/退款增加的积分加到 credits（永久积分）
-    await prisma.users.update({
-      where: { user_id: userId },
-      data: {
-        credits: { increment: amount },
-        ...(updateTotalUsed ? { total_credits_used: { decrement: amount } } : {}),
-      },
-    });
+    await db.update(users)
+      .set({
+        credits: sql`${users.credits} + ${amount}`,
+        ...(updateTotalUsed ? { totalCreditsUsed: sql`${users.totalCreditsUsed} - ${amount}` } : {}),
+      })
+      .where(eq(users.userId, userId));
   }
 
-  // 记录到 credit_history
-  await prisma.credit_history.create({
-    data: {
-      user_id: userId,
-      amount: amount,
-      description: sanitizeDescription(description),
-      product_type: productType,
-      task_id: taskId,
-    },
+  await db.insert(creditHistory).values({
+    userId,
+    amount,
+    description: sanitizeDescription(description),
+    productType,
+    taskId,
   });
 
   console.log(`✅ [addCredits] 增加积分成功: ${amount}, 用户: ${userId}, 表: ${tableName}`);
@@ -246,15 +190,6 @@ export async function addCredits(
 
 /**
  * 检查并扣除积分（组合操作）
- *
- * 常用于需要先检查积分是否足够，再扣除的场景
- *
- * @param userId 用户 ID
- * @param amount 扣除数量
- * @param productType 产品类型
- * @param isAnonymous 是否为匿名用户
- * @param description 描述信息
- * @throws {InsufficientCreditsError} 积分不足时抛出错误
  */
 export async function checkAndDeductCredits(
   userId: string,
@@ -263,7 +198,6 @@ export async function checkAndDeductCredits(
   isAnonymous: boolean,
   description: string
 ): Promise<void> {
-  // 检查积分
   const { hasEnough, current } = await checkCredits(userId, amount, isAnonymous);
 
   if (!hasEnough) {
@@ -271,7 +205,6 @@ export async function checkAndDeductCredits(
     throw new InsufficientCreditsError(amount, current);
   }
 
-  // 扣除积分
   await deductCredits(userId, amount, productType, isAnonymous, description);
 }
 
@@ -279,26 +212,13 @@ export async function checkAndDeductCredits(
  * 积分扣减详情（用于精确返还）
  */
 export interface DeductionBreakdown {
-  fromCredits: number;      // 从永久积分扣减的数量
-  fromMonthlyCredits: number; // 从当月积分扣减的数量
-  total: number;            // 总扣减数量
+  fromCredits: number;
+  fromMonthlyCredits: number;
+  total: number;
 }
 
 /**
  * 原子性扣除积分（使用事务）
- *
- * 使用乐观锁机制，确保扣除时余额充足，避免竞态条件
- * 适用于高并发场景（如任务队列处理）
- * 扣减顺序：先扣当月积分(monthly_credits)，再扣永久积分(credits)
- *
- * @param userId 用户 ID
- * @param amount 扣除数量
- * @param productType 产品类型
- * @param isAnonymous 是否为匿名用户
- * @param description 描述信息
- * @param taskId 任务 ID（可选）
- * @returns 扣减详情，包含从各积分池扣减的具体数量
- * @throws {Error} 余额不足时抛出错误
  */
 export async function deductCreditsAtomic(
   userId: string,
@@ -314,21 +234,19 @@ export async function deductCreditsAtomic(
     total: amount,
   };
 
-  await prisma.$transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     if (isAnonymous) {
-      // 匿名用户：直接从 credits 扣减（匿名用户没有 monthly_credits）
-      const result = await tx.anonymous_users.updateMany({
-        where: {
-          user_id: userId,
-          credits: { gte: amount },
-        },
-        data: {
-          credits: { decrement: amount },
-          total_credits_used: { increment: amount },
-        },
-      });
+      const result = await tx.update(anonymousUsers)
+        .set({
+          credits: sql`${anonymousUsers.credits} - ${amount}`,
+          totalCreditsUsed: sql`${anonymousUsers.totalCreditsUsed} + ${amount}`,
+        })
+        .where(and(
+          eq(anonymousUsers.userId, userId),
+          gte(anonymousUsers.credits, amount)
+        ));
 
-      if (result.count === 0) {
+      if (result.rowCount === 0) {
         throw new Error('积分扣减失败，余额不足');
       }
 
@@ -338,30 +256,26 @@ export async function deductCreditsAtomic(
         total: amount,
       };
     } else {
-      // 正式用户：先查询当前积分分布，再计算扣减分配
-      const user = await tx.users.findUnique({
-        where: { user_id: userId },
-        select: { credits: true, monthly_credits: true },
-      });
+      const [user] = await tx.select({ credits: users.credits, monthlyCredits: users.monthlyCredits })
+        .from(users)
+        .where(eq(users.userId, userId))
+        .limit(1);
 
-      // 总可用积分 = 永久积分 + 当月积分
-      const totalCredits = (user?.credits ?? 0) + (user?.monthly_credits ?? 0);
+      const totalCredits = (user?.credits ?? 0) + (user?.monthlyCredits ?? 0);
       if (!user || totalCredits < amount) {
         throw new Error('积分扣减失败，余额不足');
       }
 
-      // 计算扣减分配：先扣当月积分，再扣永久积分(credits)
-      const fromMonthly = Math.min(user.monthly_credits, amount);
+      const fromMonthly = Math.min(user.monthlyCredits, amount);
       const fromCredits = amount - fromMonthly;
 
-      await tx.users.update({
-        where: { user_id: userId },
-        data: {
-          credits: { decrement: fromCredits },
-          monthly_credits: { decrement: fromMonthly },
-          total_credits_used: { increment: amount },
-        },
-      });
+      await tx.update(users)
+        .set({
+          credits: sql`${users.credits} - ${fromCredits}`,
+          monthlyCredits: sql`${users.monthlyCredits} - ${fromMonthly}`,
+          totalCreditsUsed: sql`${users.totalCreditsUsed} + ${amount}`,
+        })
+        .where(eq(users.userId, userId));
 
       breakdown = {
         fromCredits,
@@ -370,15 +284,12 @@ export async function deductCreditsAtomic(
       };
     }
 
-    // 记录到 credit_history
-    await tx.credit_history.create({
-      data: {
-        user_id: userId,
-        amount: -amount,
-        description: sanitizeDescription(description),
-        product_type: productType,
-        task_id: taskId,
-      },
+    await tx.insert(creditHistory).values({
+      userId,
+      amount: -amount,
+      description: sanitizeDescription(description),
+      productType,
+      taskId,
     });
   });
 
@@ -389,13 +300,6 @@ export async function deductCreditsAtomic(
 
 /**
  * 精确返还积分（根据扣减详情返还到原处）
- *
- * @param userId 用户 ID
- * @param breakdown 扣减详情
- * @param productType 产品类型
- * @param isAnonymous 是否为匿名用户
- * @param description 描述信息
- * @param taskId 任务 ID（可选）
  */
 export async function refundCredits(
   userId: string,
@@ -405,37 +309,30 @@ export async function refundCredits(
   description: string,
   taskId?: string
 ): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     if (isAnonymous) {
-      // 匿名用户：返还到 credits
-      await tx.anonymous_users.update({
-        where: { user_id: userId },
-        data: {
-          credits: { increment: breakdown.total },
-          total_credits_used: { decrement: breakdown.total },
-        },
-      });
+      await tx.update(anonymousUsers)
+        .set({
+          credits: sql`${anonymousUsers.credits} + ${breakdown.total}`,
+          totalCreditsUsed: sql`${anonymousUsers.totalCreditsUsed} - ${breakdown.total}`,
+        })
+        .where(eq(anonymousUsers.userId, userId));
     } else {
-      // 正式用户：精确返还到原来的积分池
-      await tx.users.update({
-        where: { user_id: userId },
-        data: {
-          credits: { increment: breakdown.fromCredits },
-          monthly_credits: { increment: breakdown.fromMonthlyCredits },
-          total_credits_used: { decrement: breakdown.total },
-        },
-      });
+      await tx.update(users)
+        .set({
+          credits: sql`${users.credits} + ${breakdown.fromCredits}`,
+          monthlyCredits: sql`${users.monthlyCredits} + ${breakdown.fromMonthlyCredits}`,
+          totalCreditsUsed: sql`${users.totalCreditsUsed} - ${breakdown.total}`,
+        })
+        .where(eq(users.userId, userId));
     }
 
-    // 记录到 credit_history
-    await tx.credit_history.create({
-      data: {
-        user_id: userId,
-        amount: breakdown.total,
-        description: sanitizeDescription(description),
-        product_type: productType,
-        task_id: taskId,
-      },
+    await tx.insert(creditHistory).values({
+      userId,
+      amount: breakdown.total,
+      description: sanitizeDescription(description),
+      productType,
+      taskId,
     });
   });
 
@@ -444,15 +341,6 @@ export async function refundCredits(
 
 /**
  * 简化版积分返还（不需要 breakdown 信息）
- *
- * 用于 KIE 等异步任务失败时的积分返还，此时无法获取原始扣减详情。
- * 返还的积分全部加到永久积分(credits)，对用户更有利（永久积分不会过期）。
- *
- * @param userId 用户 ID
- * @param amount 返还数量
- * @param productType 产品类型
- * @param description 描述信息
- * @param taskId 任务 ID（可选）
  */
 export async function refundCreditsSimple(
   userId: string,
@@ -461,44 +349,36 @@ export async function refundCreditsSimple(
   description: string,
   taskId?: string
 ): Promise<void> {
-  // 判断是否为匿名用户：先尝试在 users 表中查找
-  const normalUser = await prisma.users.findUnique({
-    where: { user_id: userId },
-    select: { user_id: true },
-  });
+  const [normalUser] = await db.select({ userId: users.userId })
+    .from(users)
+    .where(eq(users.userId, userId))
+    .limit(1);
 
   const isAnonymous = !normalUser;
 
-  await prisma.$transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     if (isAnonymous) {
-      // 匿名用户：返还到 credits
-      await tx.anonymous_users.update({
-        where: { user_id: userId },
-        data: {
-          credits: { increment: amount },
-          total_credits_used: { decrement: amount },
-        },
-      });
+      await tx.update(anonymousUsers)
+        .set({
+          credits: sql`${anonymousUsers.credits} + ${amount}`,
+          totalCreditsUsed: sql`${anonymousUsers.totalCreditsUsed} - ${amount}`,
+        })
+        .where(eq(anonymousUsers.userId, userId));
     } else {
-      // 正式用户：返还到永久积分(credits)
-      await tx.users.update({
-        where: { user_id: userId },
-        data: {
-          credits: { increment: amount },
-          total_credits_used: { decrement: amount },
-        },
-      });
+      await tx.update(users)
+        .set({
+          credits: sql`${users.credits} + ${amount}`,
+          totalCreditsUsed: sql`${users.totalCreditsUsed} - ${amount}`,
+        })
+        .where(eq(users.userId, userId));
     }
 
-    // 记录到 credit_history
-    await tx.credit_history.create({
-      data: {
-        user_id: userId,
-        amount: amount,
-        description: sanitizeDescription(description),
-        product_type: productType,
-        task_id: taskId,
-      },
+    await tx.insert(creditHistory).values({
+      userId,
+      amount,
+      description: sanitizeDescription(description),
+      productType,
+      taskId,
     });
   });
 

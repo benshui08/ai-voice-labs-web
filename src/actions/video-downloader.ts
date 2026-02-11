@@ -15,7 +15,8 @@ import { detectVideoPlatform } from '@/lib/services/youtube-downloader';
 import { parseVideo, downloadVideoFormat } from '@/lib/services/youtube-parser';
 import { checkCredits, deductCredits } from '@/lib/credits';
 import { uploadVideo } from '@/lib/services/r2-storage';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { videoDownloadRecords } from '@/db/schema';
 
 // 视频格式信息
 export interface VideoFormat {
@@ -90,15 +91,13 @@ export async function parseVideoUrl(url: string): Promise<ParseResult> {
     if (!platform) {
       // 写入 FAILED 记录
       try {
-        await prisma.video_download_records.create({
-          data: {
-            user_id: userId,
-            url: url.slice(0, 2000),
-            platform: null,
-            status: 'FAILURE',
-            error_code: 'UNSUPPORTED_PLATFORM',
-            is_anonymous: isAnonymous,
-          },
+        await db.insert(videoDownloadRecords).values({
+          userId,
+          url: url.slice(0, 2000),
+          platform: null,
+          status: 'FAILURE',
+          errorCode: 'UNSUPPORTED_PLATFORM',
+          isAnonymous,
         });
       } catch (e) {
         console.error('[parseVideoUrl] 写入下载记录失败:', e);
@@ -151,17 +150,15 @@ export async function parseVideoUrl(url: string): Promise<ParseResult> {
 
     // 写入 SUCCESS 记录
     try {
-      await prisma.video_download_records.create({
-        data: {
-          user_id: userId,
-          url: url.slice(0, 2000),
-          platform,
-          video_title: data.title || null,
-          video_author: data.author || null,
-          status: 'SUCCESS',
-          credits_cost: requiredCredits,
-          is_anonymous: isAnonymous,
-        },
+      await db.insert(videoDownloadRecords).values({
+        userId,
+        url: url.slice(0, 2000),
+        platform,
+        videoTitle: data.title || null,
+        videoAuthor: data.author || null,
+        status: 'SUCCESS',
+        creditsCost: requiredCredits,
+        isAnonymous,
       });
     } catch (e) {
       console.error('[parseVideoUrl] 写入下载记录失败:', e);
@@ -190,15 +187,13 @@ export async function parseVideoUrl(url: string): Promise<ParseResult> {
     // 写入 FAILED 记录
     if (userId) {
       try {
-        await prisma.video_download_records.create({
-          data: {
-            user_id: userId,
-            url: url.slice(0, 2000),
-            platform: platform || null,
-            status: 'FAILURE',
-            error_code: errorCode,
-            is_anonymous: isAnonymous,
-          },
+        await db.insert(videoDownloadRecords).values({
+          userId,
+          url: url.slice(0, 2000),
+          platform: platform || null,
+          status: 'FAILURE',
+          errorCode,
+          isAnonymous,
         });
       } catch (e) {
         console.error('[parseVideoUrl] 写入下载记录失败:', e);

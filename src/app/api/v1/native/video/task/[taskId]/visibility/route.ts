@@ -5,7 +5,9 @@
  * 更新视频的公开/私有状态
  */
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { videoRecords } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 
 interface VisibilityRequest {
@@ -35,9 +37,7 @@ export async function PATCH(
     }
 
     // 4. 查询任务记录
-    const task = await prisma.video_records.findUnique({
-      where: { task_id: taskId },
-    });
+    const [task] = await db.select().from(videoRecords).where(eq(videoRecords.taskId, taskId)).limit(1);
 
     if (!task) {
       return NextResponse.json(
@@ -47,7 +47,7 @@ export async function PATCH(
     }
 
     // 5. 验证用户权限（只能修改自己的任务）
-    if (task.user_id !== user_id) {
+    if (task.userId !== user_id) {
       return NextResponse.json(
         { success: false, error: 'Access denied' },
         { status: 403 }
@@ -55,10 +55,9 @@ export async function PATCH(
     }
 
     // 6. 更新可见性
-    await prisma.video_records.update({
-      where: { task_id: taskId },
-      data: { is_public },
-    });
+    await db.update(videoRecords)
+      .set({ isPublic: is_public })
+      .where(eq(videoRecords.taskId, taskId));
 
     console.log(`🔒 [Video Visibility] ${taskId} -> ${is_public ? 'public' : 'private'}`);
 

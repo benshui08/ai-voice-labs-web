@@ -4,7 +4,9 @@
  * RVC Voice Models 管理 Server Actions
  * 管理 AI Cover 功能的声音模型
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { rvcVoiceModels } from '@/db/schema';
+import { eq, and, asc, desc } from 'drizzle-orm';
 import { generateRvcModelUploadUrl, generateRvcModelZipUploadUrl, generateImageUploadUrl, deleteRvcModelFile } from '@/lib/services/r2-storage';
 import { verifyAdminWithoutDb } from '@/lib/auth-admin';
 
@@ -13,17 +15,17 @@ export interface RvcVoiceModel {
   name: string;
   slug: string;
   category: string;
-  avatar_url: string | null;
-  sample_url: string | null;
-  model_url: string;
-  index_url: string | null;
-  uses_count: number;
-  is_builtin: boolean;
-  builtin_name: string | null;
-  is_active: boolean;
-  sort_order: number;
-  created_at: Date;
-  updated_at: Date | null;
+  avatarUrl: string | null;
+  sampleUrl: string | null;
+  modelUrl: string;
+  indexUrl: string | null;
+  usesCount: number;
+  isBuiltin: boolean;
+  builtinName: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string | null;
 }
 
 interface ActionResult {
@@ -40,14 +42,15 @@ export async function getRvcVoiceModels(params?: {
 }): Promise<RvcVoiceModel[]> {
   await verifyAdminWithoutDb();
 
-  const where: { category?: string; is_active?: boolean } = {};
-  if (params?.category) where.category = params.category;
-  if (params?.isActive !== undefined) where.is_active = params.isActive;
+  const conditions = [];
+  if (params?.category) conditions.push(eq(rvcVoiceModels.category, params.category));
+  if (params?.isActive !== undefined) conditions.push(eq(rvcVoiceModels.isActive, params.isActive));
 
-  const models = await prisma.rvc_voice_models.findMany({
-    where,
-    orderBy: [{ sort_order: 'asc' }, { uses_count: 'desc' }],
-  });
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const models = await db.select().from(rvcVoiceModels)
+    .where(whereClause)
+    .orderBy(asc(rvcVoiceModels.sortOrder), desc(rvcVoiceModels.usesCount));
 
   return models;
 }
@@ -58,11 +61,9 @@ export async function getRvcVoiceModels(params?: {
 export async function getRvcVoiceModel(id: number): Promise<RvcVoiceModel | null> {
   await verifyAdminWithoutDb();
 
-  const model = await prisma.rvc_voice_models.findUnique({
-    where: { id },
-  });
+  const [model] = await db.select().from(rvcVoiceModels).where(eq(rvcVoiceModels.id, id)).limit(1);
 
-  return model;
+  return model || null;
 }
 
 /**
@@ -197,30 +198,26 @@ export async function createRvcVoiceModel(data: {
 
   try {
     // 检查 slug 是否已存在
-    const existing = await prisma.rvc_voice_models.findUnique({
-      where: { slug: data.slug },
-    });
+    const [existing] = await db.select().from(rvcVoiceModels).where(eq(rvcVoiceModels.slug, data.slug)).limit(1);
 
     if (existing) {
       return { success: false, message: `Slug "${data.slug}" 已存在` };
     }
 
-    const model = await prisma.rvc_voice_models.create({
-      data: {
-        name: data.name,
-        slug: data.slug,
-        category: data.category,
-        model_url: data.model_url,
-        index_url: data.index_url || null,
-        avatar_url: data.avatar_url || null,
-        sample_url: data.sample_url || null,
-        is_builtin: data.is_builtin || false,
-        builtin_name: data.builtin_name || null,
-        is_active: true,
-        sort_order: data.sort_order || 0,
-        uses_count: 0,
-      },
-    });
+    const [model] = await db.insert(rvcVoiceModels).values({
+      name: data.name,
+      slug: data.slug,
+      category: data.category,
+      modelUrl: data.model_url,
+      indexUrl: data.index_url || null,
+      avatarUrl: data.avatar_url || null,
+      sampleUrl: data.sample_url || null,
+      isBuiltin: data.is_builtin || false,
+      builtinName: data.builtin_name || null,
+      isActive: true,
+      sortOrder: data.sort_order || 0,
+      usesCount: 0,
+    }).returning();
 
     console.log(`✅ RVC 模型创建成功: ${data.name}`);
 
@@ -259,21 +256,18 @@ export async function updateRvcVoiceModel(
   await verifyAdminWithoutDb();
 
   try {
-    await prisma.rvc_voice_models.update({
-      where: { id },
-      data: {
-        ...(data.name !== undefined && { name: data.name }),
-        ...(data.category !== undefined && { category: data.category }),
-        ...(data.model_url !== undefined && { model_url: data.model_url }),
-        ...(data.index_url !== undefined && { index_url: data.index_url }),
-        ...(data.avatar_url !== undefined && { avatar_url: data.avatar_url }),
-        ...(data.sample_url !== undefined && { sample_url: data.sample_url }),
-        ...(data.is_builtin !== undefined && { is_builtin: data.is_builtin }),
-        ...(data.builtin_name !== undefined && { builtin_name: data.builtin_name }),
-        ...(data.is_active !== undefined && { is_active: data.is_active }),
-        ...(data.sort_order !== undefined && { sort_order: data.sort_order }),
-      },
-    });
+    await db.update(rvcVoiceModels).set({
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.category !== undefined && { category: data.category }),
+      ...(data.model_url !== undefined && { modelUrl: data.model_url }),
+      ...(data.index_url !== undefined && { indexUrl: data.index_url }),
+      ...(data.avatar_url !== undefined && { avatarUrl: data.avatar_url }),
+      ...(data.sample_url !== undefined && { sampleUrl: data.sample_url }),
+      ...(data.is_builtin !== undefined && { isBuiltin: data.is_builtin }),
+      ...(data.builtin_name !== undefined && { builtinName: data.builtin_name }),
+      ...(data.is_active !== undefined && { isActive: data.is_active }),
+      ...(data.sort_order !== undefined && { sortOrder: data.sort_order }),
+    }).where(eq(rvcVoiceModels.id, id));
 
     return { success: true, message: '更新成功' };
   } catch (error) {
@@ -292,23 +286,21 @@ export async function deleteRvcVoiceModel(id: number): Promise<ActionResult> {
   await verifyAdminWithoutDb();
 
   try {
-    const model = await prisma.rvc_voice_models.findUnique({
-      where: { id },
-    });
+    const [model] = await db.select().from(rvcVoiceModels).where(eq(rvcVoiceModels.id, id)).limit(1);
 
     if (!model) {
       return { success: false, message: '模型不存在' };
     }
 
     // 删除 R2 中的文件（如果是自定义模型）
-    if (!model.is_builtin) {
+    if (!model.isBuiltin) {
       try {
         // 从 URL 提取 key
-        const modelKey = model.model_url.split('/').slice(-2).join('/');
+        const modelKey = model.modelUrl.split('/').slice(-2).join('/');
         await deleteRvcModelFile(modelKey);
 
-        if (model.index_url) {
-          const indexKey = model.index_url.split('/').slice(-2).join('/');
+        if (model.indexUrl) {
+          const indexKey = model.indexUrl.split('/').slice(-2).join('/');
           await deleteRvcModelFile(indexKey);
         }
       } catch (e) {
@@ -317,9 +309,7 @@ export async function deleteRvcVoiceModel(id: number): Promise<ActionResult> {
     }
 
     // 删除数据库记录
-    await prisma.rvc_voice_models.delete({
-      where: { id },
-    });
+    await db.delete(rvcVoiceModels).where(eq(rvcVoiceModels.id, id));
 
     console.log(`✅ RVC 模型删除成功: ${model.name}`);
 
@@ -340,22 +330,17 @@ export async function toggleRvcVoiceModelActive(id: number): Promise<ActionResul
   await verifyAdminWithoutDb();
 
   try {
-    const model = await prisma.rvc_voice_models.findUnique({
-      where: { id },
-    });
+    const [model] = await db.select().from(rvcVoiceModels).where(eq(rvcVoiceModels.id, id)).limit(1);
 
     if (!model) {
       return { success: false, message: '模型不存在' };
     }
 
-    await prisma.rvc_voice_models.update({
-      where: { id },
-      data: { is_active: !model.is_active },
-    });
+    await db.update(rvcVoiceModels).set({ isActive: !model.isActive }).where(eq(rvcVoiceModels.id, id));
 
     return {
       success: true,
-      message: model.is_active ? '已禁用' : '已启用',
+      message: model.isActive ? '已禁用' : '已启用',
     };
   } catch (error) {
     console.error('切换状态失败:', error);
@@ -382,23 +367,19 @@ export async function createBuiltinModels(): Promise<ActionResult> {
 
     let created = 0;
     for (const model of builtinModels) {
-      const existing = await prisma.rvc_voice_models.findUnique({
-        where: { slug: model.slug },
-      });
+      const [existing] = await db.select().from(rvcVoiceModels).where(eq(rvcVoiceModels.slug, model.slug)).limit(1);
 
       if (!existing) {
-        await prisma.rvc_voice_models.create({
-          data: {
-            name: model.name,
-            slug: model.slug,
-            category: model.category,
-            model_url: '', // 内置模型不需要 URL
-            is_builtin: true,
-            builtin_name: model.builtin_name,
-            is_active: true,
-            sort_order: 0,
-            uses_count: 0,
-          },
+        await db.insert(rvcVoiceModels).values({
+          name: model.name,
+          slug: model.slug,
+          category: model.category,
+          modelUrl: '', // 内置模型不需要 URL
+          isBuiltin: true,
+          builtinName: model.builtin_name,
+          isActive: true,
+          sortOrder: 0,
+          usesCount: 0,
         });
         created++;
       }

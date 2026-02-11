@@ -3,7 +3,9 @@
 /**
  * ElevenLabs Dialogue 语音同步 Server Actions
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { voices } from '@/db/schema';
+import { eq, and, count, asc } from 'drizzle-orm';
 import { verifyAdminWithoutDb } from '@/lib/auth-admin';
 import { DIALOGUE_ALL_VOICES, getVoiceSampleUrl } from '@/config/native/dialogueConfig';
 
@@ -27,18 +29,15 @@ export async function getElevenlabsDialogueStats(): Promise<{
 }> {
   await verifyAdminWithoutDb();
 
-  const dbCount = await prisma.voices.count({
-    where: { provider: 'elevenlabs_dialogue' },
-  });
-
-  const activeCount = await prisma.voices.count({
-    where: { provider: 'elevenlabs_dialogue', is_active: true },
-  });
+  const [[{ total: dbCount }], [{ total: activeCount }]] = await Promise.all([
+    db.select({ total: count() }).from(voices).where(eq(voices.provider, 'elevenlabs_dialogue')),
+    db.select({ total: count() }).from(voices).where(and(eq(voices.provider, 'elevenlabs_dialogue'), eq(voices.isActive, true))),
+  ]);
 
   return {
     total: DIALOGUE_ALL_VOICES.length,
-    dbCount,
-    activeCount,
+    dbCount: Number(dbCount),
+    activeCount: Number(activeCount),
   };
 }
 
@@ -53,10 +52,8 @@ export async function syncElevenlabsDialogueVoices(): Promise<SyncResult> {
     console.log('🔄 开始同步 ElevenLabs Dialogue 声音...');
 
     // 获取已存在的声音
-    const existingVoices = await prisma.voices.findMany({
-      where: { provider: 'elevenlabs_dialogue' },
-      select: { id: true, name: true },
-    });
+    const existingVoices = await db.select({ id: voices.id, name: voices.name }).from(voices)
+      .where(eq(voices.provider, 'elevenlabs_dialogue'));
     const existingMap = new Map(existingVoices.map((v) => [v.name, v.id]));
 
     let inserted = 0;
@@ -75,37 +72,32 @@ export async function syncElevenlabsDialogueVoices(): Promise<SyncResult> {
 
       if (existingMap.has(voiceName)) {
         // 更新已存在的声音
-        await prisma.voices.update({
-          where: { id: existingMap.get(voiceName) },
-          data: {
-            display_name: voice.name,
-            gender: voice.gender,
-            avatar_url: avatarUrl,
-            voice_sample_url: voiceSampleUrl,
-            tags: ['dialogue', 'elevenlabs'],
-          },
-        });
+        await db.update(voices).set({
+          displayName: voice.name,
+          gender: voice.gender,
+          avatarUrl: avatarUrl,
+          voiceSampleUrl: voiceSampleUrl,
+          tags: ['dialogue', 'elevenlabs'],
+        }).where(eq(voices.id, existingMap.get(voiceName)!));
         updated++;
         console.log(`🔄 更新: ${voice.name}`);
       } else {
         // 新增声音
-        await prisma.voices.create({
-          data: {
-            name: voiceName,
-            display_name: voice.name,
-            provider: 'elevenlabs_dialogue',
-            locale: 'en-US',
-            country: 'US',
-            role: 'standard',
-            gender: voice.gender,
-            avatar_url: avatarUrl,
-            voice_sample_url: voiceSampleUrl,
-            voice_sample_text: '',
-            tags: ['dialogue', 'elevenlabs'],
-            style_list: ['default'],
-            is_active: true,
-            sort_order: 0,
-          },
+        await db.insert(voices).values({
+          name: voiceName,
+          displayName: voice.name,
+          provider: 'elevenlabs_dialogue',
+          locale: 'en-US',
+          country: 'US',
+          role: 'standard',
+          gender: voice.gender,
+          avatarUrl: avatarUrl,
+          voiceSampleUrl: voiceSampleUrl,
+          voiceSampleText: '',
+          tags: ['dialogue', 'elevenlabs'],
+          styleList: ['default'],
+          isActive: true,
+          sortOrder: 0,
         });
         inserted++;
         console.log(`✅ 新增: ${voice.name}`);
@@ -142,28 +134,23 @@ export async function getElevenlabsDialogueVoices(): Promise<
     voice_sample_url: Record<string, string>;
   }>
 > {
-  const voices = await prisma.voices.findMany({
-    where: {
-      provider: 'elevenlabs_dialogue',
-      is_active: true,
-    },
-    select: {
-      id: true,
-      name: true,
-      display_name: true,
-      gender: true,
-      avatar_url: true,
-      voice_sample_url: true,
-    },
-    orderBy: [{ sort_order: 'asc' }, { display_name: 'asc' }],
-  });
+  const result = await db.select({
+    id: voices.id,
+    name: voices.name,
+    displayName: voices.displayName,
+    gender: voices.gender,
+    avatarUrl: voices.avatarUrl,
+    voiceSampleUrl: voices.voiceSampleUrl,
+  }).from(voices)
+    .where(and(eq(voices.provider, 'elevenlabs_dialogue'), eq(voices.isActive, true)))
+    .orderBy(asc(voices.sortOrder), asc(voices.displayName));
 
-  return voices.map((v) => ({
+  return result.map((v) => ({
     id: v.name.replace('elevenlabs_dialogue:', ''), // 返回原始 voice ID (如 'Adam')
     name: v.name,
-    display_name: v.display_name || '',
+    display_name: v.displayName || '',
     gender: v.gender,
-    avatar_url: v.avatar_url,
-    voice_sample_url: (v.voice_sample_url as Record<string, string>) || {},
+    avatar_url: v.avatarUrl,
+    voice_sample_url: (v.voiceSampleUrl as Record<string, string>) || {},
   }));
 }

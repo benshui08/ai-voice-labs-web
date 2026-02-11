@@ -12,7 +12,9 @@
  */
 
 import { getCurrentUser } from '@/lib/auth-firebase';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { creditHistory } from '@/db/schema';
+import { eq, and, ilike } from 'drizzle-orm';
 import { addCredits } from '@/lib/credits';
 import { ProductType } from '@/config/productType';
 import { getCreditPackByGooglePlayProductId } from '@/config/native/subscription';
@@ -78,12 +80,12 @@ export async function verifyGooglePlayCreditPackPurchase(params: {
 
     // ========== 第三步：检查是否已处理过此购买（防止重复发放）==========
     // 使用完整的 purchaseToken 作为唯一标识
-    const existingPurchase = await prisma.credit_history.findFirst({
-      where: {
-        user_id: userId,
-        description: { contains: `Token:${purchaseToken.substring(0, 100)}` },
-      },
-    });
+    const [existingPurchase] = await db.select().from(creditHistory)
+      .where(and(
+        eq(creditHistory.userId, userId),
+        ilike(creditHistory.description, `%Token:${purchaseToken.substring(0, 100)}%`),
+      ))
+      .limit(1);
 
     if (existingPurchase) {
       console.log(`⏭️ [GooglePlay] Purchase already processed: ${purchaseToken.substring(0, 30)}...`);

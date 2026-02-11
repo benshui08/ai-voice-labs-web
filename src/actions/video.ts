@@ -3,7 +3,9 @@
 /**
  * Video 模块 Server Actions
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { videoRecords, taskQueue, anonymousUsers, users, creditHistory } from '@/db/schema';
+import { eq, and, desc, count, gte, lte, inArray, sql } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 import { v4 as uuidv4 } from 'uuid';
 import { nanoid } from 'nanoid';
@@ -126,52 +128,48 @@ export async function createVideoTask(request: VideoGenerationRequest): Promise<
 
     // 4. 创建视频记录
     const shareId = generateShareId();
-    await prisma.video_records.create({
-      data: {
-        user_id: userId,
-        task_id: taskId,
-        task_type: 'text_to_video',
-        model,
+    await db.insert(videoRecords).values({
+      userId,
+      taskId,
+      taskType: 'text_to_video',
+      model,
+      prompt: request.prompt,
+      promptZh: request.prompt_zh || null,
+      negativePrompt: request.negative_prompt || null,
+      resolution: request.resolution,
+      duration: request.duration,
+      aspectRatio: request.aspect_ratio,
+      seed: request.seed,
+      isPublic: false,
+      creditsCost: requiredCredits,
+      status: 'PENDING',
+      progress: 0,
+      format: 'mp4',
+      shareId,
+    });
+
+    // 5. 创建任务队列记录
+    await db.insert(taskQueue).values({
+      taskId,
+      taskType: 'TEXT_TO_VIDEO',
+      userId,
+      status: 'PENDING',
+      priority: 5,
+      payload: {
         prompt: request.prompt,
         prompt_zh: request.prompt_zh || null,
         negative_prompt: request.negative_prompt || null,
         resolution: request.resolution,
         duration: request.duration,
         aspect_ratio: request.aspect_ratio,
+        model,
         seed: request.seed,
-        is_public: false,
         credits_cost: requiredCredits,
-        status: 'PENDING',
-        progress: 0,
-        format: 'mp4',
-        share_id: shareId,
+        is_anonymous: isAnonymous,
       },
-    });
-
-    // 5. 创建任务队列记录
-    await prisma.task_queue.create({
-      data: {
-        task_id: taskId,
-        task_type: 'TEXT_TO_VIDEO',
-        user_id: userId,
-        status: 'PENDING',
-        priority: 5,
-        payload: {
-          prompt: request.prompt,
-          prompt_zh: request.prompt_zh || null,
-          negative_prompt: request.negative_prompt || null,
-          resolution: request.resolution,
-          duration: request.duration,
-          aspect_ratio: request.aspect_ratio,
-          model,
-          seed: request.seed,
-          credits_cost: requiredCredits,
-          is_anonymous: isAnonymous,
-        },
-        retry_count: 0,
-        max_retries: 2,
-        timeout_seconds: 600,
-      },
+      retryCount: 0,
+      maxRetries: 2,
+      timeoutSeconds: 600,
     });
 
     console.log(`视频任务已创建: ${taskId}, 用户: ${userId}, 积分: ${requiredCredits}`);
@@ -189,36 +187,31 @@ export async function createVideoTask(request: VideoGenerationRequest): Promise<
 
     // 7. API 成功后扣减积分
     if (isAnonymous) {
-      await prisma.anonymous_users.update({
-        where: { user_id: userId },
-        data: { credits: { decrement: requiredCredits } },
-      });
+      await db.update(anonymousUsers)
+        .set({ credits: sql`${anonymousUsers.credits} - ${requiredCredits}` })
+        .where(eq(anonymousUsers.userId, userId));
     } else {
-      await prisma.users.update({
-        where: { user_id: userId },
-        data: { credits: { decrement: requiredCredits } },
-      });
+      await db.update(users)
+        .set({ credits: sql`${users.credits} - ${requiredCredits}` })
+        .where(eq(users.userId, userId));
     }
 
-    await prisma.credit_history.create({
-      data: {
-        user_id: userId,
-        amount: -requiredCredits,
-        task_id: taskId,
-        description: `AI Video generation (Seedance 1.5 Pro)`,
-        product_type: 'text_to_video',
-      },
+    await db.insert(creditHistory).values({
+      userId,
+      amount: -requiredCredits,
+      taskId,
+      description: `AI Video generation (Seedance 1.5 Pro)`,
+      productType: 'text_to_video',
     });
 
     // 8. 保存外部任务 ID，更新状态为 PROCESSING
-    await prisma.video_records.update({
-      where: { task_id: taskId },
-      data: {
-        external_task_id: externalTaskId,
+    await db.update(videoRecords)
+      .set({
+        externalTaskId,
         status: 'PROCESSING',
         progress: 10,
-      },
-    });
+      })
+      .where(eq(videoRecords.taskId, taskId));
 
     console.log(`✅ 视频任务已提交到 Kie.ai: ${taskId} -> ${externalTaskId}`);
 
@@ -276,9 +269,7 @@ async function downloadAndUploadVideoToR2(
  * 对于 PROCESSING 任务，主动查询 Kie.ai API 获取最新状态（和 Music 相同的轮询兜底模式）
  */
 export async function getVideoTaskStatus(taskId: string): Promise<VideoTaskStatus> {
-  const record = await prisma.video_records.findUnique({
-    where: { task_id: taskId },
-  });
+  const [record] = await db.select().from(videoRecords).where(eq(videoRecords.taskId, taskId)).limit(1);
 
   if (!record) {
     throw new Error(`Task not found: ${taskId}`);
@@ -287,13 +278,13 @@ export async function getVideoTaskStatus(taskId: string): Promise<VideoTaskStatu
   // 如果任务还在处理中，且有外部任务 ID，直接查询 Kie.ai API
   // 不完全依赖回调（回调可能失败），作为轮询兜底
   // 超时判断：只在任务创建后 30 分钟内查询，避免无限轮询
-  const taskAgeMinutes = (Date.now() - new Date(record.created_at).getTime()) / 1000 / 60;
+  const taskAgeMinutes = (Date.now() - new Date(record.createdAt).getTime()) / 1000 / 60;
   const isWithinTimeout = taskAgeMinutes < 30;
 
-  if (record.external_task_id && (record.status === 'PENDING' || record.status === 'PROCESSING') && isWithinTimeout) {
-    console.log(`🎬 [getVideoTaskStatus] 查询 Kie.ai API: ${record.external_task_id}, 任务已创建 ${taskAgeMinutes.toFixed(1)} 分钟`);
+  if (record.externalTaskId && (record.status === 'PENDING' || record.status === 'PROCESSING') && isWithinTimeout) {
+    console.log(`🎬 [getVideoTaskStatus] 查询 Kie.ai API: ${record.externalTaskId}, 任务已创建 ${taskAgeMinutes.toFixed(1)} 分钟`);
 
-    const kieStatus = await queryKieVideoTaskStatus(record.external_task_id);
+    const kieStatus = await queryKieVideoTaskStatus(record.externalTaskId);
 
     // 如果 Kie.ai 返回成功，下载视频到 R2 并更新数据库
     if (kieStatus.status === 'SUCCESS' && kieStatus.videoUrl) {
@@ -301,30 +292,28 @@ export async function getVideoTaskStatus(taskId: string): Promise<VideoTaskStatu
 
       const r2VideoUrl = await downloadAndUploadVideoToR2(
         kieStatus.videoUrl,
-        record.task_id,
-        record.user_id
+        record.taskId,
+        record.userId
       );
 
       const finalVideoUrl = r2VideoUrl || kieStatus.videoUrl;
 
-      await prisma.video_records.update({
-        where: { task_id: taskId },
-        data: {
+      await db.update(videoRecords)
+        .set({
           status: 'SUCCESS',
           progress: 100,
-          video_url: finalVideoUrl,
-          api_cost: kieStatus.costTime ? kieStatus.costTime / 1000 : null,
-          completed_at: new Date(),
-        },
-      });
+          videoUrl: finalVideoUrl,
+          apiCost: kieStatus.costTime ? kieStatus.costTime / 1000 : null,
+          completedAt: new Date().toISOString(),
+        })
+        .where(eq(videoRecords.taskId, taskId));
 
-      await prisma.task_queue.updateMany({
-        where: { task_id: taskId },
-        data: {
+      await db.update(taskQueue)
+        .set({
           status: 'SUCCESS',
-          completed_at: new Date(),
-        },
-      });
+          completedAt: new Date().toISOString(),
+        })
+        .where(eq(taskQueue.taskId, taskId));
 
       console.log('🎬 [getVideoTaskStatus] 视频处理完成');
 
@@ -334,12 +323,12 @@ export async function getVideoTaskStatus(taskId: string): Promise<VideoTaskStatu
         progress: 100,
         result: {
           video_url: finalVideoUrl,
-          duration: record.actual_duration || record.duration,
+          duration: record.actualDuration || record.duration,
           format: record.format,
           task_id: taskId,
-          user_id: record.user_id,
+          user_id: record.userId,
           record_id: record.id,
-          credits_cost: record.credits_cost,
+          credits_cost: record.creditsCost,
         },
         error: null,
       };
@@ -347,34 +336,31 @@ export async function getVideoTaskStatus(taskId: string): Promise<VideoTaskStatu
 
     // 如果 Kie.ai 返回失败，更新数据库并返还积分（使用乐观锁防止重复处理）
     if (kieStatus.status === 'FAILURE') {
-      const updateResult = await prisma.video_records.updateMany({
-        where: {
-          task_id: taskId,
-          status: 'PROCESSING', // 乐观锁：防止重复处理
-        },
-        data: {
+      const updateResult = await db.update(videoRecords)
+        .set({
           status: 'FAILURE',
           progress: 0,
-          error_message: kieStatus.error || 'Video generation failed',
-          completed_at: new Date(),
-        },
-      });
+          errorMessage: kieStatus.error || 'Video generation failed',
+          completedAt: new Date().toISOString(),
+        })
+        .where(and(eq(videoRecords.taskId, taskId), eq(videoRecords.status, 'PROCESSING')))
+        .returning();
 
-      // 如果更新成功（count > 0），说明是第一个处理的，需要返还积分
-      if (updateResult.count > 0 && record.credits_cost && record.credits_cost > 0) {
+      // 如果更新成功（返回了行），说明是第一个处理的，需要返还积分
+      if (updateResult.length > 0 && record.creditsCost && record.creditsCost > 0) {
         try {
           await refundCreditsSimple(
-            record.user_id,
-            record.credits_cost,
+            record.userId,
+            record.creditsCost,
             ProductType.TEXT_TO_VIDEO,
             `Video generation failed (KIE): ${kieStatus.error || 'Unknown error'}`,
-            record.task_id
+            record.taskId
           );
-          console.log(`💰 [getVideoTaskStatus] 积分已返还: ${record.credits_cost}`);
+          console.log(`💰 [getVideoTaskStatus] 积分已返还: ${record.creditsCost}`);
         } catch (refundError) {
           console.error(`❌ [getVideoTaskStatus] 积分返还失败:`, refundError);
         }
-      } else if (updateResult.count === 0) {
+      } else if (updateResult.length === 0) {
         console.log(`⚠️ [getVideoTaskStatus] 任务已被其他请求处理，跳过积分返还: ${taskId}`);
       }
 
@@ -389,10 +375,9 @@ export async function getVideoTaskStatus(taskId: string): Promise<VideoTaskStatu
 
     // 仍在处理中，更新进度
     if (kieStatus.progress !== record.progress) {
-      await prisma.video_records.update({
-        where: { task_id: taskId },
-        data: { progress: kieStatus.progress },
-      });
+      await db.update(videoRecords)
+        .set({ progress: kieStatus.progress })
+        .where(eq(videoRecords.taskId, taskId));
     }
 
     return {
@@ -430,13 +415,13 @@ export async function getVideoTaskStatus(taskId: string): Promise<VideoTaskStatu
         status: 'SUCCESS',
         progress: 100,
         result: {
-          video_url: record.video_url || '',
-          duration: record.actual_duration || record.duration,
+          video_url: record.videoUrl || '',
+          duration: record.actualDuration || record.duration,
           format: record.format,
           task_id: taskId,
-          user_id: record.user_id,
+          user_id: record.userId,
           record_id: record.id,
-          credits_cost: record.credits_cost,
+          credits_cost: record.creditsCost,
         },
         error: null,
       };
@@ -447,7 +432,7 @@ export async function getVideoTaskStatus(taskId: string): Promise<VideoTaskStatu
         status: 'FAILURE',
         progress: 0,
         result: null,
-        error: record.error_message,
+        error: record.errorMessage,
       };
 
     default:
@@ -462,37 +447,36 @@ export async function getVideoRecords(limit: number = 50): Promise<VideoRecord[]
   const unifiedUser = await getUserOrAnonymous();
   const userId = unifiedUser.user_id;
 
-  const records = await prisma.video_records.findMany({
-    where: { user_id: userId },
-    orderBy: { created_at: 'desc' },
-    take: limit,
-  });
+  const records = await db.select().from(videoRecords)
+    .where(eq(videoRecords.userId, userId))
+    .orderBy(desc(videoRecords.createdAt))
+    .limit(limit);
 
   return records.map((r) => ({
     id: r.id,
-    user_id: r.user_id,
-    task_id: r.task_id,
-    task_type: r.task_type,
+    user_id: r.userId,
+    task_id: r.taskId,
+    task_type: r.taskType,
     model: r.model,
     prompt: r.prompt,
-    prompt_zh: r.prompt_zh,
-    negative_prompt: r.negative_prompt,
+    prompt_zh: r.promptZh,
+    negative_prompt: r.negativePrompt,
     resolution: r.resolution,
     duration: r.duration,
-    aspect_ratio: r.aspect_ratio,
+    aspect_ratio: r.aspectRatio,
     seed: r.seed,
-    is_public: r.is_public,
-    credits_cost: r.credits_cost,
+    is_public: r.isPublic,
+    credits_cost: r.creditsCost,
     status: r.status,
     progress: r.progress,
-    video_url: r.video_url,
-    thumbnail_url: r.thumbnail_url,
-    actual_duration: r.actual_duration,
+    video_url: r.videoUrl,
+    thumbnail_url: r.thumbnailUrl,
+    actual_duration: r.actualDuration,
     format: r.format,
-    error_message: r.error_message,
-    created_at: r.created_at,
-    completed_at: r.completed_at,
-    share_id: r.share_id,
+    error_message: r.errorMessage,
+    created_at: new Date(r.createdAt),
+    completed_at: r.completedAt ? new Date(r.completedAt) : null,
+    share_id: r.shareId,
   }));
 }
 
@@ -512,68 +496,64 @@ export async function queryVideoRecords(params: {
   const { status, start_date, end_date, page = 1, page_size = 20 } = params;
 
   // 构建查询条件
-  const where: Record<string, unknown> = {
-    user_id: userId,
-  };
+  const conditions = [eq(videoRecords.userId, userId)];
 
   if (status) {
     if (status.includes(',')) {
-      where.status = { in: status.split(',') };
+      conditions.push(inArray(videoRecords.status, status.split(',')));
     } else {
-      where.status = status;
+      conditions.push(eq(videoRecords.status, status));
     }
   }
 
-  if (start_date || end_date) {
-    where.created_at = {};
-    if (start_date) {
-      (where.created_at as Record<string, unknown>).gte = start_date;
-    }
-    if (end_date) {
-      (where.created_at as Record<string, unknown>).lte = end_date;
-    }
+  if (start_date) {
+    conditions.push(gte(videoRecords.createdAt, start_date.toISOString()));
   }
+  if (end_date) {
+    conditions.push(lte(videoRecords.createdAt, end_date.toISOString()));
+  }
+
+  const whereClause = and(...conditions);
 
   // 查询总数
-  const total = await prisma.video_records.count({ where });
+  const [{ total }] = await db.select({ total: count() }).from(videoRecords).where(whereClause);
 
   // 查询记录
   const offset = (page - 1) * page_size;
-  const records = await prisma.video_records.findMany({
-    where,
-    orderBy: { created_at: 'desc' },
-    skip: offset,
-    take: page_size,
-  });
+  const records = await db.select().from(videoRecords)
+    .where(whereClause)
+    .orderBy(desc(videoRecords.createdAt))
+    .offset(offset)
+    .limit(page_size);
 
   const total_pages = Math.ceil(total / page_size);
 
   return {
     records: records.map((r) => ({
       id: r.id,
-      user_id: r.user_id,
-      task_id: r.task_id,
-      task_type: r.task_type,
+      user_id: r.userId,
+      task_id: r.taskId,
+      task_type: r.taskType,
       model: r.model,
       prompt: r.prompt,
-      prompt_zh: r.prompt_zh,
-      negative_prompt: r.negative_prompt,
+      prompt_zh: r.promptZh,
+      negative_prompt: r.negativePrompt,
       resolution: r.resolution,
       duration: r.duration,
-      aspect_ratio: r.aspect_ratio,
+      aspect_ratio: r.aspectRatio,
       seed: r.seed,
-      is_public: r.is_public,
-      credits_cost: r.credits_cost,
+      is_public: r.isPublic,
+      credits_cost: r.creditsCost,
       status: r.status,
       progress: r.progress,
-      video_url: r.video_url,
-      thumbnail_url: r.thumbnail_url,
-      actual_duration: r.actual_duration,
+      video_url: r.videoUrl,
+      thumbnail_url: r.thumbnailUrl,
+      actual_duration: r.actualDuration,
       format: r.format,
-      error_message: r.error_message,
-      created_at: r.created_at,
-      completed_at: r.completed_at,
-      share_id: r.share_id,
+      error_message: r.errorMessage,
+      created_at: new Date(r.createdAt),
+      completed_at: r.completedAt ? new Date(r.completedAt) : null,
+      share_id: r.shareId,
     })),
     total,
     page,
@@ -594,21 +574,17 @@ export async function deleteVideoRecord(recordId: string): Promise<void> {
     throw new Error(`Invalid record ID: ${recordId}`);
   }
 
-  const record = await prisma.video_records.findUnique({
-    where: { id: numericId },
-  });
+  const [record] = await db.select().from(videoRecords).where(eq(videoRecords.id, numericId)).limit(1);
 
   if (!record) {
     throw new Error(`Record not found: ${recordId}`);
   }
 
-  if (record.user_id !== userId) {
+  if (record.userId !== userId) {
     throw new Error('Not authorized to delete this record');
   }
 
-  await prisma.video_records.delete({
-    where: { id: numericId },
-  });
+  await db.delete(videoRecords).where(eq(videoRecords.id, numericId));
 
   console.log(`视频记录已删除: ${recordId}`);
 }
@@ -624,12 +600,9 @@ export async function getVideoRecordByTaskId(taskId: string): Promise<VideoRecor
       return null;
     }
 
-    const record = await prisma.video_records.findFirst({
-      where: {
-        task_id: taskId,
-        user_id: userId,
-      },
-    });
+    const [record] = await db.select().from(videoRecords)
+      .where(and(eq(videoRecords.taskId, taskId), eq(videoRecords.userId, userId)))
+      .limit(1);
 
     if (!record) {
       return null;
@@ -637,29 +610,29 @@ export async function getVideoRecordByTaskId(taskId: string): Promise<VideoRecor
 
     return {
       id: record.id,
-      user_id: record.user_id,
-      task_id: record.task_id,
-      task_type: record.task_type,
+      user_id: record.userId,
+      task_id: record.taskId,
+      task_type: record.taskType,
       model: record.model,
       prompt: record.prompt,
-      prompt_zh: record.prompt_zh,
-      negative_prompt: record.negative_prompt,
+      prompt_zh: record.promptZh,
+      negative_prompt: record.negativePrompt,
       resolution: record.resolution,
       duration: record.duration,
-      aspect_ratio: record.aspect_ratio,
+      aspect_ratio: record.aspectRatio,
       seed: record.seed,
-      is_public: record.is_public,
-      credits_cost: record.credits_cost,
+      is_public: record.isPublic,
+      credits_cost: record.creditsCost,
       status: record.status,
       progress: record.progress,
-      video_url: record.video_url,
-      thumbnail_url: record.thumbnail_url,
-      actual_duration: record.actual_duration,
+      video_url: record.videoUrl,
+      thumbnail_url: record.thumbnailUrl,
+      actual_duration: record.actualDuration,
       format: record.format,
-      error_message: record.error_message,
-      created_at: record.created_at,
-      completed_at: record.completed_at,
-      share_id: record.share_id,
+      error_message: record.errorMessage,
+      created_at: new Date(record.createdAt),
+      completed_at: record.completedAt ? new Date(record.completedAt) : null,
+      share_id: record.shareId,
     };
   } catch (error) {
     console.error('❌ [getVideoRecordByTaskId] Error:', error);
@@ -681,15 +654,13 @@ export async function checkAndHandleStuckVideoTask(
   const unifiedUser = await getUserOrAnonymous();
   const userId = unifiedUser.user_id;
 
-  const record = await prisma.video_records.findUnique({
-    where: { id: recordId },
-  });
+  const [record] = await db.select().from(videoRecords).where(eq(videoRecords.id, recordId)).limit(1);
 
   if (!record) {
     throw new Error(`Record not found: ${recordId}`);
   }
 
-  if (record.user_id !== userId) {
+  if (record.userId !== userId) {
     throw new Error('Not authorized to access this record');
   }
 
@@ -705,7 +676,7 @@ export async function checkAndHandleStuckVideoTask(
 
   // 检查任务创建时间，判断是否超时
   const now = new Date();
-  const createdAt = new Date(record.created_at);
+  const createdAt = new Date(record.createdAt);
   const elapsedMinutes = (now.getTime() - createdAt.getTime()) / 1000 / 60;
 
   // 视频超时阈值：15分钟（视频生成时间较长）
@@ -713,37 +684,35 @@ export async function checkAndHandleStuckVideoTask(
 
   if (elapsedMinutes > TIMEOUT_THRESHOLD_MINUTES) {
     console.error(
-      `❌ [checkStuckVideoTask] 任务 ${record.task_id} 已超时 ${elapsedMinutes.toFixed(1)} 分钟，标记为失败`
+      `❌ [checkStuckVideoTask] 任务 ${record.taskId} 已超时 ${elapsedMinutes.toFixed(1)} 分钟，标记为失败`
     );
 
     // 积分已扣减的条件：progress >= 20
     const creditsWereDeducted = (record.progress ?? 0) >= 20;
 
-    const updatedRecord = await prisma.$transaction(async (tx) => {
-      const updated = await tx.video_records.update({
-        where: { id: recordId },
-        data: {
+    const updatedRecord = await db.transaction(async (tx) => {
+      const [updated] = await tx.update(videoRecords)
+        .set({
           status: 'FAILURE',
           progress: 0,
-          error_message: `任务超时（运行时间: ${elapsedMinutes.toFixed(1)} 分钟）`,
-          completed_at: now,
-        },
-      });
+          errorMessage: `任务超时（运行时间: ${elapsedMinutes.toFixed(1)} 分钟）`,
+          completedAt: now.toISOString(),
+        })
+        .where(eq(videoRecords.id, recordId))
+        .returning();
 
       if (creditsWereDeducted) {
         const isAnonymous = unifiedUser.is_anonymous;
         if (isAnonymous) {
-          await tx.anonymous_users.update({
-            where: { user_id: userId },
-            data: { credits: { increment: record.credits_cost } },
-          });
+          await tx.update(anonymousUsers)
+            .set({ credits: sql`${anonymousUsers.credits} + ${record.creditsCost}` })
+            .where(eq(anonymousUsers.userId, userId));
         } else {
-          await tx.users.update({
-            where: { user_id: userId },
-            data: { credits: { increment: record.credits_cost } },
-          });
+          await tx.update(users)
+            .set({ credits: sql`${users.credits} + ${record.creditsCost}` })
+            .where(eq(users.userId, userId));
         }
-        console.log(`✅ [checkStuckVideoTask] 已返还 ${record.credits_cost} 积分给用户 ${userId}`);
+        console.log(`✅ [checkStuckVideoTask] 已返还 ${record.creditsCost} 积分给用户 ${userId}`);
       }
 
       return updated;
@@ -753,13 +722,13 @@ export async function checkAndHandleStuckVideoTask(
       handled: true,
       newStatus: 'FAILURE',
       message: creditsWereDeducted
-        ? `任务超时已取消，已返还 ${record.credits_cost} 积分`
+        ? `任务超时已取消，已返还 ${record.creditsCost} 积分`
         : '任务超时已取消（积分未扣减）',
       record: mapRecord(updatedRecord),
     };
   }
 
-  console.log(`⏳ [checkStuckVideoTask] 任务 ${record.task_id} 运行 ${elapsedMinutes.toFixed(1)} 分钟，继续等待`);
+  console.log(`⏳ [checkStuckVideoTask] 任务 ${record.taskId} 运行 ${elapsedMinutes.toFixed(1)} 分钟，继续等待`);
 
   return {
     handled: false,
@@ -772,54 +741,54 @@ export async function checkAndHandleStuckVideoTask(
 // 辅助函数：映射数据库记录到返回类型
 function mapRecord(r: {
   id: number;
-  user_id: string;
-  task_id: string;
-  task_type: string;
+  userId: string;
+  taskId: string;
+  taskType: string;
   model: string;
   prompt: string;
-  prompt_zh: string | null;
-  negative_prompt: string | null;
+  promptZh: string | null;
+  negativePrompt: string | null;
   resolution: string;
   duration: number;
-  aspect_ratio: string;
+  aspectRatio: string;
   seed: number | null;
-  is_public: boolean;
-  credits_cost: number;
+  isPublic: boolean;
+  creditsCost: number;
   status: string;
   progress: number;
-  video_url: string | null;
-  thumbnail_url: string | null;
-  actual_duration: number | null;
+  videoUrl: string | null;
+  thumbnailUrl: string | null;
+  actualDuration: number | null;
   format: string;
-  error_message: string | null;
-  created_at: Date;
-  completed_at: Date | null;
-  share_id: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  shareId: string | null;
 }): VideoRecord {
   return {
     id: r.id,
-    user_id: r.user_id,
-    task_id: r.task_id,
-    task_type: r.task_type,
+    user_id: r.userId,
+    task_id: r.taskId,
+    task_type: r.taskType,
     model: r.model,
     prompt: r.prompt,
-    prompt_zh: r.prompt_zh,
-    negative_prompt: r.negative_prompt,
+    prompt_zh: r.promptZh,
+    negative_prompt: r.negativePrompt,
     resolution: r.resolution,
     duration: r.duration,
-    aspect_ratio: r.aspect_ratio,
+    aspect_ratio: r.aspectRatio,
     seed: r.seed,
-    is_public: r.is_public,
-    credits_cost: r.credits_cost,
+    is_public: r.isPublic,
+    credits_cost: r.creditsCost,
     status: r.status,
     progress: r.progress,
-    video_url: r.video_url,
-    thumbnail_url: r.thumbnail_url,
-    actual_duration: r.actual_duration,
+    video_url: r.videoUrl,
+    thumbnail_url: r.thumbnailUrl,
+    actual_duration: r.actualDuration,
     format: r.format,
-    error_message: r.error_message,
-    created_at: r.created_at,
-    completed_at: r.completed_at,
-    share_id: r.share_id,
+    error_message: r.errorMessage,
+    created_at: new Date(r.createdAt),
+    completed_at: r.completedAt ? new Date(r.completedAt) : null,
+    share_id: r.shareId,
   };
 }

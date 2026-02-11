@@ -6,7 +6,9 @@
  */
 import { headers } from 'next/headers';
 import { auth as adminAuth } from './firebase-admin';
-import prisma from './prisma';
+import db from './db';
+import { users, anonymousUsers, creditHistory } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { appConfig } from '@/config/appConfig';
@@ -99,9 +101,10 @@ async function createOrUpdateFirebaseUser(
   },
   isNative: boolean = false
 ): Promise<void> {
-  const existingUser = await prisma.users.findUnique({
-    where: { user_id: decodedToken.uid },
-  });
+  const [existingUser] = await db.select()
+    .from(users)
+    .where(eq(users.userId, decodedToken.uid))
+    .limit(1);
 
   // 获取认证方式
   const authProvider = normalizeAuthProvider(decodedToken.firebase?.sign_in_provider);
@@ -110,18 +113,16 @@ async function createOrUpdateFirebaseUser(
     // 只更新 email（email 以 Firebase 为准），name 和 photo_url 保留用户自己设置的值
     // 只有当数据库中为空时才用 Firebase 的值填充
     // auth_provider 只在首次记录，后续不更新（用户可能关联多种登录方式）
-    await prisma.users.update({
-      where: { user_id: decodedToken.uid },
-      data: {
+    await db.update(users)
+      .set({
         email: decodedToken.email || existingUser.email,
         // 保留用户自己设置的 name 和 photo_url，只有为空时才用 Firebase 填充
         name: existingUser.name || decodedToken.name,
-        photo_url: existingUser.photo_url || decodedToken.picture,
+        photoUrl: existingUser.photoUrl || decodedToken.picture,
         // 如果原来没有记录 auth_provider，现在补上
-        auth_provider: existingUser.auth_provider || authProvider,
-        updated_at: new Date(),
-      },
-    });
+        authProvider: existingUser.authProvider || authProvider,
+      })
+      .where(eq(users.userId, decodedToken.uid));
     console.log(`🔄 [Firebase Auth] 用户信息已更新: ${decodedToken.uid}`);
   } else {
     // 创建新用户 - 根据来源使用不同的积分配置
@@ -129,28 +130,24 @@ async function createOrUpdateFirebaseUser(
       ? appConfig.credits.native.registered_user
       : appConfig.credits.registered_user;
 
-    await prisma.users.create({
-      data: {
-        user_id: decodedToken.uid,
-        email: decodedToken.email || `${decodedToken.uid}@firebase.user`,
-        name: decodedToken.name || (decodedToken.email ? decodedToken.email.split('@')[0] : 'Firebase User'),
-        photo_url: decodedToken.picture,
-        auth_provider: authProvider,
-        credits: initialCredits,
-        total_credits_used: 0,
-      },
+    await db.insert(users).values({
+      userId: decodedToken.uid,
+      email: decodedToken.email || `${decodedToken.uid}@firebase.user`,
+      name: decodedToken.name || (decodedToken.email ? decodedToken.email.split('@')[0] : 'Firebase User'),
+      photoUrl: decodedToken.picture,
+      authProvider: authProvider,
+      credits: initialCredits,
+      totalCreditsUsed: 0,
     });
 
     // 只有赠送积分时才记录历史
     if (initialCredits > 0) {
-      await prisma.credit_history.create({
-        data: {
-          user_id: decodedToken.uid,
-          task_id: `signup_${uuidv4()}`,
-          amount: initialCredits,
-          description: isNative ? 'Native 新用户注册赠送积分' : '新用户注册赠送积分',
-          product_type: ProductType.TEXT_TO_SPEECH,
-        },
+      await db.insert(creditHistory).values({
+        userId: decodedToken.uid,
+        taskId: `signup_${uuidv4()}`,
+        amount: initialCredits,
+        description: isNative ? 'Native 新用户注册赠送积分' : '新用户注册赠送积分',
+        productType: ProductType.TEXT_TO_SPEECH,
       });
     }
 
@@ -205,24 +202,24 @@ async function createOrGetAnonymousUser(
   const anonymousUserId = `anonymous_${hash}`;
 
   // 查找现有匿名用户
-  let anonUser = await prisma.anonymous_users.findUnique({
-    where: { user_id: anonymousUserId },
-  });
+  const [anonUser] = await db.select()
+    .from(anonymousUsers)
+    .where(eq(anonymousUsers.userId, anonymousUserId))
+    .limit(1);
 
   if (anonUser) {
     // 更新最后使用时间
     const formattedIp = formatIpWithCountry(ipAddress, vercelCountry);
-    await prisma.anonymous_users.update({
-      where: { user_id: anonymousUserId },
-      data: {
-        last_used_at: new Date(),
-        ip_address: formattedIp || anonUser.ip_address,
-        user_agent: userAgent || anonUser.user_agent,
-      },
-    });
+    await db.update(anonymousUsers)
+      .set({
+        lastUsedAt: new Date().toISOString(),
+        ipAddress: formattedIp || anonUser.ipAddress,
+        userAgent: userAgent || anonUser.userAgent,
+      })
+      .where(eq(anonymousUsers.userId, anonymousUserId));
 
     console.log(`📱 匿名用户访问: ${anonymousUserId}, 积分: ${anonUser.credits}`);
-    return { user_id: anonUser.user_id, credits: anonUser.credits };
+    return { user_id: anonUser.userId, credits: anonUser.credits };
   }
 
   // 创建新匿名用户
@@ -235,36 +232,32 @@ async function createOrGetAnonymousUser(
     : appConfig.credits.anonymous_user;
 
   const newFormattedIp = formatIpWithCountry(ipAddress, vercelCountry);
-  anonUser = await prisma.anonymous_users.create({
-    data: {
-      user_id: anonymousUserId,
-      device_fingerprint: deviceFingerprint,
-      ip_address: newFormattedIp,
-      user_agent: userAgent,
-      platform: platform || null,
-      credits: initialCredits,
-      total_credits_used: 0,
-      is_anonymous: true,
-      expires_at: expiresAt,
-      last_used_at: new Date(),
-    },
-  });
+  const [newAnonUser] = await db.insert(anonymousUsers).values({
+    userId: anonymousUserId,
+    deviceFingerprint: deviceFingerprint,
+    ipAddress: newFormattedIp,
+    userAgent: userAgent,
+    platform: platform || null,
+    credits: initialCredits,
+    totalCreditsUsed: 0,
+    isAnonymous: true,
+    expiresAt: expiresAt.toISOString(),
+    lastUsedAt: new Date().toISOString(),
+  }).returning();
 
   // 只有赠送积分时才记录历史
   if (initialCredits > 0) {
-    await prisma.credit_history.create({
-      data: {
-        user_id: anonymousUserId,
-        task_id: `anon_signup_${uuidv4()}`,
-        amount: initialCredits,
-        description: isNative ? 'Native 匿名用户初始积分' : '匿名用户初始赠送积分',
-        product_type: ProductType.TEXT_TO_SPEECH,
-      },
+    await db.insert(creditHistory).values({
+      userId: anonymousUserId,
+      taskId: `anon_signup_${uuidv4()}`,
+      amount: initialCredits,
+      description: isNative ? 'Native 匿名用户初始积分' : '匿名用户初始赠送积分',
+      productType: ProductType.TEXT_TO_SPEECH,
     });
   }
 
   console.log(`✅ 新匿名用户创建: ${anonymousUserId}, 初始积分: ${initialCredits}, isNative: ${isNative}`);
-  return { user_id: anonUser.user_id, credits: anonUser.credits };
+  return { user_id: newAnonUser.userId, credits: newAnonUser.credits };
 }
 
 /**

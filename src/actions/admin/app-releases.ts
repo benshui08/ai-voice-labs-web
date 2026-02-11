@@ -4,7 +4,9 @@
  * App Releases 管理 Server Actions
  * 管理 Android APK 和 iOS 应用版本发布
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { appReleases } from '@/db/schema';
+import { eq, and, asc, desc, sql } from 'drizzle-orm';
 import { uploadApk, deleteApk, generateApkUploadUrl } from '@/lib/services/r2-storage';
 import { verifyAdminWithoutDb } from '@/lib/auth-admin';
 
@@ -12,16 +14,16 @@ export interface AppRelease {
   id: number;
   platform: string;
   version: string;
-  version_code: number;
-  download_url: string;
-  file_size: bigint | null;
-  release_notes: string | null;
-  is_latest: boolean;
-  is_force_update: boolean;
-  is_active: boolean;
-  download_count: number;
-  created_at: Date;
-  updated_at: Date | null;
+  versionCode: number;
+  downloadUrl: string;
+  fileSize: number | null;
+  releaseNotes: string | null;
+  isLatest: boolean;
+  isForceUpdate: boolean;
+  isActive: boolean;
+  downloadCount: number;
+  createdAt: string;
+  updatedAt: string | null;
 }
 
 interface ActionResult {
@@ -38,14 +40,15 @@ export async function getAppReleases(params?: {
 }): Promise<AppRelease[]> {
   await verifyAdminWithoutDb();
 
-  const where: { platform?: string; is_active?: boolean } = {};
-  if (params?.platform) where.platform = params.platform;
-  if (params?.isActive !== undefined) where.is_active = params.isActive;
+  const conditions = [];
+  if (params?.platform) conditions.push(eq(appReleases.platform, params.platform));
+  if (params?.isActive !== undefined) conditions.push(eq(appReleases.isActive, params.isActive));
 
-  const releases = await prisma.app_releases.findMany({
-    where,
-    orderBy: [{ platform: 'asc' }, { version_code: 'desc' }],
-  });
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const releases = await db.select().from(appReleases)
+    .where(whereClause)
+    .orderBy(asc(appReleases.platform), desc(appReleases.versionCode));
 
   return releases;
 }
@@ -55,27 +58,26 @@ export async function getAppReleases(params?: {
  */
 export async function getLatestRelease(platform: string): Promise<{
   version: string;
-  version_code: number;
-  download_url: string;
-  release_notes: string | null;
-  is_force_update: boolean;
+  versionCode: number;
+  downloadUrl: string;
+  releaseNotes: string | null;
+  isForceUpdate: boolean;
 } | null> {
-  const release = await prisma.app_releases.findFirst({
-    where: {
-      platform,
-      is_latest: true,
-      is_active: true,
-    },
-    select: {
-      version: true,
-      version_code: true,
-      download_url: true,
-      release_notes: true,
-      is_force_update: true,
-    },
-  });
+  const [release] = await db.select({
+    version: appReleases.version,
+    versionCode: appReleases.versionCode,
+    downloadUrl: appReleases.downloadUrl,
+    releaseNotes: appReleases.releaseNotes,
+    isForceUpdate: appReleases.isForceUpdate,
+  }).from(appReleases)
+    .where(and(
+      eq(appReleases.platform, platform),
+      eq(appReleases.isLatest, true),
+      eq(appReleases.isActive, true),
+    ))
+    .limit(1);
 
-  return release;
+  return release || null;
 }
 
 /**
@@ -97,34 +99,33 @@ export async function checkAppUpdate(
   releaseNotes: string | null;
 } | null> {
   try {
-    const latest = await prisma.app_releases.findFirst({
-      where: {
-        platform,
-        is_latest: true,
-        is_active: true,
-      },
-      select: {
-        version: true,
-        version_code: true,
-        download_url: true,
-        release_notes: true,
-        is_force_update: true,
-      },
-    });
+    const [latest] = await db.select({
+      version: appReleases.version,
+      versionCode: appReleases.versionCode,
+      downloadUrl: appReleases.downloadUrl,
+      releaseNotes: appReleases.releaseNotes,
+      isForceUpdate: appReleases.isForceUpdate,
+    }).from(appReleases)
+      .where(and(
+        eq(appReleases.platform, platform),
+        eq(appReleases.isLatest, true),
+        eq(appReleases.isActive, true),
+      ))
+      .limit(1);
 
     if (!latest) {
       return null;
     }
 
-    const hasUpdate = latest.version_code > currentVersionCode;
+    const hasUpdate = latest.versionCode > currentVersionCode;
 
     return {
       hasUpdate,
-      isForceUpdate: hasUpdate && latest.is_force_update,
+      isForceUpdate: hasUpdate && latest.isForceUpdate,
       latestVersion: latest.version,
-      latestVersionCode: latest.version_code,
-      downloadUrl: latest.download_url,
-      releaseNotes: latest.release_notes,
+      latestVersionCode: latest.versionCode,
+      downloadUrl: latest.downloadUrl,
+      releaseNotes: latest.releaseNotes,
     };
   } catch (error) {
     console.error('检查更新失败:', error);
@@ -152,11 +153,9 @@ export async function uploadAppRelease(formData: FormData): Promise<ActionResult
     }
 
     // 检查版本是否已存在
-    const existing = await prisma.app_releases.findUnique({
-      where: {
-        platform_version: { platform, version },
-      },
-    });
+    const [existing] = await db.select().from(appReleases)
+      .where(and(eq(appReleases.platform, platform), eq(appReleases.version, version)))
+      .limit(1);
 
     if (existing) {
       return { success: false, message: `版本 ${version} 已存在` };
@@ -170,27 +169,23 @@ export async function uploadAppRelease(formData: FormData): Promise<ActionResult
 
     // 如果设为最新版本，先将其他版本的 is_latest 设为 false
     if (setAsLatest) {
-      await prisma.app_releases.updateMany({
-        where: { platform, is_latest: true },
-        data: { is_latest: false },
-      });
+      await db.update(appReleases).set({ isLatest: false })
+        .where(and(eq(appReleases.platform, platform), eq(appReleases.isLatest, true)));
     }
 
     // 创建数据库记录
-    const release = await prisma.app_releases.create({
-      data: {
-        platform,
-        version,
-        version_code: versionCode,
-        download_url: downloadUrl,
-        file_size: BigInt(buffer.length),
-        release_notes: releaseNotes || null,
-        is_latest: setAsLatest,
-        is_force_update: isForceUpdate,
-        is_active: true,
-        download_count: 0,
-      },
-    });
+    const [release] = await db.insert(appReleases).values({
+      platform,
+      version,
+      versionCode,
+      downloadUrl,
+      fileSize: buffer.length,
+      releaseNotes: releaseNotes || null,
+      isLatest: setAsLatest,
+      isForceUpdate,
+      isActive: true,
+      downloadCount: 0,
+    }).returning();
 
     console.log(`✅ APK 上传成功: ${platform} v${version}`);
 
@@ -222,14 +217,11 @@ export async function updateAppRelease(
   await verifyAdminWithoutDb();
 
   try {
-    await prisma.app_releases.update({
-      where: { id },
-      data: {
-        ...(data.release_notes !== undefined && { release_notes: data.release_notes }),
-        ...(data.is_force_update !== undefined && { is_force_update: data.is_force_update }),
-        ...(data.is_active !== undefined && { is_active: data.is_active }),
-      },
-    });
+    await db.update(appReleases).set({
+      ...(data.release_notes !== undefined && { releaseNotes: data.release_notes }),
+      ...(data.is_force_update !== undefined && { isForceUpdate: data.is_force_update }),
+      ...(data.is_active !== undefined && { isActive: data.is_active }),
+    }).where(eq(appReleases.id, id));
 
     return { success: true, message: '更新成功' };
   } catch (error) {
@@ -249,25 +241,18 @@ export async function setLatestRelease(id: number): Promise<ActionResult> {
 
   try {
     // 获取当前版本信息
-    const release = await prisma.app_releases.findUnique({
-      where: { id },
-    });
+    const [release] = await db.select().from(appReleases).where(eq(appReleases.id, id)).limit(1);
 
     if (!release) {
       return { success: false, message: '版本不存在' };
     }
 
     // 将同平台的其他版本设为非最新
-    await prisma.app_releases.updateMany({
-      where: { platform: release.platform, is_latest: true },
-      data: { is_latest: false },
-    });
+    await db.update(appReleases).set({ isLatest: false })
+      .where(and(eq(appReleases.platform, release.platform), eq(appReleases.isLatest, true)));
 
     // 设置当前版本为最新
-    await prisma.app_releases.update({
-      where: { id },
-      data: { is_latest: true },
-    });
+    await db.update(appReleases).set({ isLatest: true }).where(eq(appReleases.id, id));
 
     return { success: true, message: `已设置 v${release.version} 为最新版本` };
   } catch (error) {
@@ -286,22 +271,18 @@ export async function deleteAppRelease(id: number): Promise<ActionResult> {
   await verifyAdminWithoutDb();
 
   try {
-    const release = await prisma.app_releases.findUnique({
-      where: { id },
-    });
+    const [release] = await db.select().from(appReleases).where(eq(appReleases.id, id)).limit(1);
 
     if (!release) {
       return { success: false, message: '版本不存在' };
     }
 
     // 从 R2 删除文件
-    const key = release.download_url.split('/').slice(-2).join('/'); // app_releases/filename.apk
+    const key = release.downloadUrl.split('/').slice(-2).join('/'); // app_releases/filename.apk
     await deleteApk(key);
 
     // 删除数据库记录
-    await prisma.app_releases.delete({
-      where: { id },
-    });
+    await db.delete(appReleases).where(eq(appReleases.id, id));
 
     console.log(`✅ APK 删除成功: ${release.platform} v${release.version}`);
 
@@ -320,10 +301,9 @@ export async function deleteAppRelease(id: number): Promise<ActionResult> {
  */
 export async function incrementDownloadCount(id: number): Promise<void> {
   try {
-    await prisma.app_releases.update({
-      where: { id },
-      data: { download_count: { increment: 1 } },
-    });
+    await db.update(appReleases).set({
+      downloadCount: sql`${appReleases.downloadCount} + 1`,
+    }).where(eq(appReleases.id, id));
   } catch (error) {
     console.error('增加下载计数失败:', error);
   }
@@ -337,10 +317,9 @@ export async function incrementDownloadCountByVersion(
   version: string
 ): Promise<void> {
   try {
-    await prisma.app_releases.updateMany({
-      where: { platform, version },
-      data: { download_count: { increment: 1 } },
-    });
+    await db.update(appReleases).set({
+      downloadCount: sql`${appReleases.downloadCount} + 1`,
+    }).where(and(eq(appReleases.platform, platform), eq(appReleases.version, version)));
   } catch (error) {
     console.error('增加下载计数失败:', error);
   }
@@ -373,11 +352,9 @@ export async function getApkUploadUrl(params: {
     }
 
     // 检查版本是否已存在
-    const existing = await prisma.app_releases.findUnique({
-      where: {
-        platform_version: { platform, version },
-      },
-    });
+    const [existing] = await db.select().from(appReleases)
+      .where(and(eq(appReleases.platform, platform), eq(appReleases.version, version)))
+      .limit(1);
 
     if (existing) {
       return { success: false, message: `版本 ${version} 已存在` };
@@ -431,11 +408,9 @@ export async function saveAppReleaseMetadata(params: {
     } = params;
 
     // 再次检查版本是否已存在（防止并发问题）
-    const existing = await prisma.app_releases.findUnique({
-      where: {
-        platform_version: { platform, version },
-      },
-    });
+    const [existing] = await db.select().from(appReleases)
+      .where(and(eq(appReleases.platform, platform), eq(appReleases.version, version)))
+      .limit(1);
 
     if (existing) {
       return { success: false, message: `版本 ${version} 已存在` };
@@ -443,27 +418,23 @@ export async function saveAppReleaseMetadata(params: {
 
     // 如果设为最新版本，先将其他版本的 is_latest 设为 false
     if (setAsLatest) {
-      await prisma.app_releases.updateMany({
-        where: { platform, is_latest: true },
-        data: { is_latest: false },
-      });
+      await db.update(appReleases).set({ isLatest: false })
+        .where(and(eq(appReleases.platform, platform), eq(appReleases.isLatest, true)));
     }
 
     // 创建数据库记录
-    const release = await prisma.app_releases.create({
-      data: {
-        platform,
-        version,
-        version_code: versionCode,
-        download_url: downloadUrl,
-        file_size: BigInt(fileSize),
-        release_notes: releaseNotes || null,
-        is_latest: setAsLatest,
-        is_force_update: isForceUpdate,
-        is_active: true,
-        download_count: 0,
-      },
-    });
+    const [release] = await db.insert(appReleases).values({
+      platform,
+      version,
+      versionCode,
+      downloadUrl,
+      fileSize,
+      releaseNotes: releaseNotes || null,
+      isLatest: setAsLatest,
+      isForceUpdate,
+      isActive: true,
+      downloadCount: 0,
+    }).returning();
 
     console.log(`✅ APK 元数据保存成功: ${platform} v${version}`);
 

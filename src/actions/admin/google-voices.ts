@@ -3,8 +3,9 @@
 /**
  * Google TTS 语音同步 Server Actions
  */
-import prisma from '@/lib/prisma';
-import { Prisma } from '@/generated/prisma';
+import db from '@/lib/db';
+import { voices } from '@/db/schema';
+import { eq, and, or, count, sql } from 'drizzle-orm';
 import { verifyAdminWithoutDb } from '@/lib/auth-admin';
 import { getLocaleInfo } from '@/utils/localeMapper';
 import { synthesizeSpeech as googleSynthesize } from '@/lib/services/google-tts';
@@ -223,33 +224,33 @@ export async function getGoogleVoiceStatsByLocale(): Promise<LocaleStats[]> {
     }
 
     // 获取数据库中 Google 语音的统计（provider = 'google'）
-    const dbStats = await prisma.voices.groupBy({
-      by: ['locale'],
-      where: { provider: 'google' },
-      _count: { id: true },
-    });
+    const dbStats = await db.select({ locale: voices.locale, count: count() })
+      .from(voices)
+      .where(eq(voices.provider, 'google'))
+      .groupBy(voices.locale);
 
     const dbCountByLocale: Record<string, number> = {};
     for (const stat of dbStats) {
-      dbCountByLocale[stat.locale] = stat._count.id;
+      dbCountByLocale[stat.locale] = stat.count;
     }
 
     // 获取已有语音样例的统计（voice_sample_url 不为空对象）
-    const dbVoices = await prisma.voices.findMany({
-      where: { provider: 'google' },
-      select: { locale: true, voice_sample_url: true, avatar_url: true },
-    });
+    const dbVoices = await db.select({
+      locale: voices.locale,
+      voiceSampleUrl: voices.voiceSampleUrl,
+      avatarUrl: voices.avatarUrl,
+    }).from(voices).where(eq(voices.provider, 'google'));
 
     // 统计每个 locale 的样例和头像数量
     const sampleCountByLocale: Record<string, number> = {};
     const avatarCountByLocale: Record<string, number> = {};
     for (const voice of dbVoices) {
       // 检查 voice_sample_url 是否有内容
-      const hasSample = voice.voice_sample_url &&
-        typeof voice.voice_sample_url === 'object' &&
-        Object.keys(voice.voice_sample_url).length > 0;
+      const hasSample = voice.voiceSampleUrl &&
+        typeof voice.voiceSampleUrl === 'object' &&
+        Object.keys(voice.voiceSampleUrl as Record<string, unknown>).length > 0;
       // 检查 avatar_url 是否有内容
-      const hasAvatar = voice.avatar_url && voice.avatar_url.length > 0;
+      const hasAvatar = voice.avatarUrl && voice.avatarUrl.length > 0;
 
       if (hasSample) {
         sampleCountByLocale[voice.locale] = (sampleCountByLocale[voice.locale] || 0) + 1;
@@ -327,10 +328,9 @@ export async function syncGoogleVoicesByLocale(locale: string): Promise<SyncResu
     }
 
     // 获取数据库中已存在的 Google 语音名称（使用标准化后的 locale 查询）
-    const existingVoices = await prisma.voices.findMany({
-      where: { provider: 'google', locale: dbLocale },
-      select: { name: true },
-    });
+    const existingVoices = await db.select({ name: voices.name })
+      .from(voices)
+      .where(and(eq(voices.provider, 'google'), eq(voices.locale, dbLocale)));
     const existingNames = new Set(existingVoices.map((v) => v.name));
 
     // 过滤出需要插入的语音（使用 dbLocale:name 格式检查）
@@ -350,25 +350,22 @@ export async function syncGoogleVoicesByLocale(locale: string): Promise<SyncResu
     // 批量插入（使用标准化后的 locale）
     const insertData = voicesToInsert.map((voice) => ({
       name: buildGoogleVoiceName(dbLocale, voice.name), // 使用标准化的 locale:name 格式
-      display_name: parseDisplayName(voice.name),
+      displayName: parseDisplayName(voice.name),
       provider: 'google',
       locale: dbLocale, // 使用标准化后的 locale
       country: getCountryFromLocale(locale),
       role: 'Professional',
       gender: normalizeGender(voice.ssmlGender),
-      avatar_url: '',
-      voice_sample_url: {},
-      voice_sample_text: '',
+      avatarUrl: '',
+      voiceSampleUrl: {},
+      voiceSampleText: '',
       tags: buildTags(voice.name, voice.naturalSampleRateHertz),
-      style_list: ['default'], // Google 没有风格概念，使用 default
-      is_active: true,
-      sort_order: 0,
+      styleList: ['default'], // Google 没有风格概念，使用 default
+      isActive: true,
+      sortOrder: 0,
     }));
 
-    await prisma.voices.createMany({
-      data: insertData,
-      skipDuplicates: true,
-    });
+    await db.insert(voices).values(insertData).onConflictDoNothing();
 
     console.log(`✅ 成功同步 ${locale} -> ${dbLocale}: 插入 ${voicesToInsert.length} 条`);
 
@@ -473,10 +470,11 @@ export async function updateAllGoogleVoices(): Promise<SyncResult> {
     }
 
     // 获取数据库中所有 Google 语音
-    const dbVoices = await prisma.voices.findMany({
-      where: { provider: 'google' },
-      select: { id: true, name: true, locale: true },
-    });
+    const dbVoices = await db.select({
+      id: voices.id,
+      name: voices.name,
+      locale: voices.locale,
+    }).from(voices).where(eq(voices.provider, 'google'));
 
     let updated = 0;
     let skipped = 0;
@@ -499,16 +497,13 @@ export async function updateAllGoogleVoices(): Promise<SyncResult> {
 
       const originalName = parseGoogleVoiceNameFromDb(dbVoice.name);
 
-      await prisma.voices.update({
-        where: { id: dbVoice.id },
-        data: {
-          gender: normalizeGender(googleVoice.ssmlGender),
-          role: 'Professional',
-          country: getCountryFromLocale(dbVoice.locale),
-          display_name: parseDisplayName(originalName),
-          tags: buildTags(originalName, googleVoice.naturalSampleRateHertz),
-        },
-      });
+      await db.update(voices).set({
+        gender: normalizeGender(googleVoice.ssmlGender),
+        role: 'Professional',
+        country: getCountryFromLocale(dbVoice.locale),
+        displayName: parseDisplayName(originalName),
+        tags: buildTags(originalName, googleVoice.naturalSampleRateHertz),
+      }).where(eq(voices.id, dbVoice.id));
 
       updated++;
     }
@@ -549,7 +544,7 @@ export async function getGoogleVoicesByLocale(locale: string): Promise<{
     const googleVoices = await fetchVoicesFromGoogle();
     const localeVoices = googleVoices.filter((v) => v.languageCodes.includes(locale));
 
-    const voices = localeVoices.map((voice) => ({
+    const voicesList = localeVoices.map((voice) => ({
       name: voice.name,
       displayName: parseDisplayName(voice.name),
       gender: normalizeGender(voice.ssmlGender),
@@ -558,11 +553,11 @@ export async function getGoogleVoicesByLocale(locale: string): Promise<{
     }));
 
     // 按名称排序
-    voices.sort((a, b) => a.name.localeCompare(b.name));
+    voicesList.sort((a, b) => a.name.localeCompare(b.name));
 
     return {
-      voices,
-      total: voices.length,
+      voices: voicesList,
+      total: voicesList.length,
     };
   } catch (error) {
     console.error(`获取 ${locale} 语音列表失败:`, error);
@@ -580,20 +575,24 @@ export async function syncGoogleVoiceSamplesByLocale(locale: string): Promise<Sy
     const dbLocale = normalizeLocale(locale);
 
     // 获取该 locale 没有语音样例的 Google 语音
-    const voices = await prisma.voices.findMany({
-      where: {
-        provider: 'google',
-        locale: dbLocale,
-        OR: [
-          { voice_sample_url: { equals: Prisma.DbNull } },
-          { voice_sample_url: { equals: Prisma.JsonNull } },
-          { voice_sample_url: { equals: {} } },
-        ],
-      },
-      select: { id: true, name: true, locale: true, style_list: true },
-    });
+    const voiceList = await db.select({
+      id: voices.id,
+      name: voices.name,
+      locale: voices.locale,
+      styleList: voices.styleList,
+    }).from(voices).where(
+      and(
+        eq(voices.provider, 'google'),
+        eq(voices.locale, dbLocale),
+        or(
+          sql`voice_sample_url IS NULL`,
+          sql`voice_sample_url::text = 'null'`,
+          sql`voice_sample_url::text = '{}'`,
+        ),
+      )
+    );
 
-    if (voices.length === 0) {
+    if (voiceList.length === 0) {
       return {
         success: true,
         message: `${locale} 的所有语音都已有样例`,
@@ -606,7 +605,7 @@ export async function syncGoogleVoiceSamplesByLocale(locale: string): Promise<Sy
     let updated = 0;
     let failed = 0;
 
-    for (const voice of voices) {
+    for (const voice of voiceList) {
       try {
         console.log(`🎤 生成 ${voice.name} 语音样例...`);
 
@@ -624,13 +623,10 @@ export async function syncGoogleVoiceSamplesByLocale(locale: string): Promise<Sy
         );
 
         // 更新数据库
-        await prisma.voices.update({
-          where: { id: voice.id },
-          data: {
-            voice_sample_url: { default: audioUrl },
-            voice_sample_text: sampleText,
-          },
-        });
+        await db.update(voices).set({
+          voiceSampleUrl: { default: audioUrl },
+          voiceSampleText: sampleText,
+        }).where(eq(voices.id, voice.id));
 
         updated++;
         console.log(`✅ ${voice.name} 样例生成成功`);
@@ -664,16 +660,19 @@ export async function syncGoogleVoiceAvatarsByLocale(locale: string): Promise<Sy
   try {
     const dbLocale = normalizeLocale(locale);
 
-    const voices = await prisma.voices.findMany({
-      where: {
-        provider: 'google',
-        locale: dbLocale,
-        avatar_url: '',
-      },
-      select: { id: true, name: true, gender: true },
-    });
+    const voiceList = await db.select({
+      id: voices.id,
+      name: voices.name,
+      gender: voices.gender,
+    }).from(voices).where(
+      and(
+        eq(voices.provider, 'google'),
+        eq(voices.locale, dbLocale),
+        eq(voices.avatarUrl, ''),
+      )
+    );
 
-    if (voices.length === 0) {
+    if (voiceList.length === 0) {
       return {
         success: true,
         message: `${locale} 的所有语音都已有头像`,
@@ -682,15 +681,14 @@ export async function syncGoogleVoiceAvatarsByLocale(locale: string): Promise<Sy
     }
 
     let updated = 0;
-    for (const voice of voices) {
+    for (const voice of voiceList) {
       const seed = voice.name;
       const style = voice.gender === 'female' ? 'lorelei' : 'avataaars';
       const avatarUrl = `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
 
-      await prisma.voices.update({
-        where: { id: voice.id },
-        data: { avatar_url: avatarUrl },
-      });
+      await db.update(voices).set({
+        avatarUrl: avatarUrl,
+      }).where(eq(voices.id, voice.id));
       updated++;
     }
 
@@ -716,15 +714,18 @@ export async function syncGoogleVoiceAvatars(): Promise<SyncResult> {
 
   try {
     // 获取没有头像的 Google 语音
-    const voices = await prisma.voices.findMany({
-      where: {
-        provider: 'google',
-        avatar_url: '',
-      },
-      select: { id: true, name: true, gender: true },
-    });
+    const voiceList = await db.select({
+      id: voices.id,
+      name: voices.name,
+      gender: voices.gender,
+    }).from(voices).where(
+      and(
+        eq(voices.provider, 'google'),
+        eq(voices.avatarUrl, ''),
+      )
+    );
 
-    if (voices.length === 0) {
+    if (voiceList.length === 0) {
       return {
         success: true,
         message: '所有 Google 语音都已有头像',
@@ -734,16 +735,15 @@ export async function syncGoogleVoiceAvatars(): Promise<SyncResult> {
 
     let updated = 0;
 
-    for (const voice of voices) {
+    for (const voice of voiceList) {
       // 使用 DiceBear 生成头像
       const seed = voice.name;
       const style = voice.gender === 'female' ? 'lorelei' : 'avataaars';
       const avatarUrl = `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
 
-      await prisma.voices.update({
-        where: { id: voice.id },
-        data: { avatar_url: avatarUrl },
-      });
+      await db.update(voices).set({
+        avatarUrl: avatarUrl,
+      }).where(eq(voices.id, voice.id));
 
       updated++;
     }
@@ -769,22 +769,22 @@ export async function regenerateAllGoogleAvatars(): Promise<SyncResult> {
   await verifyAdminWithoutDb();
 
   try {
-    const voices = await prisma.voices.findMany({
-      where: { provider: 'google' },
-      select: { id: true, name: true, gender: true },
-    });
+    const voiceList = await db.select({
+      id: voices.id,
+      name: voices.name,
+      gender: voices.gender,
+    }).from(voices).where(eq(voices.provider, 'google'));
 
     let updated = 0;
 
-    for (const voice of voices) {
+    for (const voice of voiceList) {
       const seed = voice.name;
       const style = voice.gender === 'female' ? 'lorelei' : 'avataaars';
       const avatarUrl = `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
 
-      await prisma.voices.update({
-        where: { id: voice.id },
-        data: { avatar_url: avatarUrl },
-      });
+      await db.update(voices).set({
+        avatarUrl: avatarUrl,
+      }).where(eq(voices.id, voice.id));
 
       updated++;
     }

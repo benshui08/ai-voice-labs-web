@@ -3,7 +3,9 @@
 /**
  * Music 记录管理 Server Actions
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { musicRecords } from '@/db/schema';
+import { eq, and, or, ilike, desc, count, sum, gte, lte, inArray } from 'drizzle-orm';
 import { verifyAdminWithoutDb } from '@/lib/auth-admin';
 
 /**
@@ -68,87 +70,83 @@ export async function getMusicRecords(query: MusicRecordsQuery = {}) {
     endDate,
   } = query;
 
-  // 构建查询条件
-  const where: Record<string, unknown> = {};
+  const conditions = [];
 
   if (status) {
-    where.status = status;
+    conditions.push(eq(musicRecords.status, status));
   }
 
   if (model) {
-    where.model = model;
+    conditions.push(eq(musicRecords.model, model));
   }
 
   if (userId) {
-    where.user_id = {
-      contains: userId,
-      mode: 'insensitive',
-    };
+    conditions.push(ilike(musicRecords.userId, `%${userId}%`));
   }
 
   if (search) {
-    where.OR = [
-      { prompt: { contains: search, mode: 'insensitive' } },
-      { title: { contains: search, mode: 'insensitive' } },
-      { lyrics: { contains: search, mode: 'insensitive' } },
-      { task_id: { contains: search, mode: 'insensitive' } },
-    ];
+    conditions.push(
+      or(
+        ilike(musicRecords.prompt, `%${search}%`),
+        ilike(musicRecords.title, `%${search}%`),
+        ilike(musicRecords.lyrics, `%${search}%`),
+        ilike(musicRecords.taskId, `%${search}%`),
+      )
+    );
   }
 
-  if (startDate || endDate) {
-    where.created_at = {};
-    if (startDate) {
-      (where.created_at as Record<string, Date>).gte = new Date(startDate);
-    }
-    if (endDate) {
-      (where.created_at as Record<string, Date>).lte = new Date(endDate + 'T23:59:59.999Z');
-    }
+  if (startDate) {
+    conditions.push(gte(musicRecords.createdAt, new Date(startDate).toISOString()));
+  }
+  if (endDate) {
+    conditions.push(lte(musicRecords.createdAt, new Date(endDate + 'T23:59:59.999Z').toISOString()));
   }
 
-  const [total, records] = await Promise.all([
-    prisma.music_records.count({ where }),
-    prisma.music_records.findMany({
-      where,
-      orderBy: { created_at: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [[{ total }], records] = await Promise.all([
+    db.select({ total: count() }).from(musicRecords).where(whereClause),
+    db.select().from(musicRecords)
+      .where(whereClause)
+      .orderBy(desc(musicRecords.createdAt))
+      .offset((page - 1) * pageSize)
+      .limit(pageSize),
   ]);
 
   const items: MusicRecordItem[] = records.map((record) => ({
     id: record.id,
-    taskId: record.task_id,
-    externalTaskId: record.external_task_id,
-    userId: record.user_id,
+    taskId: record.taskId,
+    externalTaskId: record.externalTaskId,
+    userId: record.userId,
     model: record.model,
     prompt: record.prompt,
     style: record.style,
     title: record.title,
     lyrics: record.lyrics,
-    isInstrumental: record.is_instrumental,
-    isPublic: record.is_public,
-    creditsCost: record.credits_cost,
+    isInstrumental: record.isInstrumental,
+    isPublic: record.isPublic,
+    creditsCost: record.creditsCost,
     status: record.status,
     progress: record.progress,
-    audioUrl: record.audio_url,
-    audioUrl2: record.audio_url_2,
-    coverUrl: record.cover_url,
-    coverUrl2: record.cover_url_2,
+    audioUrl: record.audioUrl,
+    audioUrl2: record.audioUrl2,
+    coverUrl: record.coverUrl,
+    coverUrl2: record.coverUrl2,
     duration: record.duration,
-    duration2: record.duration_2,
+    duration2: record.duration2,
     tags: record.tags,
-    errorMessage: record.error_message,
-    shareId: record.share_id,
-    createdAt: record.created_at.toISOString(),
-    completedAt: record.completed_at?.toISOString() || null,
+    errorMessage: record.errorMessage,
+    shareId: record.shareId,
+    createdAt: record.createdAt,
+    completedAt: record.completedAt || null,
   }));
 
   return {
     items,
-    total,
+    total: Number(total),
     page,
     pageSize,
-    totalPages: Math.ceil(total / pageSize),
+    totalPages: Math.ceil(Number(total) / pageSize),
   };
 }
 
@@ -159,39 +157,38 @@ export async function getMusicRecordsStats() {
   await verifyAdminWithoutDb();
 
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekStart = new Date(todayStart);
-  weekStart.setDate(weekStart.getDate() - 7);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString();
 
   const [
-    totalRecords,
-    successRecords,
-    failedRecords,
-    processingRecords,
-    todayRecords,
-    weekRecords,
-    totalCredits,
-    publicRecords,
+    [{ total: totalRecords }],
+    [{ total: successRecords }],
+    [{ total: failedRecords }],
+    [{ total: processingRecords }],
+    [{ total: todayRecords }],
+    [{ total: weekRecords }],
+    [{ total: totalCredits }],
+    [{ total: publicRecords }],
   ] = await Promise.all([
-    prisma.music_records.count(),
-    prisma.music_records.count({ where: { status: 'SUCCESS' } }),
-    prisma.music_records.count({ where: { status: 'FAILURE' } }),
-    prisma.music_records.count({ where: { status: { in: ['PENDING', 'PROCESSING'] } } }),
-    prisma.music_records.count({ where: { created_at: { gte: todayStart } } }),
-    prisma.music_records.count({ where: { created_at: { gte: weekStart } } }),
-    prisma.music_records.aggregate({ _sum: { credits_cost: true } }),
-    prisma.music_records.count({ where: { is_public: true } }),
+    db.select({ total: count() }).from(musicRecords),
+    db.select({ total: count() }).from(musicRecords).where(eq(musicRecords.status, 'SUCCESS')),
+    db.select({ total: count() }).from(musicRecords).where(eq(musicRecords.status, 'FAILURE')),
+    db.select({ total: count() }).from(musicRecords).where(or(eq(musicRecords.status, 'PENDING'), eq(musicRecords.status, 'PROCESSING'))),
+    db.select({ total: count() }).from(musicRecords).where(gte(musicRecords.createdAt, todayStart)),
+    db.select({ total: count() }).from(musicRecords).where(gte(musicRecords.createdAt, weekStart)),
+    db.select({ total: sum(musicRecords.creditsCost) }).from(musicRecords),
+    db.select({ total: count() }).from(musicRecords).where(eq(musicRecords.isPublic, true)),
   ]);
 
   return {
-    totalRecords,
-    successRecords,
-    failedRecords,
-    processingRecords,
-    todayRecords,
-    weekRecords,
-    totalCredits: totalCredits._sum.credits_cost || 0,
-    publicRecords,
+    totalRecords: Number(totalRecords),
+    successRecords: Number(successRecords),
+    failedRecords: Number(failedRecords),
+    processingRecords: Number(processingRecords),
+    todayRecords: Number(todayRecords),
+    weekRecords: Number(weekRecords),
+    totalCredits: Number(totalCredits) || 0,
+    publicRecords: Number(publicRecords),
   };
 }
 
@@ -202,17 +199,11 @@ export async function deleteMusicRecord(id: number) {
   await verifyAdminWithoutDb();
 
   try {
-    await prisma.music_records.delete({
-      where: { id },
-    });
-
+    await db.delete(musicRecords).where(eq(musicRecords.id, id));
     return { success: true, message: '删除成功' };
   } catch (error) {
     console.error('删除 Music 记录失败:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : '删除失败',
-    };
+    return { success: false, message: error instanceof Error ? error.message : '删除失败' };
   }
 }
 
@@ -223,21 +214,15 @@ export async function deleteMusicRecords(ids: number[]) {
   await verifyAdminWithoutDb();
 
   try {
-    const result = await prisma.music_records.deleteMany({
-      where: { id: { in: ids } },
-    });
-
+    const result = await db.delete(musicRecords).where(inArray(musicRecords.id, ids)).returning();
     return {
       success: true,
-      message: `成功删除 ${result.count} 条记录`,
-      deleted: result.count,
+      message: `成功删除 ${result.length} 条记录`,
+      deleted: result.length,
     };
   } catch (error) {
     console.error('批量删除 Music 记录失败:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : '删除失败',
-    };
+    return { success: false, message: error instanceof Error ? error.message : '删除失败' };
   }
 }
 
@@ -253,9 +238,7 @@ export async function refreshMusicRecordStatus(id: number) {
   await verifyAdminWithoutDb();
 
   try {
-    const record = await prisma.music_records.findUnique({
-      where: { id },
-    });
+    const [record] = await db.select().from(musicRecords).where(eq(musicRecords.id, id)).limit(1);
 
     if (!record) {
       return { success: false, message: '记录不存在' };
@@ -265,18 +248,15 @@ export async function refreshMusicRecordStatus(id: number) {
       return { success: false, message: '只能刷新处理中的任务' };
     }
 
-    if (!record.external_task_id) {
+    if (!record.externalTaskId) {
       return { success: false, message: '没有外部任务 ID，无法查询' };
     }
 
-    console.log(`🎵 [Admin] 刷新任务状态: ${record.external_task_id}`);
+    console.log(`🎵 [Admin] 刷新任务状态: ${record.externalTaskId}`);
 
-    // 直接调用 KIE API 查询状态
-    const response = await fetch(`${KIE_API_BASE}/generate/record-info?taskId=${record.external_task_id}`, {
+    const response = await fetch(`${KIE_API_BASE}/generate/record-info?taskId=${record.externalTaskId}`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${KIE_API_KEY}`,
-      },
+      headers: { 'Authorization': `Bearer ${KIE_API_KEY}` },
     });
 
     const result = await response.json();
@@ -295,56 +275,38 @@ export async function refreshMusicRecordStatus(id: number) {
     const kieStatus = data?.status;
     const sunoData = data?.response?.sunoData;
 
-    // 如果任务已完成
     if (kieStatus === 'SUCCESS' && sunoData && Array.isArray(sunoData) && sunoData.length > 0) {
       const firstTrack = sunoData[0];
       const secondTrack = sunoData.length > 1 ? sunoData[1] : null;
 
-      // 更新数据库
-      await prisma.music_records.update({
-        where: { id },
-        data: {
-          status: 'SUCCESS',
-          progress: 100,
-          audio_url: firstTrack.audioUrl || null,
-          stream_url: firstTrack.streamAudioUrl || null,
-          cover_url: firstTrack.imageUrl || null,
-          duration: firstTrack.duration || null,
-          title: firstTrack.title || record.title,
-          tags: firstTrack.tags || null,
-          lyrics: firstTrack.prompt || record.lyrics,
-          audio_url_2: secondTrack?.audioUrl || null,
-          stream_url_2: secondTrack?.streamAudioUrl || null,
-          cover_url_2: secondTrack?.imageUrl || null,
-          duration_2: secondTrack?.duration || null,
-          completed_at: new Date(),
-          updated_at: new Date(),
-        },
-      });
-
-      return {
-        success: true,
-        message: '任务已完成',
+      await db.update(musicRecords).set({
         status: 'SUCCESS',
         progress: 100,
-      };
+        audioUrl: firstTrack.audioUrl || null,
+        streamUrl: firstTrack.streamAudioUrl || null,
+        coverUrl: firstTrack.imageUrl || null,
+        duration: firstTrack.duration || null,
+        title: firstTrack.title || record.title,
+        tags: firstTrack.tags || null,
+        lyrics: firstTrack.prompt || record.lyrics,
+        audioUrl2: secondTrack?.audioUrl || null,
+        streamUrl2: secondTrack?.streamAudioUrl || null,
+        coverUrl2: secondTrack?.imageUrl || null,
+        duration2: secondTrack?.duration || null,
+        completedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }).where(eq(musicRecords.id, id));
+
+      return { success: true, message: '任务已完成', status: 'SUCCESS', progress: 100 };
     }
 
-    // 更新进度
     let newProgress = record.progress;
-    if (kieStatus === 'FIRST_SUCCESS') {
-      newProgress = 70;
-    } else if (kieStatus === 'TEXT_SUCCESS') {
-      newProgress = 40;
-    } else if (kieStatus === 'PENDING') {
-      newProgress = 30;
-    }
+    if (kieStatus === 'FIRST_SUCCESS') newProgress = 70;
+    else if (kieStatus === 'TEXT_SUCCESS') newProgress = 40;
+    else if (kieStatus === 'PENDING') newProgress = 30;
 
     if (newProgress !== record.progress) {
-      await prisma.music_records.update({
-        where: { id },
-        data: { progress: newProgress, updated_at: new Date() },
-      });
+      await db.update(musicRecords).set({ progress: newProgress, updatedAt: new Date().toISOString() }).where(eq(musicRecords.id, id));
     }
 
     return {
@@ -355,10 +317,7 @@ export async function refreshMusicRecordStatus(id: number) {
     };
   } catch (error) {
     console.error('🎵 [Admin] 刷新 Music 记录状态失败:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : '刷新失败',
-    };
+    return { success: false, message: error instanceof Error ? error.message : '刷新失败' };
   }
 }
 
@@ -368,9 +327,7 @@ export async function refreshMusicRecordStatus(id: number) {
 export async function getMusicRecordDetail(id: number) {
   await verifyAdminWithoutDb();
 
-  const record = await prisma.music_records.findUnique({
-    where: { id },
-  });
+  const [record] = await db.select().from(musicRecords).where(eq(musicRecords.id, id)).limit(1);
 
   if (!record) {
     return null;
@@ -378,32 +335,32 @@ export async function getMusicRecordDetail(id: number) {
 
   return {
     id: record.id,
-    taskId: record.task_id,
-    externalTaskId: record.external_task_id,
-    userId: record.user_id,
+    taskId: record.taskId,
+    externalTaskId: record.externalTaskId,
+    userId: record.userId,
     model: record.model,
     prompt: record.prompt,
     style: record.style,
     title: record.title,
     lyrics: record.lyrics,
-    isInstrumental: record.is_instrumental,
-    isPublic: record.is_public,
-    creditsCost: record.credits_cost,
+    isInstrumental: record.isInstrumental,
+    isPublic: record.isPublic,
+    creditsCost: record.creditsCost,
     status: record.status,
     progress: record.progress,
-    audioUrl: record.audio_url,
-    audioUrl2: record.audio_url_2,
-    streamUrl: record.stream_url,
-    streamUrl2: record.stream_url_2,
-    coverUrl: record.cover_url,
-    coverUrl2: record.cover_url_2,
+    audioUrl: record.audioUrl,
+    audioUrl2: record.audioUrl2,
+    streamUrl: record.streamUrl,
+    streamUrl2: record.streamUrl2,
+    coverUrl: record.coverUrl,
+    coverUrl2: record.coverUrl2,
     duration: record.duration,
-    duration2: record.duration_2,
+    duration2: record.duration2,
     tags: record.tags,
-    errorMessage: record.error_message,
-    shareId: record.share_id,
-    createdAt: record.created_at.toISOString(),
-    updatedAt: record.updated_at?.toISOString() || null,
-    completedAt: record.completed_at?.toISOString() || null,
+    errorMessage: record.errorMessage,
+    shareId: record.shareId,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt || null,
+    completedAt: record.completedAt || null,
   };
 }

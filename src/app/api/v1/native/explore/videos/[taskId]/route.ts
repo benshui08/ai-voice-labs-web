@@ -5,7 +5,9 @@
  * 获取单个公开视频详情并增加浏览量
  */
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { videoRecords, users } from '@/db/schema';
+import { and, eq, sql } from 'drizzle-orm';
 
 /**
  * 脱敏邮箱
@@ -33,27 +35,27 @@ export async function GET(
     const { taskId } = await params;
 
     // 查询公开且成功的视频
-    const video = await prisma.video_records.findFirst({
-      where: {
-        task_id: taskId,
-        is_public: true,
-        status: 'SUCCESS',
-      },
-      select: {
-        id: true,
-        task_id: true,
-        user_id: true,
-        prompt: true,
-        model: true,
-        resolution: true,
-        duration: true,
-        aspect_ratio: true,
-        video_url: true,
-        thumbnail_url: true,
-        view_count: true,
-        created_at: true,
-      },
-    });
+    const [video] = await db.select({
+      id: videoRecords.id,
+      taskId: videoRecords.taskId,
+      userId: videoRecords.userId,
+      prompt: videoRecords.prompt,
+      model: videoRecords.model,
+      resolution: videoRecords.resolution,
+      duration: videoRecords.duration,
+      aspectRatio: videoRecords.aspectRatio,
+      videoUrl: videoRecords.videoUrl,
+      thumbnailUrl: videoRecords.thumbnailUrl,
+      viewCount: videoRecords.viewCount,
+      createdAt: videoRecords.createdAt,
+    })
+      .from(videoRecords)
+      .where(and(
+        eq(videoRecords.taskId, taskId),
+        eq(videoRecords.isPublic, true),
+        eq(videoRecords.status, 'SUCCESS'),
+      ))
+      .limit(1);
 
     if (!video) {
       return NextResponse.json(
@@ -63,34 +65,35 @@ export async function GET(
     }
 
     // 异步增加浏览量（不等待完成）
-    prisma.video_records.update({
-      where: { id: video.id },
-      data: { view_count: { increment: 1 } },
-    }).catch((err) => {
-      console.error('Failed to increment view count:', err);
-    });
+    db.update(videoRecords)
+      .set({ viewCount: sql`${videoRecords.viewCount} + 1` })
+      .where(eq(videoRecords.id, video.id))
+      .then(() => {})
+      .catch((err: unknown) => {
+        console.error('Failed to increment view count:', err);
+      });
 
     // 获取用户邮箱
-    const user = await prisma.users.findFirst({
-      where: { user_id: video.user_id },
-      select: { email: true },
-    });
+    const [user] = await db.select({ email: users.email })
+      .from(users)
+      .where(eq(users.userId, video.userId))
+      .limit(1);
 
     return NextResponse.json({
       success: true,
       video: {
         id: video.id,
-        taskId: video.task_id,
+        taskId: video.taskId,
         prompt: video.prompt,
         model: video.model,
         resolution: video.resolution,
         duration: video.duration,
-        aspectRatio: video.aspect_ratio,
-        videoUrl: video.video_url,
-        thumbnailUrl: video.thumbnail_url,
-        viewCount: video.view_count + 1, // 返回已增加后的数量
+        aspectRatio: video.aspectRatio,
+        videoUrl: video.videoUrl,
+        thumbnailUrl: video.thumbnailUrl,
+        viewCount: video.viewCount + 1, // 返回已增加后的数量
         user: maskEmail(user?.email || null),
-        createdAt: video.created_at?.toISOString(),
+        createdAt: video.createdAt,
       },
     });
   } catch (error) {

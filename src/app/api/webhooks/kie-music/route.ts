@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { musicRecords } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { uploadAudio, uploadImage } from '@/lib/services/r2-storage';
 import { refundCreditsSimple } from '@/lib/credits';
 import { ProductType } from '@/config/productType';
@@ -124,38 +126,43 @@ export async function POST(request: NextRequest) {
 
       // 尝试根据 task_id 更新记录状态并返还积分（使用乐观锁防止重复）
       if (payload.data?.task_id) {
-        const failedRecord = await prisma.music_records.findFirst({
-          where: { external_task_id: payload.data.task_id },
-        });
+        const [failedRecord] = await db
+          .select()
+          .from(musicRecords)
+          .where(eq(musicRecords.externalTaskId, payload.data.task_id))
+          .limit(1);
 
         if (failedRecord) {
-          const updateResult = await prisma.music_records.updateMany({
-            where: {
-              id: failedRecord.id,
-              status: 'PROCESSING', // 乐观锁：防止重复处理
-            },
-            data: {
+          const updateResult = await db
+            .update(musicRecords)
+            .set({
               status: 'FAILURE',
-              error_message: payload.msg || 'Generation failed',
-            },
-          });
+              errorMessage: payload.msg || 'Generation failed',
+            })
+            .where(
+              and(
+                eq(musicRecords.id, failedRecord.id),
+                eq(musicRecords.status, 'PROCESSING') // 乐观锁：防止重复处理
+              )
+            )
+            .returning();
 
-          // 如果更新成功（count > 0），说明是第一个处理的，需要返还积分
-          if (updateResult.count > 0 && failedRecord.credits_cost && failedRecord.credits_cost > 0) {
+          // 如果更新成功（有返回行），说明是第一个处理的，需要返还积分
+          if (updateResult.length > 0 && failedRecord.creditsCost && failedRecord.creditsCost > 0) {
             try {
               await refundCreditsSimple(
-                failedRecord.user_id,
-                failedRecord.credits_cost,
+                failedRecord.userId,
+                failedRecord.creditsCost,
                 ProductType.AI_MUSIC,
                 `Music generation failed (KIE callback error): ${payload.msg || 'Unknown error'}`,
-                failedRecord.task_id
+                failedRecord.taskId
               );
-              console.log(`💰 [KIE Callback] 积分已返还: ${failedRecord.credits_cost}`);
+              console.log(`💰 [KIE Callback] 积分已返还: ${failedRecord.creditsCost}`);
             } catch (refundError) {
               console.error(`❌ [KIE Callback] 积分返还失败:`, refundError);
             }
-          } else if (updateResult.count === 0) {
-            console.log(`⚠️ [KIE Callback] 任务已被其他请求处理，跳过: ${failedRecord.task_id}`);
+          } else if (updateResult.length === 0) {
+            console.log(`⚠️ [KIE Callback] 任务已被其他请求处理，跳过: ${failedRecord.taskId}`);
           }
         }
       }
@@ -166,40 +173,42 @@ export async function POST(request: NextRequest) {
     const { callbackType, task_id: externalTaskId, data: tracks } = payload.data;
 
     // 查找对应的记录
-    const record = await prisma.music_records.findFirst({
-      where: { external_task_id: externalTaskId },
-    });
+    const [record] = await db
+      .select()
+      .from(musicRecords)
+      .where(eq(musicRecords.externalTaskId, externalTaskId))
+      .limit(1);
 
     if (!record) {
       console.warn(`🎵 [KIE Callback] 找不到对应记录: ${externalTaskId}`);
       return NextResponse.json({ success: false, error: 'Record not found' });
     }
 
-    console.log(`🎵 [KIE Callback] 回调类型: ${callbackType}, 记录ID: ${record.task_id}`);
+    console.log(`🎵 [KIE Callback] 回调类型: ${callbackType}, 记录ID: ${record.taskId}`);
 
     switch (callbackType) {
       case 'text':
         // 歌词生成完成，更新进度
-        await prisma.music_records.update({
-          where: { id: record.id },
-          data: {
+        await db
+          .update(musicRecords)
+          .set({
             progress: 30,
             lyrics: tracks[0]?.prompt || null,
-          },
-        });
-        console.log(`🎵 [KIE Callback] 歌词生成完成: ${record.task_id}`);
+          })
+          .where(eq(musicRecords.id, record.id));
+        console.log(`🎵 [KIE Callback] 歌词生成完成: ${record.taskId}`);
         break;
 
       case 'first':
         // 第一首歌曲完成，更新进度（不下载，等 complete 时一起下载）
         if (tracks && tracks.length > 0) {
-          await prisma.music_records.update({
-            where: { id: record.id },
-            data: {
+          await db
+            .update(musicRecords)
+            .set({
               progress: 70,
-            },
-          });
-          console.log(`🎵 [KIE Callback] 第一首歌曲完成: ${record.task_id}`);
+            })
+            .where(eq(musicRecords.id, record.id));
+          console.log(`🎵 [KIE Callback] 第一首歌曲完成: ${record.taskId}`);
         }
         break;
 
@@ -209,39 +218,39 @@ export async function POST(request: NextRequest) {
           console.log(`🎵 [KIE Callback] 开始处理 ${tracks.length} 首歌曲，下载到 R2...`);
 
           // 处理第一首歌
-          const firstTrackData = await processTrackData(tracks[0], record.task_id, 1);
+          const firstTrackData = await processTrackData(tracks[0], record.taskId, 1);
 
           // 处理第二首歌（如果有）
           let secondTrackData: Awaited<ReturnType<typeof processTrackData>> | null = null;
           if (tracks.length > 1) {
-            secondTrackData = await processTrackData(tracks[1], record.task_id, 2);
+            secondTrackData = await processTrackData(tracks[1], record.taskId, 2);
           }
 
-          await prisma.music_records.update({
-            where: { id: record.id },
-            data: {
+          await db
+            .update(musicRecords)
+            .set({
               status: 'SUCCESS',
               progress: 100,
               // 第一首歌
-              external_track_id: firstTrackData.track_id,
-              audio_url: firstTrackData.audio_url,
-              stream_url: firstTrackData.stream_url,
-              cover_url: firstTrackData.cover_url,
+              externalTrackId: firstTrackData.track_id,
+              audioUrl: firstTrackData.audio_url,
+              streamUrl: firstTrackData.stream_url,
+              coverUrl: firstTrackData.cover_url,
               duration: firstTrackData.duration,
               // 第二首歌（如果有）
-              external_track_id_2: secondTrackData?.track_id || null,
-              audio_url_2: secondTrackData?.audio_url || null,
-              stream_url_2: secondTrackData?.stream_url || null,
-              cover_url_2: secondTrackData?.cover_url || null,
-              duration_2: secondTrackData?.duration || null,
+              externalTrackId2: secondTrackData?.track_id || null,
+              audioUrl2: secondTrackData?.audio_url || null,
+              streamUrl2: secondTrackData?.stream_url || null,
+              coverUrl2: secondTrackData?.cover_url || null,
+              duration2: secondTrackData?.duration || null,
               // 元数据
               title: firstTrackData.title || record.title,
               tags: firstTrackData.tags || null,
               lyrics: firstTrackData.lyrics || record.lyrics,
-              completed_at: new Date(),
-            },
-          });
-          console.log(`🎵 [KIE Callback] 所有歌曲处理完成: ${record.task_id}, 共 ${tracks.length} 首, track_ids: [${firstTrackData.track_id}, ${secondTrackData?.track_id || 'N/A'}]`);
+              completedAt: new Date().toISOString(),
+            })
+            .where(eq(musicRecords.id, record.id));
+          console.log(`🎵 [KIE Callback] 所有歌曲处理完成: ${record.taskId}, 共 ${tracks.length} 首, track_ids: [${firstTrackData.track_id}, ${secondTrackData?.track_id || 'N/A'}]`);
         }
         break;
 

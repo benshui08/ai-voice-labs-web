@@ -6,7 +6,9 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { videoRecords, taskQueue, users, anonymousUsers, creditHistory } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 import { createKieVideoTask } from '@/lib/services/kie-video';
 import { videoModelsConfig } from '@/config/native/videoModels';
@@ -108,9 +110,14 @@ export async function POST(req: NextRequest) {
     const creditsCost = qualityOption.credits;
 
     // 6. 检查用户积分
-    const userCredits = is_anonymous
-      ? (await prisma.anonymous_users.findUnique({ where: { user_id } }))?.credits || 0
-      : (await prisma.users.findUnique({ where: { user_id } }))?.credits || 0;
+    let userCredits = 0;
+    if (is_anonymous) {
+      const [anonUser] = await db.select({ credits: anonymousUsers.credits }).from(anonymousUsers).where(eq(anonymousUsers.userId, user_id)).limit(1);
+      userCredits = anonUser?.credits || 0;
+    } else {
+      const [regUser] = await db.select({ credits: users.credits }).from(users).where(eq(users.userId, user_id)).limit(1);
+      userCredits = regUser?.credits || 0;
+    }
 
     if (userCredits < creditsCost) {
       return NextResponse.json(
@@ -199,44 +206,40 @@ export async function POST(req: NextRequest) {
     const durationSeconds = parseDuration(duration);
 
     // 9. 创建视频记录 (PENDING 状态)
-    await prisma.video_records.create({
-      data: {
-        user_id,
-        task_id: taskId,
-        task_type: 'text_to_video',
-        model: modelId,
-        prompt: prompt.trim(),
-        negative_prompt: negativePrompt,
-        resolution: normalizeResolution(quality),
-        duration: durationSeconds,
-        aspect_ratio: aspectRatio,
-        seed,
-        is_public: visibility === 'public',
-        credits_cost: creditsCost,
-        status: 'PENDING',
-        progress: 0,
-      },
+    await db.insert(videoRecords).values({
+      userId: user_id,
+      taskId,
+      taskType: 'text_to_video',
+      model: modelId,
+      prompt: prompt.trim(),
+      negativePrompt,
+      resolution: normalizeResolution(quality),
+      duration: durationSeconds,
+      aspectRatio,
+      seed,
+      isPublic: visibility === 'public',
+      creditsCost,
+      status: 'PENDING',
+      progress: 0,
     });
 
     // 10. 创建任务队列记录
-    await prisma.task_queue.create({
-      data: {
-        user_id,
-        task_id: taskId,
-        task_type: 'text_to_video',
-        status: 'PENDING',
-        priority: 0,
-        payload: {
-          prompt: prompt.trim(),
-          modelId,
-          quality,
-          duration,
-          aspectRatio,
-        },
-        retry_count: 0,
-        max_retries: 3,
-        timeout_seconds: 600,
+    await db.insert(taskQueue).values({
+      userId: user_id,
+      taskId,
+      taskType: 'text_to_video',
+      status: 'PENDING',
+      priority: 0,
+      payload: {
+        prompt: prompt.trim(),
+        modelId,
+        quality,
+        duration,
+        aspectRatio,
       },
+      retryCount: 0,
+      maxRetries: 3,
+      timeoutSeconds: 600,
     });
 
     // 11. 直接调用 Kie.ai API
@@ -262,14 +265,13 @@ export async function POST(req: NextRequest) {
     } catch (apiError) {
       // API 调用失败，清理 DB 记录
       console.error('❌ [NativeVideo] Kie.ai API 调用失败:', apiError);
-      await prisma.video_records.update({
-        where: { task_id: taskId },
-        data: {
+      await db.update(videoRecords)
+        .set({
           status: 'FAILURE',
-          error_message: apiError instanceof Error ? apiError.message : 'Kie.ai API call failed',
-          completed_at: new Date(),
-        },
-      });
+          errorMessage: apiError instanceof Error ? apiError.message : 'Kie.ai API call failed',
+          completedAt: new Date().toISOString(),
+        })
+        .where(eq(videoRecords.taskId, taskId));
       return NextResponse.json(
         {
           success: false,
@@ -282,36 +284,31 @@ export async function POST(req: NextRequest) {
 
     // 12. API 成功后扣减积分
     if (is_anonymous) {
-      await prisma.anonymous_users.update({
-        where: { user_id },
-        data: { credits: { decrement: creditsCost } },
-      });
+      await db.update(anonymousUsers)
+        .set({ credits: sql`${anonymousUsers.credits} - ${creditsCost}` })
+        .where(eq(anonymousUsers.userId, user_id));
     } else {
-      await prisma.users.update({
-        where: { user_id },
-        data: { credits: { decrement: creditsCost } },
-      });
+      await db.update(users)
+        .set({ credits: sql`${users.credits} - ${creditsCost}` })
+        .where(eq(users.userId, user_id));
     }
 
-    await prisma.credit_history.create({
-      data: {
-        user_id,
-        amount: -creditsCost,
-        task_id: taskId,
-        description: `AI Video generation (Seedance 1.5 Pro)`,
-        product_type: 'text_to_video',
-      },
+    await db.insert(creditHistory).values({
+      userId: user_id,
+      amount: -creditsCost,
+      taskId,
+      description: `AI Video generation (Seedance 1.5 Pro)`,
+      productType: 'text_to_video',
     });
 
     // 13. 保存外部任务 ID，更新状态为 PROCESSING
-    await prisma.video_records.update({
-      where: { task_id: taskId },
-      data: {
-        external_task_id: externalTaskId,
+    await db.update(videoRecords)
+      .set({
+        externalTaskId,
         status: 'PROCESSING',
         progress: 10,
-      },
-    });
+      })
+      .where(eq(videoRecords.taskId, taskId));
 
     console.log(
       `✅ [NativeVideo] 任务已提交到 Kie.ai: ${taskId} -> ${externalTaskId}, credits=${creditsCost}`

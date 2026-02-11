@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { adRewardTransactions } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
 /**
@@ -179,9 +181,10 @@ export async function GET(request: NextRequest) {
     }
 
     // 检查交易是否已处理（防重放攻击）
-    const existingReward = await prisma.ad_reward_transactions.findUnique({
-      where: { transaction_id: transactionId },
-    });
+    const [existingReward] = await db.select()
+      .from(adRewardTransactions)
+      .where(eq(adRewardTransactions.transactionId, transactionId))
+      .limit(1);
 
     if (existingReward) {
       console.log(`⏭️ [AdMob SSV] 交易已处理: ${transactionId}`);
@@ -190,16 +193,14 @@ export async function GET(request: NextRequest) {
     }
 
     // 记录交易（先记录，再发放积分，确保幂等性）
-    await prisma.ad_reward_transactions.create({
-      data: {
-        transaction_id: transactionId,
-        user_id: userId,
-        tier: tier,
-        timestamp: timestamp ? new Date(Number(timestamp) * 1000) : new Date(),
-        ad_unit: searchParams.get('ad_unit') || null,
-        reward_amount: Number(searchParams.get('reward_amount')) || 0,
-        processed: false,
-      },
+    await db.insert(adRewardTransactions).values({
+      transactionId,
+      userId,
+      tier,
+      timestamp: timestamp ? new Date(Number(timestamp) * 1000).toISOString() : new Date().toISOString(),
+      adUnit: searchParams.get('ad_unit') || null,
+      rewardAmount: Number(searchParams.get('reward_amount')) || 0,
+      processed: false,
     });
 
     // TODO: 这里可以触发实际的积分发放逻辑
@@ -207,10 +208,9 @@ export async function GET(request: NextRequest) {
     // SSV 回调主要用于验证广告确实被观看
 
     // 标记交易已处理
-    await prisma.ad_reward_transactions.update({
-      where: { transaction_id: transactionId },
-      data: { processed: true },
-    });
+    await db.update(adRewardTransactions)
+      .set({ processed: true })
+      .where(eq(adRewardTransactions.transactionId, transactionId));
 
     const duration = Date.now() - startTime;
     console.log(`✅ [AdMob SSV] 处理完成: ${transactionId}, 耗时: ${duration}ms`);

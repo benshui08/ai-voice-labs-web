@@ -5,7 +5,9 @@
  * 支持生成和访问带有效期的分享链接
  */
 import { nanoid } from 'nanoid';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { shareLinks, musicRecords, dialogueRecords } from '@/db/schema';
+import { eq, and, gt, desc, sql } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 
 // 分享链接有效期（30天）
@@ -25,24 +27,28 @@ export async function createShareLink(
   const { user_id: userId } = await getUserOrAnonymous();
 
   // 检查是否已有未过期的分享链接
-  const existingLink = await prisma.share_links.findFirst({
-    where: {
-      resource_type: resourceType,
-      resource_id: resourceId,
-      user_id: userId,
-      expires_at: { gt: new Date() },
-    },
-  });
+  const [existingLink] = await db
+    .select()
+    .from(shareLinks)
+    .where(
+      and(
+        eq(shareLinks.resourceType, resourceType),
+        eq(shareLinks.resourceId, resourceId),
+        eq(shareLinks.userId, userId),
+        gt(shareLinks.expiresAt, new Date().toISOString())
+      )
+    )
+    .limit(1);
 
   if (existingLink) {
     // 每次分享都延长有效期
     const newExpiresAt = new Date();
     newExpiresAt.setDate(newExpiresAt.getDate() + SHARE_LINK_EXPIRY_DAYS);
 
-    await prisma.share_links.update({
-      where: { id: existingLink.id },
-      data: { expires_at: newExpiresAt },
-    });
+    await db
+      .update(shareLinks)
+      .set({ expiresAt: newExpiresAt.toISOString() })
+      .where(eq(shareLinks.id, existingLink.id));
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://voicica.ai';
     return {
@@ -57,14 +63,12 @@ export async function createShareLink(
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + SHARE_LINK_EXPIRY_DAYS);
 
-  await prisma.share_links.create({
-    data: {
-      token,
-      resource_type: resourceType,
-      resource_id: resourceId,
-      user_id: userId,
-      expires_at: expiresAt,
-    },
+  await db.insert(shareLinks).values({
+    token,
+    resourceType: resourceType,
+    resourceId: resourceId,
+    userId,
+    expiresAt: expiresAt.toISOString(),
   });
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://voicica.ai';
@@ -109,65 +113,69 @@ export async function getSharedContent(token: string): Promise<{
   notFound: boolean;
 }> {
   // 查找分享链接
-  const shareLink = await prisma.share_links.findUnique({
-    where: { token },
-  });
+  const [shareLink] = await db
+    .select()
+    .from(shareLinks)
+    .where(eq(shareLinks.token, token))
+    .limit(1);
 
   if (!shareLink) {
     return { type: 'music', data: null, expired: false, notFound: true };
   }
 
   // 检查是否过期
-  if (new Date() > shareLink.expires_at) {
-    return { type: shareLink.resource_type as ShareResourceType, data: null, expired: true, notFound: false };
+  if (new Date() > new Date(shareLink.expiresAt)) {
+    return { type: shareLink.resourceType as ShareResourceType, data: null, expired: true, notFound: false };
   }
 
   // 增加查看次数
-  await prisma.share_links.update({
-    where: { id: shareLink.id },
-    data: { view_count: { increment: 1 } },
-  });
+  await db
+    .update(shareLinks)
+    .set({ viewCount: sql`${shareLinks.viewCount} + 1` })
+    .where(eq(shareLinks.id, shareLink.id));
 
   // 根据资源类型获取数据
-  const resourceType = shareLink.resource_type as ShareResourceType;
+  const resourceType = shareLink.resourceType as ShareResourceType;
 
   if (resourceType === 'music') {
-    const record = await prisma.music_records.findUnique({
-      where: { task_id: shareLink.resource_id },
-      select: {
-        title: true,
-        cover_url: true,
-        audio_url: true,
-        duration: true,
-        lyrics: true,
-        tags: true,
-        model: true,
-        created_at: true,
-      },
-    });
+    const [record] = await db
+      .select({
+        title: musicRecords.title,
+        cover_url: musicRecords.coverUrl,
+        audio_url: musicRecords.audioUrl,
+        duration: musicRecords.duration,
+        lyrics: musicRecords.lyrics,
+        tags: musicRecords.tags,
+        model: musicRecords.model,
+        created_at: musicRecords.createdAt,
+      })
+      .from(musicRecords)
+      .where(eq(musicRecords.taskId, shareLink.resourceId))
+      .limit(1);
 
     return {
       type: 'music',
-      data: record as SharedMusicData | null,
+      data: record ? { ...record, created_at: new Date(record.created_at) } as SharedMusicData : null,
       expired: false,
       notFound: !record,
     };
   }
 
   if (resourceType === 'dialogue') {
-    const record = await prisma.dialogue_records.findUnique({
-      where: { task_id: shareLink.resource_id },
-      select: {
-        audio_url: true,
-        duration: true,
-        total_characters: true,
-        created_at: true,
-      },
-    });
+    const [record] = await db
+      .select({
+        audio_url: dialogueRecords.audioUrl,
+        duration: dialogueRecords.duration,
+        total_characters: dialogueRecords.totalCharacters,
+        created_at: dialogueRecords.createdAt,
+      })
+      .from(dialogueRecords)
+      .where(eq(dialogueRecords.taskId, shareLink.resourceId))
+      .limit(1);
 
     return {
       type: 'dialogue',
-      data: record as SharedDialogueData | null,
+      data: record ? { ...record, created_at: new Date(record.created_at) } as SharedDialogueData : null,
       expired: false,
       notFound: !record,
     };
@@ -190,21 +198,25 @@ export async function getUserShareLinks(limit: number = 50): Promise<Array<{
 }>> {
   const { user_id: userId } = await getUserOrAnonymous();
 
-  const links = await prisma.share_links.findMany({
-    where: { user_id: userId },
-    orderBy: { created_at: 'desc' },
-    take: limit,
-    select: {
-      token: true,
-      resource_type: true,
-      resource_id: true,
-      view_count: true,
-      expires_at: true,
-      created_at: true,
-    },
-  });
+  const links = await db
+    .select({
+      token: shareLinks.token,
+      resource_type: shareLinks.resourceType,
+      resource_id: shareLinks.resourceId,
+      view_count: shareLinks.viewCount,
+      expires_at: shareLinks.expiresAt,
+      created_at: shareLinks.createdAt,
+    })
+    .from(shareLinks)
+    .where(eq(shareLinks.userId, userId))
+    .orderBy(desc(shareLinks.createdAt))
+    .limit(limit);
 
-  return links;
+  return links.map((link) => ({
+    ...link,
+    expires_at: new Date(link.expires_at),
+    created_at: new Date(link.created_at),
+  }));
 }
 
 /**
@@ -213,17 +225,17 @@ export async function getUserShareLinks(limit: number = 50): Promise<Array<{
 export async function deleteShareLink(token: string): Promise<boolean> {
   const { user_id: userId } = await getUserOrAnonymous();
 
-  const link = await prisma.share_links.findFirst({
-    where: { token, user_id: userId },
-  });
+  const [link] = await db
+    .select()
+    .from(shareLinks)
+    .where(and(eq(shareLinks.token, token), eq(shareLinks.userId, userId)))
+    .limit(1);
 
   if (!link) {
     return false;
   }
 
-  await prisma.share_links.delete({
-    where: { id: link.id },
-  });
+  await db.delete(shareLinks).where(eq(shareLinks.id, link.id));
 
   return true;
 }

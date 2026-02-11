@@ -3,7 +3,9 @@
 /**
  * TTS 模块 Server Actions
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { ttsRecords, voices, taskQueue, anonymousUsers, users, storyParagraphs, stories } from '@/db/schema';
+import { eq, and, desc, count, gte, lte, inArray, sql } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 import { v4 as uuidv4 } from 'uuid';
 import { nanoid } from 'nanoid';
@@ -139,10 +141,7 @@ function mapRoleToVoiceType(role: string): 'standard' | 'professional' | 'celebr
  */
 async function calculateCreditsCost(text: string, voiceName: string): Promise<number> {
   // 查询语音的 role 来确定计费类型
-  const voice = await prisma.voices.findFirst({
-    where: { name: voiceName },
-    select: { role: true },
-  });
+  const [voice] = await db.select({ role: voices.role }).from(voices).where(eq(voices.name, voiceName)).limit(1);
 
   const voiceType = voice ? mapRoleToVoiceType(voice.role) : 'standard';
   console.log(`💰 [calculateCreditsCost] voice=${voiceName}, role=${voice?.role}, voiceType=${voiceType}`);
@@ -184,37 +183,13 @@ export async function createTtsTask(request: TtsRequest): Promise<TtsTaskStatus>
     const taskId = uuidv4();
 
     // 4. 创建任务队列记录
-    await prisma.task_queue.create({
-      data: {
-        task_id: taskId,
-        task_type: 'TTS',
-        user_id: userId,
-        status: 'PENDING',
-        priority: 5,
-        payload: {
-          text: request.text,
-          voice_name: request.voice_name,
-          language: request.language || null,
-          style: request.style || null,     // 语音风格
-          speed: request.speed ?? 1.0,      // 0.5 - 2.0，默认 1.0 倍速
-          pitch: request.pitch ?? 50,       // 1 - 100，默认 50（中间值）
-          volume: request.volume ?? 50,     // 1 - 100，默认 50（中间值）
-          credits_cost: requiredCredits,
-          is_anonymous: isAnonymous,
-        },
-        retry_count: 0,
-        max_retries: 3,
-        timeout_seconds: 300,
-      },
-    });
-
-    // 5. 创建 TTS 记录（同时生成分享短码）
-    const characterCount = request.text.length;
-    const shareId = generateShareId();
-    await prisma.tts_records.create({
-      data: {
-        user_id: userId,
-        task_id: taskId,
+    await db.insert(taskQueue).values({
+      taskId,
+      taskType: 'TTS',
+      userId,
+      status: 'PENDING',
+      priority: 5,
+      payload: {
         text: request.text,
         voice_name: request.voice_name,
         language: request.language || null,
@@ -223,14 +198,34 @@ export async function createTtsTask(request: TtsRequest): Promise<TtsTaskStatus>
         pitch: request.pitch ?? 50,       // 1 - 100，默认 50（中间值）
         volume: request.volume ?? 50,     // 1 - 100，默认 50（中间值）
         credits_cost: requiredCredits,
-        character_count: characterCount,
-        status: 'PENDING',
-        progress: 0,
-        format: 'mp3',
-        share_id: shareId,
-        story_id: request.story_id || null, // 关联故事（可选）
-        platform: request.platform || null, // 来源平台
+        is_anonymous: isAnonymous,
       },
+      retryCount: 0,
+      maxRetries: 3,
+      timeoutSeconds: 300,
+    });
+
+    // 5. 创建 TTS 记录（同时生成分享短码）
+    const characterCount = request.text.length;
+    const shareId = generateShareId();
+    await db.insert(ttsRecords).values({
+      userId,
+      taskId,
+      text: request.text,
+      voiceName: request.voice_name,
+      language: request.language || null,
+      style: request.style || null,     // 语音风格
+      speed: request.speed ?? 1.0,      // 0.5 - 2.0，默认 1.0 倍速
+      pitch: request.pitch ?? 50,       // 1 - 100，默认 50（中间值）
+      volume: request.volume ?? 50,     // 1 - 100，默认 50（中间值）
+      creditsCost: requiredCredits,
+      characterCount,
+      status: 'PENDING',
+      progress: 0,
+      format: 'mp3',
+      shareId,
+      storyId: request.story_id || null, // 关联故事（可选）
+      platform: request.platform || null, // 来源平台
     });
 
     console.log(`TTS 任务已创建: ${taskId}, 用户: ${userId}, 积分: ${requiredCredits}`);
@@ -282,9 +277,7 @@ export async function createTtsTask(request: TtsRequest): Promise<TtsTaskStatus>
  * 查询 TTS 任务状态
  */
 export async function getTtsTaskStatus(taskId: string): Promise<TtsTaskStatus> {
-  const record = await prisma.tts_records.findUnique({
-    where: { task_id: taskId },
-  });
+  const [record] = await db.select().from(ttsRecords).where(eq(ttsRecords.taskId, taskId)).limit(1);
 
   if (!record) {
     throw new Error(`Task not found: ${taskId}`);
@@ -315,13 +308,13 @@ export async function getTtsTaskStatus(taskId: string): Promise<TtsTaskStatus> {
         status: 'SUCCESS',
         progress: 100,
         result: {
-          audio_url: record.audio_url || '',
+          audio_url: record.audioUrl || '',
           duration: record.duration || 0,
           format: record.format,
           task_id: taskId,
-          user_id: record.user_id,
+          user_id: record.userId,
           record_id: record.id,
-          credits_cost: record.credits_cost,
+          credits_cost: record.creditsCost,
         },
         error: null,
       };
@@ -332,7 +325,7 @@ export async function getTtsTaskStatus(taskId: string): Promise<TtsTaskStatus> {
         status: 'FAILURE',
         progress: 0,
         result: null,
-        error: record.error_message,
+        error: record.errorMessage,
       };
 
     default:
@@ -347,67 +340,65 @@ export async function getTtsRecords(limit: number = 50): Promise<TtsRecord[]> {
   const unifiedUser = await getUserOrAnonymous();
   const userId = unifiedUser.user_id;
 
-  const records = await prisma.tts_records.findMany({
-    where: { user_id: userId },
-    orderBy: { created_at: 'desc' },
-    take: limit,
-  });
+  const records = await db.select().from(ttsRecords)
+    .where(eq(ttsRecords.userId, userId))
+    .orderBy(desc(ttsRecords.createdAt))
+    .limit(limit);
 
   // 获取所有不重复的 voice_name
-  const voiceNames = [...new Set(records.map(r => r.voice_name))];
+  const voiceNames = [...new Set(records.map(r => r.voiceName))];
 
   // 批量查询语音信息
-  const voices = await prisma.voices.findMany({
-    where: { name: { in: voiceNames } },
-    select: {
-      id: true,
-      name: true,
-      display_name: true,
-      provider: true,
-      locale: true,
-      country: true,
-      gender: true,
-      avatar_url: true,
-    },
-  });
+  const voiceRows = voiceNames.length > 0
+    ? await db.select({
+        id: voices.id,
+        name: voices.name,
+        displayName: voices.displayName,
+        provider: voices.provider,
+        locale: voices.locale,
+        country: voices.country,
+        gender: voices.gender,
+        avatarUrl: voices.avatarUrl,
+      }).from(voices).where(inArray(voices.name, voiceNames))
+    : [];
 
   // 创建 voice_name -> voice 的映射
-  const voiceMap = new Map(voices.map(v => [v.name, v]));
+  const voiceMap = new Map(voiceRows.map(v => [v.name, v]));
 
   return records.map((r) => {
-    const voice = voiceMap.get(r.voice_name);
+    const voice = voiceMap.get(r.voiceName);
     return {
       id: r.id,
-      user_id: r.user_id,
-      task_id: r.task_id,
+      user_id: r.userId,
+      task_id: r.taskId,
       text: r.text,
-      voice_name: r.voice_name,
+      voice_name: r.voiceName,
       language: r.language,
       style: r.style,
       speed: r.speed,
       pitch: r.pitch,
       volume: r.volume,
-      credits_cost: r.credits_cost,
-      character_count: r.character_count,
+      credits_cost: r.creditsCost,
+      character_count: r.characterCount,
       status: r.status,
       progress: r.progress,
-      audio_url: r.audio_url,
+      audio_url: r.audioUrl,
       duration: r.duration,
       format: r.format,
-      error_message: r.error_message,
-      created_at: r.created_at,
-      completed_at: r.completed_at,
-      share_id: r.share_id,
-      story_id: r.story_id,
+      error_message: r.errorMessage,
+      created_at: new Date(r.createdAt),
+      completed_at: r.completedAt ? new Date(r.completedAt) : null,
+      share_id: r.shareId,
+      story_id: r.storyId,
       voice: voice ? {
         id: voice.id,
         name: voice.name,
-        display_name: voice.display_name,
+        display_name: voice.displayName,
         provider: voice.provider,
         locale: voice.locale,
         country: voice.country,
         gender: voice.gender,
-        avatar_url: voice.avatar_url,
+        avatar_url: voice.avatarUrl,
       } : null,
     };
   });
@@ -435,82 +426,77 @@ export async function queryTtsRecords(params: {
   } = params;
 
   // 构建查询条件
-  const where: Record<string, unknown> = {
-    user_id: userId,
-  };
+  const conditions = [eq(ttsRecords.userId, userId)];
 
   if (status) {
-    // 支持逗号分隔的多状态查询
     if (status.includes(',')) {
-      where.status = { in: status.split(',') };
+      conditions.push(inArray(ttsRecords.status, status.split(',')));
     } else {
-      where.status = status;
+      conditions.push(eq(ttsRecords.status, status));
     }
   }
 
-  if (start_date || end_date) {
-    where.created_at = {};
-    if (start_date) {
-      (where.created_at as Record<string, unknown>).gte = start_date;
-    }
-    if (end_date) {
-      (where.created_at as Record<string, unknown>).lte = end_date;
-    }
+  if (start_date) {
+    conditions.push(gte(ttsRecords.createdAt, start_date.toISOString()));
   }
+  if (end_date) {
+    conditions.push(lte(ttsRecords.createdAt, end_date.toISOString()));
+  }
+
+  const whereClause = and(...conditions);
 
   // 查询总数
-  const total = await prisma.tts_records.count({ where });
+  const [{ total }] = await db.select({ total: count() }).from(ttsRecords).where(whereClause);
 
   // 查询记录
   const offset = (page - 1) * page_size;
-  const records = await prisma.tts_records.findMany({
-    where,
-    orderBy: { created_at: 'desc' },
-    skip: offset,
-    take: page_size,
-  });
+  const records = await db.select().from(ttsRecords)
+    .where(whereClause)
+    .orderBy(desc(ttsRecords.createdAt))
+    .offset(offset)
+    .limit(page_size);
 
   // 关联语音信息
-  const voiceNames = [...new Set(records.map((r) => r.voice_name))];
-  const voices = await prisma.voices.findMany({
-    where: { name: { in: voiceNames } },
-  });
-  const voiceMap = new Map(voices.map((v) => [v.name, v]));
+  const voiceNames = [...new Set(records.map((r) => r.voiceName))];
+  const voiceRows = voiceNames.length > 0
+    ? await db.select().from(voices).where(inArray(voices.name, voiceNames))
+    : [];
+  const voiceMap = new Map(voiceRows.map((v) => [v.name, v]));
 
   const recordsWithVoice = records.map((r) => {
-    const voice = voiceMap.get(r.voice_name);
+    const voice = voiceMap.get(r.voiceName);
     return {
       id: r.id,
-      user_id: r.user_id,
-      task_id: r.task_id,
+      user_id: r.userId,
+      task_id: r.taskId,
       text: r.text,
-      voice_name: r.voice_name,
+      voice_name: r.voiceName,
       language: r.language,
       style: r.style,
       speed: r.speed,
       pitch: r.pitch,
       volume: r.volume,
-      credits_cost: r.credits_cost,
-      character_count: r.character_count,
+      credits_cost: r.creditsCost,
+      character_count: r.characterCount,
       status: r.status,
       progress: r.progress,
-      audio_url: r.audio_url,
+      audio_url: r.audioUrl,
       duration: r.duration,
       format: r.format,
-      error_message: r.error_message,
-      created_at: r.created_at,
-      completed_at: r.completed_at,
-      share_id: r.share_id,
-      story_id: r.story_id,
+      error_message: r.errorMessage,
+      created_at: new Date(r.createdAt),
+      completed_at: r.completedAt ? new Date(r.completedAt) : null,
+      share_id: r.shareId,
+      story_id: r.storyId,
       voice: voice ? {
         id: voice.id,
         name: voice.name,
-        display_name: voice.display_name,
+        display_name: voice.displayName,
         provider: voice.provider,
         locale: voice.locale,
         country: voice.country,
         gender: voice.gender,
-        avatar_url: voice.avatar_url,
+        avatar_url: voice.avatarUrl,
       } : null,
     };
   });
@@ -533,56 +519,52 @@ export async function getTtsRecordById(recordId: number): Promise<TtsRecord> {
   const unifiedUser = await getUserOrAnonymous();
   const userId = unifiedUser.user_id;
 
-  const record = await prisma.tts_records.findUnique({
-    where: { id: recordId },
-  });
+  const [record] = await db.select().from(ttsRecords).where(eq(ttsRecords.id, recordId)).limit(1);
 
   if (!record) {
     throw new Error(`Record not found: ${recordId}`);
   }
 
   // 验证记录是否属于当前用户
-  if (record.user_id !== userId) {
+  if (record.userId !== userId) {
     throw new Error('Not authorized to access this record');
   }
 
   // 关联查询语音信息
-  const voice = await prisma.voices.findFirst({
-    where: { name: record.voice_name },
-  });
+  const [voice] = await db.select().from(voices).where(eq(voices.name, record.voiceName)).limit(1);
 
   return {
     id: record.id,
-    user_id: record.user_id,
-    task_id: record.task_id,
+    user_id: record.userId,
+    task_id: record.taskId,
     text: record.text,
-    voice_name: record.voice_name,
+    voice_name: record.voiceName,
     language: record.language,
     style: record.style,
     speed: record.speed,
     pitch: record.pitch,
     volume: record.volume,
-    credits_cost: record.credits_cost,
-    character_count: record.character_count,
+    credits_cost: record.creditsCost,
+    character_count: record.characterCount,
     status: record.status,
     progress: record.progress,
-    audio_url: record.audio_url,
+    audio_url: record.audioUrl,
     duration: record.duration,
     format: record.format,
-    error_message: record.error_message,
-    created_at: record.created_at,
-    completed_at: record.completed_at,
-    share_id: record.share_id,
-    story_id: record.story_id,
+    error_message: record.errorMessage,
+    created_at: new Date(record.createdAt),
+    completed_at: record.completedAt ? new Date(record.completedAt) : null,
+    share_id: record.shareId,
+    story_id: record.storyId,
     voice: voice ? {
       id: voice.id,
       name: voice.name,
-      display_name: voice.display_name,
+      display_name: voice.displayName,
       provider: voice.provider,
       locale: voice.locale,
       country: voice.country,
       gender: voice.gender,
-      avatar_url: voice.avatar_url,
+      avatar_url: voice.avatarUrl,
     } : null,
   };
 }
@@ -600,23 +582,19 @@ export async function deleteTtsRecord(recordId: string): Promise<void> {
     throw new Error(`Invalid record ID: ${recordId}`);
   }
 
-  const record = await prisma.tts_records.findUnique({
-    where: { id: numericId },
-  });
+  const [record] = await db.select().from(ttsRecords).where(eq(ttsRecords.id, numericId)).limit(1);
 
   if (!record) {
     throw new Error(`Record not found: ${recordId}`);
   }
 
   // 验证记录是否属于当前用户
-  if (record.user_id !== userId) {
+  if (record.userId !== userId) {
     throw new Error('Not authorized to delete this record');
   }
 
   // 删除记录
-  await prisma.tts_records.delete({
-    where: { id: numericId },
-  });
+  await db.delete(ttsRecords).where(eq(ttsRecords.id, numericId));
 
   console.log(`TTS 记录已删除: ${recordId}`);
 }
@@ -639,18 +617,14 @@ export async function batchDeleteTtsRecords(recordIds: string[]): Promise<{ dele
         continue;
       }
 
-      const record = await prisma.tts_records.findUnique({
-        where: { id: numericId },
-      });
+      const [record] = await db.select().from(ttsRecords).where(eq(ttsRecords.id, numericId)).limit(1);
 
-      if (!record || record.user_id !== userId) {
+      if (!record || record.userId !== userId) {
         failed++;
         continue;
       }
 
-      await prisma.tts_records.delete({
-        where: { id: numericId },
-      });
+      await db.delete(ttsRecords).where(eq(ttsRecords.id, numericId));
       deleted++;
     } catch {
       failed++;
@@ -668,56 +642,52 @@ export async function getTtsRecordByTaskId(taskId: string): Promise<TtsRecord> {
   const unifiedUser = await getUserOrAnonymous();
   const userId = unifiedUser.user_id;
 
-  const record = await prisma.tts_records.findUnique({
-    where: { task_id: taskId },
-  });
+  const [record] = await db.select().from(ttsRecords).where(eq(ttsRecords.taskId, taskId)).limit(1);
 
   if (!record) {
     throw new Error(`Record not found: ${taskId}`);
   }
 
   // 验证记录是否属于当前用户
-  if (record.user_id !== userId) {
+  if (record.userId !== userId) {
     throw new Error('Not authorized to access this record');
   }
 
   // 获取语音信息
-  const voice = await prisma.voices.findUnique({
-    where: { name: record.voice_name },
-  });
+  const [voice] = await db.select().from(voices).where(eq(voices.name, record.voiceName)).limit(1);
 
   return {
     id: record.id,
-    user_id: record.user_id,
-    task_id: record.task_id,
+    user_id: record.userId,
+    task_id: record.taskId,
     text: record.text,
-    voice_name: record.voice_name,
+    voice_name: record.voiceName,
     language: record.language,
     style: record.style,
     speed: record.speed,
     pitch: record.pitch,
     volume: record.volume,
-    credits_cost: record.credits_cost,
-    character_count: record.character_count,
+    credits_cost: record.creditsCost,
+    character_count: record.characterCount,
     status: record.status,
     progress: record.progress,
-    audio_url: record.audio_url,
+    audio_url: record.audioUrl,
     duration: record.duration,
     format: record.format,
-    error_message: record.error_message,
-    created_at: record.created_at,
-    completed_at: record.completed_at,
-    share_id: record.share_id,
-    story_id: record.story_id,
+    error_message: record.errorMessage,
+    created_at: new Date(record.createdAt),
+    completed_at: record.completedAt ? new Date(record.completedAt) : null,
+    share_id: record.shareId,
+    story_id: record.storyId,
     voice: voice ? {
       id: voice.id,
       name: voice.name,
-      display_name: voice.display_name,
+      display_name: voice.displayName,
       provider: voice.provider,
       locale: voice.locale,
       country: voice.country,
       gender: voice.gender,
-      avatar_url: voice.avatar_url,
+      avatar_url: voice.avatarUrl,
     } : null,
   };
 }
@@ -743,16 +713,14 @@ export async function checkAndHandleStuckTask(
   const userId = unifiedUser.user_id;
 
   // 1. 获取记录
-  const record = await prisma.tts_records.findUnique({
-    where: { id: recordId },
-  });
+  const [record] = await db.select().from(ttsRecords).where(eq(ttsRecords.id, recordId)).limit(1);
 
   if (!record) {
     throw new Error(`Record not found: ${recordId}`);
   }
 
   // 验证权限
-  if (record.user_id !== userId) {
+  if (record.userId !== userId) {
     throw new Error('Not authorized to access this record');
   }
 
@@ -764,74 +732,72 @@ export async function checkAndHandleStuckTask(
       message: '任务已完成',
       record: {
         id: record.id,
-        user_id: record.user_id,
-        task_id: record.task_id,
+        user_id: record.userId,
+        task_id: record.taskId,
         text: record.text,
-        voice_name: record.voice_name,
+        voice_name: record.voiceName,
         language: record.language,
         style: record.style,
         speed: record.speed,
         pitch: record.pitch,
         volume: record.volume,
-        credits_cost: record.credits_cost,
-        character_count: record.character_count,
+        credits_cost: record.creditsCost,
+        character_count: record.characterCount,
         status: record.status,
         progress: record.progress,
-        audio_url: record.audio_url,
+        audio_url: record.audioUrl,
         duration: record.duration,
         format: record.format,
-        error_message: record.error_message,
-        created_at: record.created_at,
-        completed_at: record.completed_at,
-        share_id: record.share_id,
-        story_id: record.story_id,
+        error_message: record.errorMessage,
+        created_at: new Date(record.createdAt),
+        completed_at: record.completedAt ? new Date(record.completedAt) : null,
+        share_id: record.shareId,
+        story_id: record.storyId,
       },
     };
   }
 
   // 3. 检查任务创建时间，判断是否超时
   const now = new Date();
-  const createdAt = new Date(record.created_at);
+  const createdAt = new Date(record.createdAt);
   const elapsedMinutes = (now.getTime() - createdAt.getTime()) / 1000 / 60;
 
   // 超时阈值：5分钟
   const TIMEOUT_THRESHOLD_MINUTES = 5;
 
   if (elapsedMinutes > TIMEOUT_THRESHOLD_MINUTES) {
-    console.error(`❌ [checkStuckTask] 任务 ${record.task_id} 已超时 ${elapsedMinutes.toFixed(1)} 分钟，标记为失败`);
+    console.error(`❌ [checkStuckTask] 任务 ${record.taskId} 已超时 ${elapsedMinutes.toFixed(1)} 分钟，标记为失败`);
 
     // 4. 标记为失败并返还积分（仅当积分已被扣减时）
     // 根据 Inngest worker 流程：progress >= 20 表示积分已扣减
     const creditsWereDeducted = (record.progress ?? 0) >= 20;
 
-    const updatedRecord = await prisma.$transaction(async (tx) => {
+    const updatedRecord = await db.transaction(async (tx) => {
       // 更新任务状态
-      const updated = await tx.tts_records.update({
-        where: { id: recordId },
-        data: {
+      const [updated] = await tx.update(ttsRecords)
+        .set({
           status: 'FAILURE',
           progress: 0,
-          error_message: `任务超时（运行时间: ${elapsedMinutes.toFixed(1)} 分钟）`,
-          completed_at: now,
-        },
-      });
+          errorMessage: `任务超时（运行时间: ${elapsedMinutes.toFixed(1)} 分钟）`,
+          completedAt: now.toISOString(),
+        })
+        .where(eq(ttsRecords.id, recordId))
+        .returning();
 
       // 只有在积分已被扣减的情况下才返还
       if (creditsWereDeducted) {
         const isAnonymous = unifiedUser.is_anonymous;
         if (isAnonymous) {
-          await tx.anonymous_users.update({
-            where: { user_id: userId },
-            data: { credits: { increment: record.credits_cost } },
-          });
+          await tx.update(anonymousUsers)
+            .set({ credits: sql`${anonymousUsers.credits} + ${record.creditsCost}` })
+            .where(eq(anonymousUsers.userId, userId));
         } else {
-          await tx.users.update({
-            where: { user_id: userId },
-            data: { credits: { increment: record.credits_cost } },
-          });
+          await tx.update(users)
+            .set({ credits: sql`${users.credits} + ${record.creditsCost}` })
+            .where(eq(users.userId, userId));
         }
 
-        console.log(`✅ [checkStuckTask] 已返还 ${record.credits_cost} 积分给用户 ${userId}`);
+        console.log(`✅ [checkStuckTask] 已返还 ${record.creditsCost} 积分给用户 ${userId}`);
       } else {
         console.log(`ℹ️ [checkStuckTask] 积分未被扣减（progress: ${record.progress}），无需返还`);
       }
@@ -843,37 +809,37 @@ export async function checkAndHandleStuckTask(
       handled: true,
       newStatus: 'FAILURE',
       message: creditsWereDeducted
-        ? `任务超时已取消，已返还 ${record.credits_cost} 积分`
+        ? `任务超时已取消，已返还 ${record.creditsCost} 积分`
         : '任务超时已取消（积分未扣减）',
       record: {
         id: updatedRecord.id,
-        user_id: updatedRecord.user_id,
-        task_id: updatedRecord.task_id,
+        user_id: updatedRecord.userId,
+        task_id: updatedRecord.taskId,
         text: updatedRecord.text,
-        voice_name: updatedRecord.voice_name,
+        voice_name: updatedRecord.voiceName,
         language: updatedRecord.language,
         style: updatedRecord.style,
         speed: updatedRecord.speed,
         pitch: updatedRecord.pitch,
         volume: updatedRecord.volume,
-        credits_cost: updatedRecord.credits_cost,
-        character_count: updatedRecord.character_count,
+        credits_cost: updatedRecord.creditsCost,
+        character_count: updatedRecord.characterCount,
         status: updatedRecord.status,
         progress: updatedRecord.progress,
-        audio_url: updatedRecord.audio_url,
+        audio_url: updatedRecord.audioUrl,
         duration: updatedRecord.duration,
         format: updatedRecord.format,
-        error_message: updatedRecord.error_message,
-        created_at: updatedRecord.created_at,
-        completed_at: updatedRecord.completed_at,
-        share_id: updatedRecord.share_id,
-        story_id: updatedRecord.story_id,
+        error_message: updatedRecord.errorMessage,
+        created_at: new Date(updatedRecord.createdAt),
+        completed_at: updatedRecord.completedAt ? new Date(updatedRecord.completedAt) : null,
+        share_id: updatedRecord.shareId,
+        story_id: updatedRecord.storyId,
       },
     };
   }
 
   // 5. 未超时，任务仍在处理中，延长等待
-  console.log(`⏳ [checkStuckTask] 任务 ${record.task_id} 运行 ${elapsedMinutes.toFixed(1)} 分钟，继续等待`);
+  console.log(`⏳ [checkStuckTask] 任务 ${record.taskId} 运行 ${elapsedMinutes.toFixed(1)} 分钟，继续等待`);
 
   return {
     handled: false,
@@ -881,27 +847,27 @@ export async function checkAndHandleStuckTask(
     message: `任务仍在处理中（已运行 ${elapsedMinutes.toFixed(1)} 分钟）`,
     record: {
       id: record.id,
-      user_id: record.user_id,
-      task_id: record.task_id,
+      user_id: record.userId,
+      task_id: record.taskId,
       text: record.text,
-      voice_name: record.voice_name,
+      voice_name: record.voiceName,
       language: record.language,
       style: record.style,
       speed: record.speed,
       pitch: record.pitch,
       volume: record.volume,
-      credits_cost: record.credits_cost,
-      character_count: record.character_count,
+      credits_cost: record.creditsCost,
+      character_count: record.characterCount,
       status: record.status,
       progress: record.progress,
-      audio_url: record.audio_url,
+      audio_url: record.audioUrl,
       duration: record.duration,
       format: record.format,
-      error_message: record.error_message,
-      created_at: record.created_at,
-      completed_at: record.completed_at,
-      share_id: record.share_id,
-      story_id: record.story_id,
+      error_message: record.errorMessage,
+      created_at: new Date(record.createdAt),
+      completed_at: record.completedAt ? new Date(record.completedAt) : null,
+      share_id: record.shareId,
+      story_id: record.storyId,
     },
   };
 }
@@ -923,26 +889,29 @@ export async function updateParagraphAudio(params: {
     const unifiedUser = await getUserOrAnonymous();
     const userId = unifiedUser.user_id;
 
-    // 验证段落归属
-    const paragraph = await prisma.story_paragraphs.findUnique({
-      where: { id: params.paragraphId },
-      include: { story: { select: { user_id: true } } },
-    });
+    // 验证段落归属 - 查询段落并通过 storyId 关联查询 story 的 user_id
+    const [paragraph] = await db.select().from(storyParagraphs).where(eq(storyParagraphs.id, params.paragraphId)).limit(1);
 
-    if (!paragraph || paragraph.story.user_id !== userId) {
+    if (!paragraph) {
+      return { success: false, error: 'Paragraph not found' };
+    }
+
+    // 通过 storyId 查询 story 的 user_id
+    const [story] = await db.select({ userId: stories.userId }).from(stories).where(eq(stories.id, paragraph.storyId)).limit(1);
+
+    if (!story || story.userId !== userId) {
       return { success: false, error: 'Paragraph not found' };
     }
 
     // 更新段落音频信息
-    await prisma.story_paragraphs.update({
-      where: { id: params.paragraphId },
-      data: {
-        audio_url: params.audioUrl,
-        audio_duration: params.audioDuration,
-        audio_voice: params.voiceName,
-        audio_status: 'completed',
-      },
-    });
+    await db.update(storyParagraphs)
+      .set({
+        audioUrl: params.audioUrl,
+        audioDuration: params.audioDuration,
+        audioVoice: params.voiceName,
+        audioStatus: 'completed',
+      })
+      .where(eq(storyParagraphs.id, params.paragraphId));
 
     console.log('✅ [updateParagraphAudio] 段落音频已更新:', params.paragraphId);
 
@@ -964,31 +933,27 @@ export async function updateParagraphAudio(params: {
  */
 export async function getSharedTtsRecord(shareId: string): Promise<SharedTtsRecord | null> {
   // 根据 share_id 查询记录
-  const record = await prisma.tts_records.findUnique({
-    where: { share_id: shareId },
-  });
+  const [record] = await db.select().from(ttsRecords).where(eq(ttsRecords.shareId, shareId)).limit(1);
 
   // 记录不存在或状态不是成功
-  if (!record || record.status !== 'SUCCESS' || !record.audio_url) {
+  if (!record || record.status !== 'SUCCESS' || !record.audioUrl) {
     return null;
   }
 
   // 查询语音信息
-  const voice = await prisma.voices.findFirst({
-    where: { name: record.voice_name },
-  });
+  const [voice] = await db.select().from(voices).where(eq(voices.name, record.voiceName)).limit(1);
 
   return {
     share_id: shareId,
     text: record.text,
-    audio_url: record.audio_url,
+    audio_url: record.audioUrl,
     duration: record.duration || 0,
-    character_count: record.character_count,
-    created_at: record.created_at,
+    character_count: record.characterCount,
+    created_at: new Date(record.createdAt),
     voice: voice ? {
       name: voice.name,
-      display_name: voice.display_name,
-      avatar_url: voice.avatar_url,
+      display_name: voice.displayName,
+      avatar_url: voice.avatarUrl,
     } : null,
   };
 }

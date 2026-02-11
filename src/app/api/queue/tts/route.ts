@@ -1,11 +1,13 @@
- /**
+/**
  * TTS 任务队列处理函数 (Cloudflare Queues)
  *
  * 由 Cloudflare Queue Consumer Worker 通过 Service Binding 调用
  * 支持 Azure、Google 和 Fish Audio TTS 服务
  */
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { ttsRecords, taskQueue, voices } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { synthesizeSpeech as azureSynthesize } from '@/lib/services/azure-tts';
 import { synthesizeSpeech as googleSynthesize } from '@/lib/services/google-tts';
 import { synthesizeSpeech as fishAudioSynthesize } from '@/lib/services/fish-audio-tts';
@@ -27,9 +29,7 @@ async function handleTTSTask(req: NextRequest) {
 
   try {
     // 1. 幂等性检查：获取任务记录并验证状态
-    const ttsRecord = await prisma.tts_records.findUnique({
-      where: { task_id: taskId },
-    });
+    const [ttsRecord] = await db.select().from(ttsRecords).where(eq(ttsRecords.taskId, taskId)).limit(1);
 
     if (!ttsRecord) {
       throw new Error(`任务记录不存在: ${taskId}`);
@@ -42,20 +42,20 @@ async function handleTTSTask(req: NextRequest) {
     }
 
     // 2. 使用乐观锁更新状态为处理中（只有 PENDING 状态才能更新）
-    const updateResult = await prisma.tts_records.updateMany({
-      where: {
-        task_id: taskId,
-        status: 'PENDING', // 只有 PENDING 状态才能更新
-      },
-      data: {
+    const updateResult = await db.update(ttsRecords)
+      .set({
         status: 'PROCESSING',
         progress: 10,
-        character_count: text.length,
-      },
-    });
+        characterCount: text.length,
+      })
+      .where(and(
+        eq(ttsRecords.taskId, taskId),
+        eq(ttsRecords.status, 'PENDING'),
+      ))
+      .returning();
 
-    // 如果更新失败（count = 0），说明状态已被其他实例修改
-    if (updateResult.count === 0) {
+    // 如果更新失败（返回空数组），说明状态已被其他实例修改
+    if (updateResult.length === 0) {
       console.log(`⚠️ [Queue] 任务 ${taskId} 状态已被其他实例修改，跳过执行`);
       return NextResponse.json({ success: true, skipped: true, reason: 'Task status already modified' });
     }
@@ -73,25 +73,17 @@ async function handleTTSTask(req: NextRequest) {
     );
 
     // 4. 更新进度到 20%
-    await prisma.tts_records.update({
-      where: { task_id: taskId },
-      data: { progress: 20 },
-    });
+    await db.update(ttsRecords).set({ progress: 20 }).where(eq(ttsRecords.taskId, taskId));
 
     // 5. 获取语音信息
-    const voice = await prisma.voices.findFirst({
-      where: { name: voiceName },
-    });
+    const [voice] = await db.select().from(voices).where(eq(voices.name, voiceName)).limit(1);
 
     if (!voice) {
       throw new Error(`语音不存在: ${voiceName}`);
     }
 
     // 6. 更新进度到 30%
-    await prisma.tts_records.update({
-      where: { task_id: taskId },
-      data: { progress: 30 },
-    });
+    await db.update(ttsRecords).set({ progress: 30 }).where(eq(ttsRecords.taskId, taskId));
 
     // 7. 根据 provider 调用对应的 TTS 服务
     const provider = voice.provider || 'microsoft';
@@ -168,10 +160,7 @@ async function handleTTSTask(req: NextRequest) {
     }
 
     // 8. 更新进度到 80%
-    await prisma.tts_records.update({
-      where: { task_id: taskId },
-      data: { progress: 80 },
-    });
+    await db.update(ttsRecords).set({ progress: 80 }).where(eq(ttsRecords.taskId, taskId));
 
     // 9. 上传音频到 R2
     const fileName = `${taskId}.${format}`;
@@ -183,26 +172,24 @@ async function handleTTSTask(req: NextRequest) {
     );
 
     // 10. 更新任务状态为成功
-    await prisma.tts_records.update({
-      where: { task_id: taskId },
-      data: {
+    await db.update(ttsRecords)
+      .set({
         status: 'SUCCESS',
         progress: 100,
-        audio_url: audioUrl,
+        audioUrl: audioUrl,
         duration,
         format,
-        completed_at: new Date(),
-      },
-    });
+        completedAt: new Date().toISOString(),
+      })
+      .where(eq(ttsRecords.taskId, taskId));
 
     // 更新 task_queue 状态
-    await prisma.task_queue.updateMany({
-      where: { task_id: taskId },
-      data: {
+    await db.update(taskQueue)
+      .set({
         status: 'SUCCESS',
-        completed_at: new Date(),
-      },
-    });
+        completedAt: new Date().toISOString(),
+      })
+      .where(eq(taskQueue.taskId, taskId));
 
     console.log(`✅ [Queue] TTS 任务处理成功: ${taskId}`);
 
@@ -234,24 +221,22 @@ async function handleTTSTask(req: NextRequest) {
 
     // 更新任务状态为失败
     try {
-      await prisma.tts_records.updateMany({
-        where: { task_id: taskId },
-        data: {
+      await db.update(ttsRecords)
+        .set({
           status: 'FAILURE',
           progress: 0,
-          error_message: error instanceof Error ? error.message : String(error),
-          completed_at: new Date(),
-        },
-      });
+          errorMessage: error instanceof Error ? error.message : String(error),
+          completedAt: new Date().toISOString(),
+        })
+        .where(eq(ttsRecords.taskId, taskId));
 
-      await prisma.task_queue.updateMany({
-        where: { task_id: taskId },
-        data: {
+      await db.update(taskQueue)
+        .set({
           status: 'FAILURE',
-          error_message: error instanceof Error ? error.message : String(error),
-          completed_at: new Date(),
-        },
-      });
+          errorMessage: error instanceof Error ? error.message : String(error),
+          completedAt: new Date().toISOString(),
+        })
+        .where(eq(taskQueue.taskId, taskId));
     } catch (updateError) {
       console.error('更新失败状态异常:', updateError);
     }

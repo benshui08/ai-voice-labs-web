@@ -5,13 +5,14 @@
  *
  * 使用 React cache() 在同一请求内去重数据库查询
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { users, anonymousUsers, creditHistory, userEvents } from '@/db/schema';
+import { eq, and, desc, count } from 'drizzle-orm';
 import { cache } from 'react';
 import { getCurrentUser, getUserOrAnonymous } from '@/lib/auth-firebase';
 import { uploadImage } from '@/lib/services/r2-storage';
 import { v4 as uuidv4 } from 'uuid';
 import type { UserProfile, CreditsInfo, CreditHistoryResponse } from '@/types/user';
-import { Prisma } from '@/generated/prisma';
 
 // ==================== 积分工具函数 ====================
 
@@ -33,51 +34,55 @@ async function checkAndResetMonthlyCredits(userId: string): Promise<{
 }> {
   const firstDayOfMonth = getFirstDayOfMonth();
 
-  const user = await prisma.users.findUnique({
-    where: { user_id: userId },
-    select: { monthly_credits: true, monthly_credits_reset_at: true },
-  });
+  const [user] = await db
+    .select({ monthlyCredits: users.monthlyCredits, monthlyCreditsResetAt: users.monthlyCreditsResetAt })
+    .from(users)
+    .where(eq(users.userId, userId))
+    .limit(1);
 
   if (!user) {
     return { wasReset: false, monthlyCredits: 0 };
   }
 
   // 如果从未重置过，或上次重置在本月1号之前，需要重置
-  const needsReset = !user.monthly_credits_reset_at ||
-    user.monthly_credits_reset_at < firstDayOfMonth;
+  const needsReset = !user.monthlyCreditsResetAt ||
+    new Date(user.monthlyCreditsResetAt) < firstDayOfMonth;
 
-  if (needsReset && user.monthly_credits > 0) {
+  if (needsReset && user.monthlyCredits > 0) {
     // 重置当月积分（永久积分 credits 不受影响）
-    await prisma.users.update({
-      where: { user_id: userId },
-      data: {
-        monthly_credits: 0,
-        monthly_credits_reset_at: new Date(),
-      },
-    });
+    await db
+      .update(users)
+      .set({
+        monthlyCredits: 0,
+        monthlyCreditsResetAt: new Date().toISOString(),
+      })
+      .where(eq(users.userId, userId));
 
-    console.log(`🔄 [Credits] 用户 ${userId} 当月积分已重置: ${user.monthly_credits} -> 0`);
+    console.log(`🔄 [Credits] 用户 ${userId} 当月积分已重置: ${user.monthlyCredits} -> 0`);
     return { wasReset: true, monthlyCredits: 0 };
   }
 
   // 如果没有积分需要重置，只更新重置时间
   if (needsReset) {
-    await prisma.users.update({
-      where: { user_id: userId },
-      data: { monthly_credits_reset_at: new Date() },
-    });
+    await db
+      .update(users)
+      .set({ monthlyCreditsResetAt: new Date().toISOString() })
+      .where(eq(users.userId, userId));
   }
 
-  return { wasReset: false, monthlyCredits: user.monthly_credits };
+  return { wasReset: false, monthlyCredits: user.monthlyCredits };
 }
 
 // ==================== 请求级缓存 ====================
 // 同一次请求内，相同 userId 只查一次数据库
 
 const getCachedAnonymousUser = cache(async (userId: string) => {
-  return prisma.anonymous_users.findUnique({
-    where: { user_id: userId },
-  });
+  const [row] = await db
+    .select()
+    .from(anonymousUsers)
+    .where(eq(anonymousUsers.userId, userId))
+    .limit(1);
+  return row ?? null;
 });
 
 /**
@@ -92,48 +97,55 @@ export async function getCurrentUserProfile(platform?: string): Promise<UserProf
   const authUser = await getCurrentUser();
 
   // 查找或创建用户
-  let user = await prisma.users.findUnique({
-    where: { user_id: authUser.uid },
-  });
+  let [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.userId, authUser.uid))
+    .limit(1);
 
   if (!user) {
     // 首次登录，自动创建用户
-    user = await prisma.users.create({
-      data: {
-        user_id: authUser.uid,
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        userId: authUser.uid,
         email: authUser.email || null,
         name: authUser.name || null,
-        photo_url: authUser.picture || null,
+        photoUrl: authUser.picture || null,
         platform: platform || null,
         credits: 0,
-        monthly_credits: 0,
-        monthly_credits_reset_at: new Date(),
-        total_credits_used: 0,
-      },
-    });
+        monthlyCredits: 0,
+        monthlyCreditsResetAt: new Date().toISOString(),
+        totalCreditsUsed: 0,
+      })
+      .returning();
+    user = newUser;
     console.log(`新用户注册: ${authUser.uid}, 平台: ${platform || '未知'}`);
   } else {
     // 检查并重置当月积分（懒加载）
     const { wasReset } = await checkAndResetMonthlyCredits(authUser.uid);
     if (wasReset) {
       // 重新获取更新后的用户数据
-      user = await prisma.users.findUnique({
-        where: { user_id: authUser.uid },
-      });
-      if (!user) throw new Error('用户不存在');
+      const [refreshedUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.userId, authUser.uid))
+        .limit(1);
+      if (!refreshedUser) throw new Error('用户不存在');
+      user = refreshedUser;
     }
   }
 
   return {
     id: user.id,
-    user_id: user.user_id,
+    user_id: user.userId,
     email: user.email,
     name: user.name,
-    photo_url: user.photo_url,
+    photo_url: user.photoUrl,
     phone: user.phone,
     credits: user.credits,
-    monthly_credits: user.monthly_credits,
-    total_credits_used: user.total_credits_used,
+    monthly_credits: user.monthlyCredits,
+    total_credits_used: user.totalCreditsUsed,
     is_anonymous: false,
     expires_at: null,
   };
@@ -152,16 +164,14 @@ export async function updateUserProfile(data: {
   console.log(`🔄 [User] 更新用户资料: ${authUser.uid}`, data);
 
   // 构建更新数据，只更新传入的字段
-  const updateData: { name?: string; photo_url?: string; phone?: string; updated_at: Date } = {
-    updated_at: new Date(),
-  };
+  const updateData: { name?: string; photoUrl?: string; phone?: string } = {};
 
   // 只有当字段被明确传入时才更新（包括空字符串）
   if (data.name !== undefined) {
     updateData.name = data.name;
   }
   if (data.photo_url !== undefined) {
-    updateData.photo_url = data.photo_url;
+    updateData.photoUrl = data.photo_url;
   }
   if (data.phone !== undefined) {
     updateData.phone = data.phone;
@@ -170,32 +180,35 @@ export async function updateUserProfile(data: {
   console.log(`📝 [User] 实际更新数据:`, updateData);
 
   // 先查询确认用户存在
-  const existingUser = await prisma.users.findUnique({
-    where: { user_id: authUser.uid },
-  });
+  const [existingUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.userId, authUser.uid))
+    .limit(1);
   console.log(`🔍 [User] 查询到现有用户:`, existingUser ? `id=${existingUser.id}, name=${existingUser.name}` : '未找到');
 
   if (!existingUser) {
     throw new Error(`用户不存在: ${authUser.uid}`);
   }
 
-  const user = await prisma.users.update({
-    where: { user_id: authUser.uid },
-    data: updateData,
-  });
+  const [user] = await db
+    .update(users)
+    .set(updateData)
+    .where(eq(users.userId, authUser.uid))
+    .returning();
 
-  console.log(`✅ [User] 用户资料已更新: ${authUser.uid}, name=${user.name}, phone=${user.phone}, photo_url=${user.photo_url}`);
+  console.log(`✅ [User] 用户资料已更新: ${authUser.uid}, name=${user.name}, phone=${user.phone}, photo_url=${user.photoUrl}`);
 
   return {
     id: user.id,
-    user_id: user.user_id,
+    user_id: user.userId,
     email: user.email,
     name: user.name,
-    photo_url: user.photo_url,
+    photo_url: user.photoUrl,
     phone: user.phone,
     credits: user.credits,
-    monthly_credits: user.monthly_credits,
-    total_credits_used: user.total_credits_used,
+    monthly_credits: user.monthlyCredits,
+    total_credits_used: user.totalCreditsUsed,
     is_anonymous: false,
     expires_at: null,
   };
@@ -248,13 +261,12 @@ export async function uploadAvatar(formData: FormData): Promise<{
     const url = await uploadImage(buffer, fileName, file.type);
 
     // 更新用户头像 URL
-    await prisma.users.update({
-      where: { user_id: authUser.uid },
-      data: {
-        photo_url: url,
-        updated_at: new Date(),
-      },
-    });
+    await db
+      .update(users)
+      .set({
+        photoUrl: url,
+      })
+      .where(eq(users.userId, authUser.uid));
 
     console.log(`✅ [User] 头像已上传: ${authUser.uid}`);
 
@@ -277,10 +289,11 @@ export async function uploadAvatar(formData: FormData): Promise<{
 export async function getUserCredits(): Promise<{ credits: number; total_used: number }> {
   const authUser = await getCurrentUser();
 
-  const user = await prisma.users.findUnique({
-    where: { user_id: authUser.uid },
-    select: { credits: true, total_credits_used: true },
-  });
+  const [user] = await db
+    .select({ credits: users.credits, totalCreditsUsed: users.totalCreditsUsed })
+    .from(users)
+    .where(eq(users.userId, authUser.uid))
+    .limit(1);
 
   if (!user) {
     throw new Error('用户不存在');
@@ -288,7 +301,7 @@ export async function getUserCredits(): Promise<{ credits: number; total_used: n
 
   return {
     credits: user.credits,
-    total_used: user.total_credits_used,
+    total_used: user.totalCreditsUsed,
   };
 }
 
@@ -310,25 +323,27 @@ export async function getUnifiedUserProfile(): Promise<UserProfile> {
     // 匿名用户没有每日任务，全部算作永久积分
     return {
       id: anonUser.id,
-      user_id: anonUser.user_id,
+      user_id: anonUser.userId,
       email: null,
       name: null,
       photo_url: null,
       phone: null,
       credits: anonUser.credits,
       monthly_credits: 0,
-      total_credits_used: anonUser.total_credits_used,
+      total_credits_used: anonUser.totalCreditsUsed,
       is_anonymous: true,
-      expires_at: anonUser.expires_at?.toISOString() || null,
+      expires_at: anonUser.expiresAt || null,
     };
   } else {
     // 正式用户：先检查当月积分重置
     await checkAndResetMonthlyCredits(unifiedUser.user_id);
 
     // 重新获取用户数据（不使用缓存，确保拿到最新数据）
-    const user = await prisma.users.findUnique({
-      where: { user_id: unifiedUser.user_id },
-    });
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.userId, unifiedUser.user_id))
+      .limit(1);
 
     if (!user) {
       throw new Error('用户不存在');
@@ -336,14 +351,14 @@ export async function getUnifiedUserProfile(): Promise<UserProfile> {
 
     return {
       id: user.id,
-      user_id: user.user_id,
+      user_id: user.userId,
       email: user.email,
       name: user.name,
-      photo_url: user.photo_url,
+      photo_url: user.photoUrl,
       phone: user.phone,
       credits: user.credits,
-      monthly_credits: user.monthly_credits,
-      total_credits_used: user.total_credits_used,
+      monthly_credits: user.monthlyCredits,
+      total_credits_used: user.totalCreditsUsed,
       is_anonymous: false,
       expires_at: null,
     };
@@ -369,18 +384,20 @@ export async function getUnifiedCredits(): Promise<CreditsInfo> {
     return {
       credits: anonUser.credits,
       monthly_credits: 0,
-      total_used: anonUser.total_credits_used,
+      total_used: anonUser.totalCreditsUsed,
       is_anonymous: true,
-      expires_at: anonUser.expires_at?.toISOString() || null,
+      expires_at: anonUser.expiresAt || null,
     };
   } else {
     // 正式用户：先检查当月积分重置
     await checkAndResetMonthlyCredits(unifiedUser.user_id);
 
     // 重新获取用户数据（不使用缓存，确保拿到最新数据）
-    const user = await prisma.users.findUnique({
-      where: { user_id: unifiedUser.user_id },
-    });
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.userId, unifiedUser.user_id))
+      .limit(1);
 
     if (!user) {
       throw new Error('用户不存在');
@@ -388,8 +405,8 @@ export async function getUnifiedCredits(): Promise<CreditsInfo> {
 
     return {
       credits: user.credits,
-      monthly_credits: user.monthly_credits,
-      total_used: user.total_credits_used,
+      monthly_credits: user.monthlyCredits,
+      total_used: user.totalCreditsUsed,
       is_anonymous: false,
       expires_at: null,
     };
@@ -410,38 +427,41 @@ export async function getCreditHistory(
 ): Promise<CreditHistoryResponse> {
   const authUser = await getCurrentUser();
 
-  const where = {
-    user_id: authUser.uid,
-    ...(productType && { product_type: productType }),
-  };
+  const conditions = [eq(creditHistory.userId, authUser.uid)];
+  if (productType) {
+    conditions.push(eq(creditHistory.productType, productType));
+  }
+  const whereClause = and(...conditions);
 
   // 并行获取总数和数据
-  const [total, items] = await Promise.all([
-    prisma.credit_history.count({ where }),
-    prisma.credit_history.findMany({
-      where,
-      orderBy: { created_at: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      select: {
-        id: true,
-        amount: true,
-        description: true,
-        product_type: true,
-        task_id: true,
-        created_at: true,
-      },
-    }),
+  const [totalResult, items] = await Promise.all([
+    db.select({ total: count() }).from(creditHistory).where(whereClause),
+    db
+      .select({
+        id: creditHistory.id,
+        amount: creditHistory.amount,
+        description: creditHistory.description,
+        productType: creditHistory.productType,
+        taskId: creditHistory.taskId,
+        createdAt: creditHistory.createdAt,
+      })
+      .from(creditHistory)
+      .where(whereClause)
+      .orderBy(desc(creditHistory.createdAt))
+      .offset((page - 1) * pageSize)
+      .limit(pageSize),
   ]);
+
+  const total = totalResult[0].total;
 
   return {
     items: items.map((item) => ({
       id: item.id,
       amount: item.amount,
       description: item.description,
-      product_type: item.product_type,
-      task_id: item.task_id,
-      created_at: item.created_at.toISOString(),
+      product_type: item.productType,
+      task_id: item.taskId,
+      created_at: item.createdAt,
     })),
     total,
     page,
@@ -458,17 +478,15 @@ export async function getCreditHistory(
  */
 export async function trackUserEvent(
   event: string,
-  data?: Prisma.InputJsonValue
+  data?: Record<string, unknown> | null
 ): Promise<{ success: boolean }> {
   try {
     const authUser = await getCurrentUser();
 
-    await prisma.user_events.create({
-      data: {
-        user_id: authUser.uid,
-        event,
-        data: data ?? Prisma.JsonNull,
-      },
+    await db.insert(userEvents).values({
+      userId: authUser.uid,
+      event,
+      data: data ?? null,
     });
 
     return { success: true };

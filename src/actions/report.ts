@@ -1,6 +1,8 @@
 'use server';
 
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { userEvents } from '@/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 
 export type ReportReason =
@@ -39,31 +41,30 @@ export async function reportContent(params: ReportContentParams): Promise<Report
     const userId = user.user_id;
 
     // 检查是否已举报过（同用户同内容）
-    const existingReport = await prisma.user_events.findFirst({
-      where: {
-        user_id: userId,
-        event: eventName,
-        data: {
-          path: ['content_id'],
-          equals: contentId,
-        },
-      },
-    });
+    const [existingReport] = await db
+      .select()
+      .from(userEvents)
+      .where(
+        and(
+          eq(userEvents.userId, userId),
+          eq(userEvents.event, eventName),
+          sql`${userEvents.data}->>'content_id' = ${contentId}`
+        )
+      )
+      .limit(1);
 
     if (existingReport) {
       return { success: true, alreadyReported: true };
     }
 
     // 保存举报记录
-    await prisma.user_events.create({
+    await db.insert(userEvents).values({
+      userId,
+      event: eventName,
       data: {
-        user_id: userId,
-        event: eventName,
-        data: {
-          content_id: contentId,
-          content_type: contentType,
-          reason: reason,
-        },
+        content_id: contentId,
+        content_type: contentType,
+        reason: reason,
       },
     });
 

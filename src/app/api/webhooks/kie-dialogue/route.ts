@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { dialogueRecords } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { uploadAudio } from '@/lib/services/r2-storage';
 
 /**
@@ -60,16 +62,18 @@ export async function POST(request: NextRequest) {
     }
 
     // 查找对应的记录
-    const record = await prisma.dialogue_records.findFirst({
-      where: { external_task_id: externalTaskId },
-    });
+    const [record] = await db
+      .select()
+      .from(dialogueRecords)
+      .where(eq(dialogueRecords.externalTaskId, externalTaskId))
+      .limit(1);
 
     if (!record) {
       console.warn(`🎭 [KIE Dialogue Callback] 找不到对应记录: ${externalTaskId}`);
       return NextResponse.json({ success: false, error: 'Record not found' });
     }
 
-    console.log(`🎭 [KIE Dialogue Callback] state: ${state}, 记录ID: ${record.task_id}`);
+    console.log(`🎭 [KIE Dialogue Callback] state: ${state}, 记录ID: ${record.taskId}`);
 
     if (state === 'success' && resultJson) {
       // 解析结果获取音频 URL
@@ -80,7 +84,7 @@ export async function POST(request: NextRequest) {
 
         if (originalUrl) {
           // 下载并上传到 R2
-          audioUrl = await downloadAndUploadToR2(originalUrl, record.task_id);
+          audioUrl = await downloadAndUploadToR2(originalUrl, record.taskId);
           // 如果 R2 上传失败，使用原始 URL
           if (!audioUrl) {
             audioUrl = originalUrl;
@@ -90,35 +94,35 @@ export async function POST(request: NextRequest) {
         console.error('🎭 [KIE Dialogue Callback] 解析 resultJson 失败:', e);
       }
 
-      await prisma.dialogue_records.update({
-        where: { id: record.id },
-        data: {
+      await db
+        .update(dialogueRecords)
+        .set({
           status: 'SUCCESS',
           progress: 100,
-          audio_url: audioUrl,
-          completed_at: new Date(),
-        },
-      });
-      console.log(`🎭 [KIE Dialogue Callback] Dialogue 生成成功: ${record.task_id}`);
+          audioUrl: audioUrl,
+          completedAt: new Date().toISOString(),
+        })
+        .where(eq(dialogueRecords.id, record.id));
+      console.log(`🎭 [KIE Dialogue Callback] Dialogue 生成成功: ${record.taskId}`);
     } else if (state === 'fail') {
-      await prisma.dialogue_records.update({
-        where: { id: record.id },
-        data: {
+      await db
+        .update(dialogueRecords)
+        .set({
           status: 'FAILURE',
-          error_message: failMsg || 'Generation failed',
-        },
-      });
-      console.log(`🎭 [KIE Dialogue Callback] Dialogue 生成失败: ${record.task_id}, ${failMsg}`);
+          errorMessage: failMsg || 'Generation failed',
+        })
+        .where(eq(dialogueRecords.id, record.id));
+      console.log(`🎭 [KIE Dialogue Callback] Dialogue 生成失败: ${record.taskId}, ${failMsg}`);
     } else if (state === 'generating' || state === 'queuing') {
       // 更新进度
       const progress = state === 'queuing' ? 30 : 60;
-      await prisma.dialogue_records.update({
-        where: { id: record.id },
-        data: {
+      await db
+        .update(dialogueRecords)
+        .set({
           status: 'PROCESSING',
           progress,
-        },
-      });
+        })
+        .where(eq(dialogueRecords.id, record.id));
     }
 
     return NextResponse.json({ success: true });

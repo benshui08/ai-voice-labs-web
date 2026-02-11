@@ -4,7 +4,9 @@
  * Music 模块 Server Actions
  * 使用 KIE API (Suno) 生成音乐
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { musicRecords, anonymousUsers, users, creditHistory } from '@/db/schema';
+import { eq, and, desc, isNotNull, sql } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 import { v4 as uuidv4 } from 'uuid';
 import { nanoid } from 'nanoid';
@@ -177,22 +179,20 @@ export async function createMusicTask(request: MusicGenerationRequest): Promise<
     const shareId = generateShareId();
 
     // 4. 创建音乐记录（状态为 PENDING）
-    await prisma.music_records.create({
-      data: {
-        user_id: userId,
-        task_id: taskId,
-        model: request.model,
-        prompt: request.prompt,
-        style: request.style || null,
-        title: request.title || null,
-        is_instrumental: request.instrumental || false,
-        is_custom_mode: !!(request.style || request.title),
-        is_public: request.isPublic || false,
-        credits_cost: requiredCredits,
-        status: 'PENDING',
-        progress: 0,
-        share_id: shareId,
-      },
+    await db.insert(musicRecords).values({
+      userId,
+      taskId,
+      model: request.model,
+      prompt: request.prompt,
+      style: request.style || null,
+      title: request.title || null,
+      isInstrumental: request.instrumental || false,
+      isCustomMode: !!(request.style || request.title),
+      isPublic: request.isPublic || false,
+      creditsCost: requiredCredits,
+      status: 'PENDING',
+      progress: 0,
+      shareId,
     });
 
     console.log(`🎵 [createMusicTask] 音乐记录已创建: ${taskId}`);
@@ -234,13 +234,12 @@ export async function createMusicTask(request: MusicGenerationRequest): Promise<
     // Check if response is OK before parsing JSON
     if (!response.ok) {
       console.error('❌ [createMusicTask] API error:', response.status, response.statusText);
-      await prisma.music_records.update({
-        where: { task_id: taskId },
-        data: {
+      await db.update(musicRecords)
+        .set({
           status: 'FAILURE',
-          error_message: `API error: ${response.status} ${response.statusText}`,
-        },
-      });
+          errorMessage: `API error: ${response.status} ${response.statusText}`,
+        })
+        .where(eq(musicRecords.taskId, taskId));
       return {
         task_id: taskId,
         status: 'FAILURE',
@@ -254,13 +253,12 @@ export async function createMusicTask(request: MusicGenerationRequest): Promise<
     const contentType = response.headers.get('content-type');
     if (!contentType?.includes('application/json')) {
       console.error('❌ [createMusicTask] Invalid content type:', contentType);
-      await prisma.music_records.update({
-        where: { task_id: taskId },
-        data: {
+      await db.update(musicRecords)
+        .set({
           status: 'FAILURE',
-          error_message: 'Invalid API response',
-        },
-      });
+          errorMessage: 'Invalid API response',
+        })
+        .where(eq(musicRecords.taskId, taskId));
       return {
         task_id: taskId,
         status: 'FAILURE',
@@ -275,48 +273,42 @@ export async function createMusicTask(request: MusicGenerationRequest): Promise<
 
     if (result.code !== 200) {
       // API 调用失败，更新记录状态
-      await prisma.music_records.update({
-        where: { task_id: taskId },
-        data: {
+      await db.update(musicRecords)
+        .set({
           status: 'FAILURE',
-          error_message: result.msg || 'KIE API call failed',
-        },
-      });
+          errorMessage: result.msg || 'KIE API call failed',
+        })
+        .where(eq(musicRecords.taskId, taskId));
       throw new Error(result.msg || 'KIE API call failed');
     }
 
     // 6. 更新记录，保存外部任务 ID
-    await prisma.music_records.update({
-      where: { task_id: taskId },
-      data: {
-        external_task_id: result.data?.taskId,
+    await db.update(musicRecords)
+      .set({
+        externalTaskId: result.data?.taskId,
         status: 'PROCESSING',
         progress: 10,
-      },
-    });
+      })
+      .where(eq(musicRecords.taskId, taskId));
 
     // 7. 扣减积分
     if (isAnonymous) {
-      await prisma.anonymous_users.update({
-        where: { user_id: userId },
-        data: { credits: { decrement: requiredCredits } },
-      });
+      await db.update(anonymousUsers)
+        .set({ credits: sql`${anonymousUsers.credits} - ${requiredCredits}` })
+        .where(eq(anonymousUsers.userId, userId));
     } else {
-      await prisma.users.update({
-        where: { user_id: userId },
-        data: { credits: { decrement: requiredCredits } },
-      });
+      await db.update(users)
+        .set({ credits: sql`${users.credits} - ${requiredCredits}` })
+        .where(eq(users.userId, userId));
     }
 
     // 记录积分变动
-    await prisma.credit_history.create({
-      data: {
-        user_id: userId,
-        amount: -requiredCredits,
-        task_id: taskId,
-        description: `AI Music generation (${modelConfig.name})`,
-        product_type: 'ai_music',
-      },
+    await db.insert(creditHistory).values({
+      userId,
+      amount: -requiredCredits,
+      taskId,
+      description: `AI Music generation (${modelConfig.name})`,
+      productType: 'ai_music',
     });
 
     console.log(`🎵 [createMusicTask] 任务创建成功: ${taskId}, 外部ID: ${result.data?.taskId}`);
@@ -471,9 +463,7 @@ async function queryKieTaskStatus(externalTaskId: string): Promise<{
  * 任务创建后 30 分钟内会直接查询 KIE API 获取最新状态（不完全依赖回调）
  */
 export async function getMusicTaskStatus(taskId: string): Promise<MusicTaskStatus> {
-  const record = await prisma.music_records.findUnique({
-    where: { task_id: taskId },
-  });
+  const [record] = await db.select().from(musicRecords).where(eq(musicRecords.taskId, taskId)).limit(1);
 
   if (!record) {
     throw new Error(`Task not found: ${taskId}`);
@@ -482,13 +472,13 @@ export async function getMusicTaskStatus(taskId: string): Promise<MusicTaskStatu
   // 如果任务还在处理中，且有外部任务 ID，直接查询 KIE API
   // 生产环境和开发环境都直接查询，不完全依赖回调（回调可能失败）
   // 超时判断：只在任务创建后 30 分钟内查询，避免无限轮询
-  const taskAgeMinutes = (Date.now() - new Date(record.created_at).getTime()) / 1000 / 60;
+  const taskAgeMinutes = (Date.now() - new Date(record.createdAt).getTime()) / 1000 / 60;
   const isWithinTimeout = taskAgeMinutes < 30;
 
-  if (record.external_task_id && (record.status === 'PENDING' || record.status === 'PROCESSING') && isWithinTimeout) {
-    console.log(`🎵 [getMusicTaskStatus] 直接查询 KIE API: ${record.external_task_id}, 任务已创建 ${taskAgeMinutes.toFixed(1)} 分钟`);
+  if (record.externalTaskId && (record.status === 'PENDING' || record.status === 'PROCESSING') && isWithinTimeout) {
+    console.log(`🎵 [getMusicTaskStatus] 直接查询 KIE API: ${record.externalTaskId}, 任务已创建 ${taskAgeMinutes.toFixed(1)} 分钟`);
 
-    const kieStatus = await queryKieTaskStatus(record.external_task_id);
+    const kieStatus = await queryKieTaskStatus(record.externalTaskId);
 
     // 如果 KIE 返回成功，下载到 R2 并更新本地数据库
     if (kieStatus.status === 'SUCCESS' && kieStatus.data && kieStatus.data.length > 0) {
@@ -523,25 +513,24 @@ export async function getMusicTaskStatus(taskId: string): Promise<MusicTaskStatu
       const finalAudioUrl2 = r2AudioUrl2 || secondTrack?.audio_url;
       const finalCoverUrl2 = r2CoverUrl2 || secondTrack?.image_url;
 
-      await prisma.music_records.update({
-        where: { task_id: taskId },
-        data: {
+      await db.update(musicRecords)
+        .set({
           status: 'SUCCESS',
           progress: 100,
-          audio_url: finalAudioUrl1,
-          stream_url: firstTrack.stream_audio_url || null,
-          cover_url: finalCoverUrl1 || null,
+          audioUrl: finalAudioUrl1,
+          streamUrl: firstTrack.stream_audio_url || null,
+          coverUrl: finalCoverUrl1 || null,
           duration: firstTrack.duration || null,
           title: firstTrack.title || record.title,
           tags: firstTrack.tags || null,
           lyrics: firstTrack.prompt || record.lyrics,
-          audio_url_2: finalAudioUrl2 || null,
-          stream_url_2: secondTrack?.stream_audio_url || null,
-          cover_url_2: finalCoverUrl2 || null,
-          duration_2: secondTrack?.duration || null,
-          completed_at: new Date(),
-        },
-      });
+          audioUrl2: finalAudioUrl2 || null,
+          streamUrl2: secondTrack?.stream_audio_url || null,
+          coverUrl2: finalCoverUrl2 || null,
+          duration2: secondTrack?.duration || null,
+          completedAt: new Date().toISOString(),
+        })
+        .where(eq(musicRecords.taskId, taskId));
 
       console.log('🎵 [getMusicTaskStatus] 文件下载到 R2 完成');
 
@@ -566,33 +555,30 @@ export async function getMusicTaskStatus(taskId: string): Promise<MusicTaskStatu
 
     // 如果 KIE 返回失败，更新数据库并返还积分（使用乐观锁防止重复处理）
     if (kieStatus.status === 'FAILURE') {
-      const updateResult = await prisma.music_records.updateMany({
-        where: {
-          task_id: taskId,
-          status: 'PROCESSING', // 乐观锁：防止重复处理
-        },
-        data: {
+      const updateResult = await db.update(musicRecords)
+        .set({
           status: 'FAILURE',
           progress: 0,
-          error_message: kieStatus.error || 'Music generation failed',
-        },
-      });
+          errorMessage: kieStatus.error || 'Music generation failed',
+        })
+        .where(and(eq(musicRecords.taskId, taskId), eq(musicRecords.status, 'PROCESSING')))
+        .returning();
 
-      // 如果更新成功（count > 0），说明是第一个处理的，需要返还积分
-      if (updateResult.count > 0 && record.credits_cost && record.credits_cost > 0) {
+      // 如果更新成功（返回了行），说明是第一个处理的，需要返还积分
+      if (updateResult.length > 0 && record.creditsCost && record.creditsCost > 0) {
         try {
           await refundCreditsSimple(
-            record.user_id,
-            record.credits_cost,
+            record.userId,
+            record.creditsCost,
             ProductType.AI_MUSIC,
             `Music generation failed (KIE): ${kieStatus.error || 'Unknown error'}`,
-            record.task_id
+            record.taskId
           );
-          console.log(`💰 [getMusicTaskStatus] 积分已返还: ${record.credits_cost}`);
+          console.log(`💰 [getMusicTaskStatus] 积分已返还: ${record.creditsCost}`);
         } catch (refundError) {
           console.error(`❌ [getMusicTaskStatus] 积分返还失败:`, refundError);
         }
-      } else if (updateResult.count === 0) {
+      } else if (updateResult.length === 0) {
         console.log(`⚠️ [getMusicTaskStatus] 任务已被其他请求处理，跳过积分返还: ${taskId}`);
       }
 
@@ -607,10 +593,9 @@ export async function getMusicTaskStatus(taskId: string): Promise<MusicTaskStatu
 
     // 更新进度
     if (kieStatus.progress !== record.progress) {
-      await prisma.music_records.update({
-        where: { task_id: taskId },
-        data: { progress: kieStatus.progress },
-      });
+      await db.update(musicRecords)
+        .set({ progress: kieStatus.progress })
+        .where(eq(musicRecords.taskId, taskId));
     }
 
     return {
@@ -648,12 +633,12 @@ export async function getMusicTaskStatus(taskId: string): Promise<MusicTaskStatu
         status: 'SUCCESS',
         progress: 100,
         result: {
-          audio_url: record.audio_url || '',
-          audio_url_2: record.audio_url_2 || undefined,
-          cover_url: record.cover_url || undefined,
-          cover_url_2: record.cover_url_2 || undefined,
+          audio_url: record.audioUrl || '',
+          audio_url_2: record.audioUrl2 || undefined,
+          cover_url: record.coverUrl || undefined,
+          cover_url_2: record.coverUrl2 || undefined,
           duration: record.duration || undefined,
-          duration_2: record.duration_2 || undefined,
+          duration_2: record.duration2 || undefined,
           title: record.title || undefined,
           tags: record.tags || undefined,
           lyrics: record.lyrics || undefined,
@@ -667,7 +652,7 @@ export async function getMusicTaskStatus(taskId: string): Promise<MusicTaskStatu
         status: 'FAILURE',
         progress: 0,
         result: null,
-        error: record.error_message,
+        error: record.errorMessage,
       };
 
     default:
@@ -682,37 +667,36 @@ export async function getMusicRecords(limit: number = 50): Promise<MusicRecord[]
   const unifiedUser = await getUserOrAnonymous();
   const userId = unifiedUser.user_id;
 
-  const records = await prisma.music_records.findMany({
-    where: { user_id: userId },
-    orderBy: { created_at: 'desc' },
-    take: limit,
-  });
+  const records = await db.select().from(musicRecords)
+    .where(eq(musicRecords.userId, userId))
+    .orderBy(desc(musicRecords.createdAt))
+    .limit(limit);
 
   return records.map((r) => ({
     id: r.id,
-    user_id: r.user_id,
-    task_id: r.task_id,
+    user_id: r.userId,
+    task_id: r.taskId,
     model: r.model,
     prompt: r.prompt,
     style: r.style,
     title: r.title,
     lyrics: r.lyrics,
-    is_instrumental: r.is_instrumental,
-    is_public: r.is_public,
-    credits_cost: r.credits_cost,
+    is_instrumental: r.isInstrumental,
+    is_public: r.isPublic,
+    credits_cost: r.creditsCost,
     status: r.status,
     progress: r.progress,
-    audio_url: r.audio_url,
-    audio_url_2: r.audio_url_2,
-    cover_url: r.cover_url,
-    cover_url_2: r.cover_url_2,
+    audio_url: r.audioUrl,
+    audio_url_2: r.audioUrl2,
+    cover_url: r.coverUrl,
+    cover_url_2: r.coverUrl2,
     duration: r.duration,
-    duration_2: r.duration_2,
+    duration_2: r.duration2,
     tags: r.tags,
-    error_message: r.error_message,
-    created_at: r.created_at,
-    completed_at: r.completed_at,
-    share_id: r.share_id,
+    error_message: r.errorMessage,
+    created_at: new Date(r.createdAt),
+    completed_at: r.completedAt ? new Date(r.completedAt) : null,
+    share_id: r.shareId,
   }));
 }
 
@@ -723,21 +707,17 @@ export async function deleteMusicRecord(recordId: number): Promise<void> {
   const unifiedUser = await getUserOrAnonymous();
   const userId = unifiedUser.user_id;
 
-  const record = await prisma.music_records.findUnique({
-    where: { id: recordId },
-  });
+  const [record] = await db.select().from(musicRecords).where(eq(musicRecords.id, recordId)).limit(1);
 
   if (!record) {
     throw new Error(`Record not found: ${recordId}`);
   }
 
-  if (record.user_id !== userId) {
+  if (record.userId !== userId) {
     throw new Error('Not authorized to delete this record');
   }
 
-  await prisma.music_records.delete({
-    where: { id: recordId },
-  });
+  await db.delete(musicRecords).where(eq(musicRecords.id, recordId));
 
   console.log(`🎵 音乐记录已删除: ${recordId}`);
 }
@@ -753,12 +733,9 @@ export async function getMusicRecordByTaskId(taskId: string): Promise<MusicRecor
       return null;
     }
 
-    const record = await prisma.music_records.findFirst({
-      where: {
-        task_id: taskId,
-        user_id: userId,
-      },
-    });
+    const [record] = await db.select().from(musicRecords)
+      .where(and(eq(musicRecords.taskId, taskId), eq(musicRecords.userId, userId)))
+      .limit(1);
 
     if (!record) {
       return null;
@@ -766,29 +743,29 @@ export async function getMusicRecordByTaskId(taskId: string): Promise<MusicRecor
 
     return {
       id: record.id,
-      user_id: record.user_id,
-      task_id: record.task_id,
+      user_id: record.userId,
+      task_id: record.taskId,
       model: record.model,
       prompt: record.prompt,
       style: record.style,
       title: record.title,
       lyrics: record.lyrics,
-      is_instrumental: record.is_instrumental,
-      is_public: record.is_public,
-      credits_cost: record.credits_cost,
+      is_instrumental: record.isInstrumental,
+      is_public: record.isPublic,
+      credits_cost: record.creditsCost,
       status: record.status,
       progress: record.progress,
-      audio_url: record.audio_url,
-      audio_url_2: record.audio_url_2,
-      cover_url: record.cover_url,
-      cover_url_2: record.cover_url_2,
+      audio_url: record.audioUrl,
+      audio_url_2: record.audioUrl2,
+      cover_url: record.coverUrl,
+      cover_url_2: record.coverUrl2,
       duration: record.duration,
-      duration_2: record.duration_2,
+      duration_2: record.duration2,
       tags: record.tags,
-      error_message: record.error_message,
-      created_at: record.created_at,
-      completed_at: record.completed_at,
-      share_id: record.share_id,
+      error_message: record.errorMessage,
+      created_at: new Date(record.createdAt),
+      completed_at: record.completedAt ? new Date(record.completedAt) : null,
+      share_id: record.shareId,
     };
   } catch (error) {
     console.error('❌ [getMusicRecordByTaskId] Error:', error);
@@ -817,28 +794,39 @@ export interface PublicMusicRecord {
  * 获取公开的音乐记录（用于 Explore 页面）
  */
 export async function getPublicMusicRecords(limit: number = 20): Promise<PublicMusicRecord[]> {
-  const records = await prisma.music_records.findMany({
-    where: {
-      is_public: true,
-      status: 'SUCCESS',
-      audio_url: { not: null },
-    },
-    orderBy: { created_at: 'desc' },
-    take: limit,
-    select: {
-      id: true,
-      task_id: true,
-      title: true,
-      cover_url: true,
-      audio_url: true,
-      duration: true,
-      tags: true,
-      lyrics: true,
-      prompt: true,
-      model: true,
-      created_at: true,
-    },
-  });
+  const records = await db.select({
+    id: musicRecords.id,
+    taskId: musicRecords.taskId,
+    title: musicRecords.title,
+    coverUrl: musicRecords.coverUrl,
+    audioUrl: musicRecords.audioUrl,
+    duration: musicRecords.duration,
+    tags: musicRecords.tags,
+    lyrics: musicRecords.lyrics,
+    prompt: musicRecords.prompt,
+    model: musicRecords.model,
+    createdAt: musicRecords.createdAt,
+  })
+    .from(musicRecords)
+    .where(and(
+      eq(musicRecords.isPublic, true),
+      eq(musicRecords.status, 'SUCCESS'),
+      isNotNull(musicRecords.audioUrl),
+    ))
+    .orderBy(desc(musicRecords.createdAt))
+    .limit(limit);
 
-  return records;
+  return records.map(r => ({
+    id: r.id,
+    task_id: r.taskId,
+    title: r.title,
+    cover_url: r.coverUrl,
+    audio_url: r.audioUrl,
+    duration: r.duration,
+    tags: r.tags,
+    lyrics: r.lyrics,
+    prompt: r.prompt,
+    model: r.model,
+    created_at: new Date(r.createdAt),
+  }));
 }

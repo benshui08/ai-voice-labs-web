@@ -3,7 +3,9 @@
 /**
  * 用户管理 Server Actions
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { users, anonymousUsers, userSubscriptions, ttsRecords, creditHistory } from '@/db/schema';
+import { eq, and, or, ilike, desc, count, isNull, isNotNull, lt, gt } from 'drizzle-orm';
 import { verifyAdminWithoutDb } from '@/lib/auth-admin';
 
 /**
@@ -37,54 +39,59 @@ export async function getAdminUserList(params: {
   await verifyAdminWithoutDb();
 
   const { page = 1, pageSize = 20, search, hasSubscription, platform } = params;
-  const now = new Date();
+  const now = new Date().toISOString();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = {};
+  // Build where conditions
+  const conditions = [];
 
   if (search) {
-    where.OR = [
-      { email: { contains: search, mode: 'insensitive' } },
-      { name: { contains: search, mode: 'insensitive' } },
-      { user_id: { contains: search, mode: 'insensitive' } },
-    ];
+    conditions.push(
+      or(
+        ilike(users.email, `%${search}%`),
+        ilike(users.name, `%${search}%`),
+        ilike(users.userId, `%${search}%`),
+      )
+    );
   }
 
   if (platform) {
-    where.platform = platform;
+    conditions.push(eq(users.platform, platform));
   }
 
-  const [users, total] = await Promise.all([
-    prisma.users.findMany({
-      where,
-      orderBy: { created_at: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      include: {
-        user_subscriptions: {
-          where: {
-            status: 'ACTIVE',
-            end_date: { gt: now },
-          },
-          take: 1,
-        },
-      },
-    }),
-    prisma.users.count({ where }),
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [userRows, [{ total }]] = await Promise.all([
+    db.select().from(users)
+      .where(whereClause)
+      .orderBy(desc(users.createdAt))
+      .offset((page - 1) * pageSize)
+      .limit(pageSize),
+    db.select({ total: count() }).from(users).where(whereClause),
   ]);
 
-  let result = users.map((u) => ({
+  // Check active subscriptions for fetched users
+  const activeSubsRows = await db.select({ userId: userSubscriptions.userId })
+    .from(userSubscriptions)
+    .where(
+      and(
+        eq(userSubscriptions.status, 'ACTIVE'),
+        gt(userSubscriptions.endDate, now),
+      )
+    );
+  const activeSubUserIds = new Set(activeSubsRows.map(s => s.userId));
+
+  let result = userRows.map((u) => ({
     id: u.id,
-    user_id: u.user_id,
+    user_id: u.userId,
     email: u.email,
     name: u.name,
-    photo_url: u.photo_url,
-    auth_provider: u.auth_provider,
+    photo_url: u.photoUrl,
+    auth_provider: u.authProvider,
     platform: u.platform,
     credits: u.credits,
-    total_credits_used: u.total_credits_used,
-    created_at: u.created_at,
-    has_active_subscription: u.user_subscriptions.length > 0,
+    total_credits_used: u.totalCreditsUsed,
+    created_at: new Date(u.createdAt),
+    has_active_subscription: activeSubUserIds.has(u.userId),
   }));
 
   // 过滤订阅状态
@@ -96,10 +103,10 @@ export async function getAdminUserList(params: {
 
   return {
     users: result,
-    total: hasSubscription !== null && hasSubscription !== undefined ? result.length : total,
+    total: hasSubscription !== null && hasSubscription !== undefined ? result.length : Number(total),
     page,
     pageSize,
-    totalPages: Math.ceil(total / pageSize),
+    totalPages: Math.ceil(Number(total) / pageSize),
   };
 }
 
@@ -136,56 +143,58 @@ export async function getAdminAnonymousUserList(params: {
 
   const { page = 1, pageSize = 20, search, isConverted, platform } = params;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = {};
+  const conditions = [];
 
   if (search) {
-    where.OR = [
-      { user_id: { contains: search, mode: 'insensitive' } },
-      { device_fingerprint: { contains: search, mode: 'insensitive' } },
-      { ip_address: { contains: search, mode: 'insensitive' } },
-    ];
+    conditions.push(
+      or(
+        ilike(anonymousUsers.userId, `%${search}%`),
+        ilike(anonymousUsers.deviceFingerprint, `%${search}%`),
+        ilike(anonymousUsers.ipAddress, `%${search}%`),
+      )
+    );
   }
 
   if (isConverted === true) {
-    where.converted_to_user_id = { not: null };
+    conditions.push(isNotNull(anonymousUsers.convertedToUserId));
   } else if (isConverted === false) {
-    where.converted_to_user_id = null;
+    conditions.push(isNull(anonymousUsers.convertedToUserId));
   }
 
   if (platform) {
-    where.platform = platform;
+    conditions.push(eq(anonymousUsers.platform, platform));
   }
 
-  const [users, total] = await Promise.all([
-    prisma.anonymous_users.findMany({
-      where,
-      orderBy: { created_at: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-    prisma.anonymous_users.count({ where }),
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [userRows, [{ total }]] = await Promise.all([
+    db.select().from(anonymousUsers)
+      .where(whereClause)
+      .orderBy(desc(anonymousUsers.createdAt))
+      .offset((page - 1) * pageSize)
+      .limit(pageSize),
+    db.select({ total: count() }).from(anonymousUsers).where(whereClause),
   ]);
 
   return {
-    users: users.map((u) => ({
+    users: userRows.map((u) => ({
       id: u.id,
-      user_id: u.user_id,
-      device_fingerprint: u.device_fingerprint,
-      ip_address: u.ip_address,
+      user_id: u.userId,
+      device_fingerprint: u.deviceFingerprint,
+      ip_address: u.ipAddress,
       platform: u.platform,
       credits: u.credits,
-      total_credits_used: u.total_credits_used,
-      is_anonymous: u.is_anonymous,
-      converted_to_user_id: u.converted_to_user_id,
-      expires_at: u.expires_at,
-      last_used_at: u.last_used_at,
-      created_at: u.created_at,
+      total_credits_used: u.totalCreditsUsed,
+      is_anonymous: u.isAnonymous,
+      converted_to_user_id: u.convertedToUserId,
+      expires_at: u.expiresAt ? new Date(u.expiresAt) : null,
+      last_used_at: u.lastUsedAt ? new Date(u.lastUsedAt) : null,
+      created_at: new Date(u.createdAt),
     })),
-    total,
+    total: Number(total),
     page,
     pageSize,
-    totalPages: Math.ceil(total / pageSize),
+    totalPages: Math.ceil(Number(total) / pageSize),
   };
 }
 
@@ -224,55 +233,51 @@ export async function getAdminUserById(userId: string): Promise<{
 }> {
   await verifyAdminWithoutDb();
 
-  const user = await prisma.users.findUnique({
-    where: { user_id: userId },
-  });
+  const [user] = await db.select().from(users).where(eq(users.userId, userId)).limit(1);
 
   if (!user) {
     return { user: null, subscriptions: [], recentTtsRecords: [] };
   }
 
-  const [subscriptions, recentTtsRecords] = await Promise.all([
-    prisma.user_subscriptions.findMany({
-      where: { user_id: userId },
-      orderBy: { created_at: 'desc' },
-      take: 10,
-    }),
-    prisma.tts_records.findMany({
-      where: { user_id: userId },
-      orderBy: { created_at: 'desc' },
-      take: 10,
-    }),
+  const [subs, ttsRows] = await Promise.all([
+    db.select().from(userSubscriptions)
+      .where(eq(userSubscriptions.userId, userId))
+      .orderBy(desc(userSubscriptions.createdAt))
+      .limit(10),
+    db.select().from(ttsRecords)
+      .where(eq(ttsRecords.userId, userId))
+      .orderBy(desc(ttsRecords.createdAt))
+      .limit(10),
   ]);
 
   return {
     user: {
       id: user.id,
-      user_id: user.user_id,
+      user_id: user.userId,
       email: user.email,
       name: user.name,
-      photo_url: user.photo_url,
+      photo_url: user.photoUrl,
       credits: user.credits,
-      total_credits_used: user.total_credits_used,
-      created_at: user.created_at,
+      total_credits_used: user.totalCreditsUsed,
+      created_at: new Date(user.createdAt),
     },
-    subscriptions: subscriptions.map((s) => ({
+    subscriptions: subs.map((s) => ({
       id: s.id,
-      product_id: s.product_id,
+      product_id: s.productId,
       status: s.status,
-      start_date: s.start_date,
-      end_date: s.end_date,
-      credits_allocated: s.credits_allocated,
-      auto_renew: s.auto_renew,
+      start_date: new Date(s.startDate),
+      end_date: new Date(s.endDate),
+      credits_allocated: s.creditsAllocated,
+      auto_renew: s.autoRenew,
     })),
-    recentTtsRecords: recentTtsRecords.map((r) => ({
+    recentTtsRecords: ttsRows.map((r) => ({
       id: r.id,
-      task_id: r.task_id,
+      task_id: r.taskId,
       text: r.text.substring(0, 50) + (r.text.length > 50 ? '...' : ''),
-      voice_name: r.voice_name,
+      voice_name: r.voiceName,
       status: r.status,
-      credits_cost: r.credits_cost,
-      created_at: r.created_at,
+      credits_cost: r.creditsCost,
+      created_at: new Date(r.createdAt),
     })),
   };
 }
@@ -288,10 +293,7 @@ export async function updateUserCredits(
   await verifyAdminWithoutDb();
 
   try {
-    const user = await prisma.users.findUnique({
-      where: { user_id: userId },
-      select: { credits: true },
-    });
+    const [user] = await db.select({ credits: users.credits }).from(users).where(eq(users.userId, userId)).limit(1);
 
     if (!user) {
       return { success: false, message: '用户不存在' };
@@ -299,20 +301,15 @@ export async function updateUserCredits(
 
     const diff = credits - user.credits;
 
-    await prisma.$transaction([
-      prisma.users.update({
-        where: { user_id: userId },
-        data: { credits },
-      }),
-      prisma.credit_history.create({
-        data: {
-          user_id: userId,
-          amount: diff,
-          description: `[管理员调整] ${reason}`,
-          product_type: 'admin_adjustment',
-        },
-      }),
-    ]);
+    await db.transaction(async (tx) => {
+      await tx.update(users).set({ credits }).where(eq(users.userId, userId));
+      await tx.insert(creditHistory).values({
+        userId,
+        amount: diff,
+        description: `[管理员调整] ${reason}`,
+        productType: 'admin_adjustment',
+      });
+    });
 
     return { success: true, message: '积分已更新' };
   } catch (error) {
@@ -330,9 +327,7 @@ export async function deleteAnonymousUser(
   await verifyAdminWithoutDb();
 
   try {
-    await prisma.anonymous_users.delete({
-      where: { id },
-    });
+    await db.delete(anonymousUsers).where(eq(anonymousUsers.id, id));
 
     return { success: true, message: '已删除' };
   } catch (error) {
@@ -348,18 +343,20 @@ export async function cleanExpiredAnonymousUsers(): Promise<{ success: boolean; 
   await verifyAdminWithoutDb();
 
   try {
-    const now = new Date();
-    const result = await prisma.anonymous_users.deleteMany({
-      where: {
-        expires_at: { lt: now },
-        converted_to_user_id: null,
-      },
-    });
+    const now = new Date().toISOString();
+    const result = await db.delete(anonymousUsers)
+      .where(
+        and(
+          lt(anonymousUsers.expiresAt, now),
+          isNull(anonymousUsers.convertedToUserId),
+        )
+      )
+      .returning();
 
     return {
       success: true,
-      message: `已清理 ${result.count} 个过期匿名用户`,
-      deleted: result.count,
+      message: `已清理 ${result.length} 个过期匿名用户`,
+      deleted: result.length,
     };
   } catch (error) {
     console.error('清理过期匿名用户失败:', error);
@@ -396,14 +393,15 @@ export async function getUserCreditHistory(params: {
 
   const { userId, page = 1, pageSize = 20 } = params;
 
-  const [records, total] = await Promise.all([
-    prisma.credit_history.findMany({
-      where: { user_id: userId },
-      orderBy: { created_at: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-    prisma.credit_history.count({ where: { user_id: userId } }),
+  const whereClause = eq(creditHistory.userId, userId);
+
+  const [records, [{ total }]] = await Promise.all([
+    db.select().from(creditHistory)
+      .where(whereClause)
+      .orderBy(desc(creditHistory.createdAt))
+      .offset((page - 1) * pageSize)
+      .limit(pageSize),
+    db.select({ total: count() }).from(creditHistory).where(whereClause),
   ]);
 
   return {
@@ -411,13 +409,13 @@ export async function getUserCreditHistory(params: {
       id: r.id,
       amount: r.amount,
       description: r.description,
-      product_type: r.product_type,
-      task_id: r.task_id,
-      created_at: r.created_at,
+      product_type: r.productType,
+      task_id: r.taskId,
+      created_at: new Date(r.createdAt),
     })),
-    total,
+    total: Number(total),
     page,
     pageSize,
-    totalPages: Math.ceil(total / pageSize),
+    totalPages: Math.ceil(Number(total) / pageSize),
   };
 }

@@ -7,7 +7,9 @@
  * 对于 KIE 后端的任务，会主动查询 KIE API 获取最新状态（和 Music 相同的模式）
  */
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { videoRecords, taskQueue } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 import { queryKieVideoTaskStatus } from '@/lib/services/kie-video';
 import { uploadVideo } from '@/lib/services/r2-storage';
@@ -54,9 +56,7 @@ export async function GET(
     const { taskId } = await params;
 
     // 3. 查询任务记录
-    const task = await prisma.video_records.findUnique({
-      where: { task_id: taskId },
-    });
+    const [task] = await db.select().from(videoRecords).where(eq(videoRecords.taskId, taskId)).limit(1);
 
     if (!task) {
       return NextResponse.json(
@@ -66,7 +66,7 @@ export async function GET(
     }
 
     // 4. 验证用户权限（只能查看自己的任务）
-    if (task.user_id !== user_id) {
+    if (task.userId !== user_id) {
       return NextResponse.json(
         { success: false, error: 'Access denied' },
         { status: 403 }
@@ -75,17 +75,17 @@ export async function GET(
 
     // 5. 对于 PROCESSING 任务，主动查询 KIE API
     // 任务超时判断：只在任务创建后 30 分钟内查询 KIE API
-    const taskAgeMinutes = (Date.now() - new Date(task.created_at).getTime()) / 1000 / 60;
+    const taskAgeMinutes = (Date.now() - new Date(task.createdAt).getTime()) / 1000 / 60;
     const isWithinTimeout = taskAgeMinutes < 30;
 
     if (
-      task.external_task_id &&
+      task.externalTaskId &&
       task.status === 'PROCESSING' &&
       isWithinTimeout
     ) {
-      console.log(`🎬 [Video Status] 查询 KIE API: ${task.external_task_id}, 任务已创建 ${taskAgeMinutes.toFixed(1)} 分钟`);
+      console.log(`🎬 [Video Status] 查询 KIE API: ${task.externalTaskId}, 任务已创建 ${taskAgeMinutes.toFixed(1)} 分钟`);
 
-      const kieStatus = await queryKieVideoTaskStatus(task.external_task_id);
+      const kieStatus = await queryKieVideoTaskStatus(task.externalTaskId);
 
       // 如果 KIE 返回成功，下载视频到 R2 并更新数据库
       if (kieStatus.status === 'SUCCESS' && kieStatus.videoUrl) {
@@ -93,50 +93,48 @@ export async function GET(
 
         const r2VideoUrl = await downloadAndUploadVideoToR2(
           kieStatus.videoUrl,
-          task.task_id,
-          task.user_id
+          task.taskId,
+          task.userId
         );
 
         // 使用 R2 URL（如果上传成功），否则保留原始 URL
         const finalVideoUrl = r2VideoUrl || kieStatus.videoUrl;
 
-        await prisma.video_records.update({
-          where: { task_id: taskId },
-          data: {
+        await db.update(videoRecords)
+          .set({
             status: 'SUCCESS',
             progress: 100,
-            video_url: finalVideoUrl,
-            api_cost: kieStatus.costTime ? kieStatus.costTime / 1000 : null,
-            completed_at: new Date(),
-          },
-        });
+            videoUrl: finalVideoUrl,
+            apiCost: kieStatus.costTime ? kieStatus.costTime / 1000 : null,
+            completedAt: new Date().toISOString(),
+          })
+          .where(eq(videoRecords.taskId, taskId));
 
         // 更新 task_queue
-        await prisma.task_queue.updateMany({
-          where: { task_id: taskId },
-          data: {
+        await db.update(taskQueue)
+          .set({
             status: 'SUCCESS',
-            completed_at: new Date(),
-          },
-        });
+            completedAt: new Date().toISOString(),
+          })
+          .where(eq(taskQueue.taskId, taskId));
 
         console.log(`✅ [Video Status] 视频处理完成: ${taskId}`);
 
         return NextResponse.json({
           success: true,
           task: {
-            task_id: task.task_id,
+            task_id: task.taskId,
             status: 'SUCCESS',
             progress: 100,
             prompt: task.prompt,
             model: task.model,
             resolution: task.resolution,
             duration: task.duration,
-            aspect_ratio: task.aspect_ratio,
+            aspect_ratio: task.aspectRatio,
             video_url: finalVideoUrl,
-            is_public: task.is_public,
+            is_public: task.isPublic,
             error_message: null,
-            created_at: task.created_at?.toISOString(),
+            created_at: task.createdAt,
             completed_at: new Date().toISOString(),
           },
         });
@@ -144,42 +142,41 @@ export async function GET(
 
       // 如果 KIE 返回失败，更新数据库（使用乐观锁防止重复处理）
       if (kieStatus.status === 'FAILURE') {
-        const updateResult = await prisma.video_records.updateMany({
-          where: {
-            task_id: taskId,
-            status: 'PROCESSING', // 乐观锁：防止重复处理
-          },
-          data: {
+        const updateResult = await db.update(videoRecords)
+          .set({
             status: 'FAILURE',
             progress: 0,
-            error_message: kieStatus.error || 'Video generation failed',
-            completed_at: new Date(),
-          },
-        });
+            errorMessage: kieStatus.error || 'Video generation failed',
+            completedAt: new Date().toISOString(),
+          })
+          .where(and(
+            eq(videoRecords.taskId, taskId),
+            eq(videoRecords.status, 'PROCESSING'), // 乐观锁：防止重复处理
+          ))
+          .returning();
 
-        // 如果更新成功（count > 0），说明是第一个处理的，需要返还积分
-        if (updateResult.count > 0) {
+        // 如果更新成功（返回非空数组），说明是第一个处理的，需要返还积分
+        if (updateResult.length > 0) {
           // 更新 task_queue
-          await prisma.task_queue.updateMany({
-            where: { task_id: taskId },
-            data: {
+          await db.update(taskQueue)
+            .set({
               status: 'FAILURE',
-              error_message: kieStatus.error || 'Video generation failed',
-              completed_at: new Date(),
-            },
-          });
+              errorMessage: kieStatus.error || 'Video generation failed',
+              completedAt: new Date().toISOString(),
+            })
+            .where(eq(taskQueue.taskId, taskId));
 
           // 返还积分
-          if (task.credits_cost && task.credits_cost > 0) {
+          if (task.creditsCost && task.creditsCost > 0) {
             try {
               await refundCreditsSimple(
-                task.user_id,
-                task.credits_cost,
+                task.userId,
+                task.creditsCost,
                 ProductType.TEXT_TO_VIDEO,
                 `Video generation failed (KIE): ${kieStatus.error || 'Unknown error'}`,
-                task.task_id
+                task.taskId
               );
-              console.log(`💰 [Video Status] 积分已返还: ${task.credits_cost}`);
+              console.log(`💰 [Video Status] 积分已返还: ${task.creditsCost}`);
             } catch (refundError) {
               console.error(`❌ [Video Status] 积分返还失败:`, refundError);
             }
@@ -193,18 +190,18 @@ export async function GET(
         return NextResponse.json({
           success: true,
           task: {
-            task_id: task.task_id,
+            task_id: task.taskId,
             status: 'FAILURE',
             progress: 0,
             prompt: task.prompt,
             model: task.model,
             resolution: task.resolution,
             duration: task.duration,
-            aspect_ratio: task.aspect_ratio,
+            aspect_ratio: task.aspectRatio,
             video_url: null,
-            is_public: task.is_public,
+            is_public: task.isPublic,
             error_message: kieStatus.error || 'Video generation failed',
-            created_at: task.created_at?.toISOString(),
+            created_at: task.createdAt,
             completed_at: new Date().toISOString(),
           },
         });
@@ -212,27 +209,26 @@ export async function GET(
 
       // 仍在处理中，更新进度
       if (kieStatus.progress !== task.progress) {
-        await prisma.video_records.update({
-          where: { task_id: taskId },
-          data: { progress: kieStatus.progress },
-        });
+        await db.update(videoRecords)
+          .set({ progress: kieStatus.progress })
+          .where(eq(videoRecords.taskId, taskId));
       }
 
       return NextResponse.json({
         success: true,
         task: {
-          task_id: task.task_id,
+          task_id: task.taskId,
           status: 'PROCESSING',
           progress: kieStatus.progress,
           prompt: task.prompt,
           model: task.model,
           resolution: task.resolution,
           duration: task.duration,
-          aspect_ratio: task.aspect_ratio,
+          aspect_ratio: task.aspectRatio,
           video_url: null,
-          is_public: task.is_public,
+          is_public: task.isPublic,
           error_message: kieStatus.error || null,
-          created_at: task.created_at?.toISOString(),
+          created_at: task.createdAt,
           completed_at: null,
         },
       });
@@ -242,19 +238,19 @@ export async function GET(
     return NextResponse.json({
       success: true,
       task: {
-        task_id: task.task_id,
+        task_id: task.taskId,
         status: task.status,
         progress: task.progress,
         prompt: task.prompt,
         model: task.model,
         resolution: task.resolution,
         duration: task.duration,
-        aspect_ratio: task.aspect_ratio,
-        video_url: task.video_url,
-        is_public: task.is_public,
-        error_message: task.error_message,
-        created_at: task.created_at?.toISOString(),
-        completed_at: task.completed_at?.toISOString(),
+        aspect_ratio: task.aspectRatio,
+        video_url: task.videoUrl,
+        is_public: task.isPublic,
+        error_message: task.errorMessage,
+        created_at: task.createdAt,
+        completed_at: task.completedAt,
       },
     });
   } catch (error) {

@@ -5,7 +5,9 @@
  */
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { users, voices, ttsRecords, userSubscriptions, creditHistory, anonymousUsers } from '@/db/schema';
+import { eq, count, sum, lt, sql } from 'drizzle-orm';
 import { verifyAdmin, verifyAdminWithoutDb } from '@/lib/auth-admin';
 
 const execAsync = promisify(exec);
@@ -35,25 +37,25 @@ export async function getTableStats(): Promise<TableStats[]> {
   await verifyAdmin();
 
   const [
-    usersCount,
-    voicesCount,
-    ttsRecordsCount,
-    subscriptionsCount,
-    creditHistoryCount,
+    [{ total: usersCount }],
+    [{ total: voicesCount }],
+    [{ total: ttsRecordsCount }],
+    [{ total: subscriptionsCount }],
+    [{ total: creditHistoryCount }],
   ] = await Promise.all([
-    prisma.users.count(),
-    prisma.voices.count(),
-    prisma.tts_records.count(),
-    prisma.user_subscriptions.count(),
-    prisma.credit_history.count(),
+    db.select({ total: count() }).from(users),
+    db.select({ total: count() }).from(voices),
+    db.select({ total: count() }).from(ttsRecords),
+    db.select({ total: count() }).from(userSubscriptions),
+    db.select({ total: count() }).from(creditHistory),
   ]);
 
   return [
-    { name: 'users', displayName: '用户', count: usersCount },
-    { name: 'voices', displayName: '语音', count: voicesCount },
-    { name: 'tts_records', displayName: 'TTS记录', count: ttsRecordsCount },
-    { name: 'user_subscriptions', displayName: '订阅', count: subscriptionsCount },
-    { name: 'credit_history', displayName: '积分记录', count: creditHistoryCount },
+    { name: 'users', displayName: '用户', count: Number(usersCount) },
+    { name: 'voices', displayName: '语音', count: Number(voicesCount) },
+    { name: 'tts_records', displayName: 'TTS记录', count: Number(ttsRecordsCount) },
+    { name: 'user_subscriptions', displayName: '订阅', count: Number(subscriptionsCount) },
+    { name: 'credit_history', displayName: '积分记录', count: Number(creditHistoryCount) },
   ];
 }
 
@@ -74,9 +76,9 @@ export async function syncVoicesFromApi(): Promise<SyncResult> {
       throw new Error(`API 请求失败: ${response.status}`);
     }
 
-    const voices = await response.json();
+    const voicesList = await response.json();
 
-    if (!Array.isArray(voices)) {
+    if (!Array.isArray(voicesList)) {
       throw new Error('API 返回数据格式错误');
     }
 
@@ -84,50 +86,42 @@ export async function syncVoicesFromApi(): Promise<SyncResult> {
     let updated = 0;
 
     // 使用事务批量更新
-    for (const voice of voices) {
-      const existingVoice = await prisma.voices.findUnique({
-        where: { name: voice.name },
-      });
+    for (const voice of voicesList) {
+      const [existingVoice] = await db.select().from(voices).where(eq(voices.name, voice.name)).limit(1);
 
       if (existingVoice) {
-        await prisma.voices.update({
-          where: { name: voice.name },
-          data: {
-            provider: voice.provider,
-            locale: voice.locale,
-            country: voice.country,
-            role: voice.role,
-            gender: voice.gender,
-            avatar_url: voice.avatar_url,
-            voice_sample_url: voice.voice_sample_url,
-            voice_sample_text: voice.voice_sample_text,
-            tags: voice.tags || [],
-            style_list: voice.style_list || [],
-            is_active: voice.is_active ?? true,
-            sort_order: voice.sort_order ?? 0,
-            display_name: voice.display_name,
-            updated_at: new Date(),
-          },
-        });
+        await db.update(voices).set({
+          provider: voice.provider,
+          locale: voice.locale,
+          country: voice.country,
+          role: voice.role,
+          gender: voice.gender,
+          avatarUrl: voice.avatar_url,
+          voiceSampleUrl: voice.voice_sample_url,
+          voiceSampleText: voice.voice_sample_text,
+          tags: voice.tags || [],
+          styleList: voice.style_list || [],
+          isActive: voice.is_active ?? true,
+          sortOrder: voice.sort_order ?? 0,
+          displayName: voice.display_name,
+        }).where(eq(voices.name, voice.name));
         updated++;
       } else {
-        await prisma.voices.create({
-          data: {
-            name: voice.name,
-            provider: voice.provider,
-            locale: voice.locale,
-            country: voice.country,
-            role: voice.role,
-            gender: voice.gender,
-            avatar_url: voice.avatar_url,
-            voice_sample_url: voice.voice_sample_url,
-            voice_sample_text: voice.voice_sample_text,
-            tags: voice.tags || [],
-            style_list: voice.style_list || [],
-            is_active: voice.is_active ?? true,
-            sort_order: voice.sort_order ?? 0,
-            display_name: voice.display_name,
-          },
+        await db.insert(voices).values({
+          name: voice.name,
+          provider: voice.provider,
+          locale: voice.locale,
+          country: voice.country,
+          role: voice.role,
+          gender: voice.gender,
+          avatarUrl: voice.avatar_url,
+          voiceSampleUrl: voice.voice_sample_url,
+          voiceSampleText: voice.voice_sample_text,
+          tags: voice.tags || [],
+          styleList: voice.style_list || [],
+          isActive: voice.is_active ?? true,
+          sortOrder: voice.sort_order ?? 0,
+          displayName: voice.display_name,
         });
         created++;
       }
@@ -139,7 +133,7 @@ export async function syncVoicesFromApi(): Promise<SyncResult> {
       details: {
         created,
         updated,
-        total: voices.length,
+        total: voicesList.length,
       },
     };
   } catch (error) {
@@ -189,19 +183,15 @@ export async function cleanupExpiredAnonymousUsers(): Promise<SyncResult> {
   await verifyAdmin();
 
   try {
-    const result = await prisma.anonymous_users.deleteMany({
-      where: {
-        expires_at: {
-          lt: new Date(),
-        },
-      },
-    });
+    const result = await db.delete(anonymousUsers)
+      .where(lt(anonymousUsers.expiresAt, new Date().toISOString()))
+      .returning();
 
     return {
       success: true,
       message: `清理完成`,
       details: {
-        deleted: result.count,
+        deleted: result.length,
       },
     };
   } catch (error) {
@@ -221,24 +211,20 @@ export async function recalculateUserCredits(userId: string): Promise<SyncResult
 
   try {
     // 计算用户所有积分变动的总和
-    const creditHistory = await prisma.credit_history.aggregate({
-      where: { user_id: userId },
-      _sum: { amount: true },
-    });
+    const [{ total: totalCredits }] = await db.select({ total: sum(creditHistory.amount) })
+      .from(creditHistory)
+      .where(eq(creditHistory.userId, userId));
 
-    const totalCredits = creditHistory._sum.amount || 0;
+    const credits = Number(totalCredits) || 0;
 
     // 更新用户积分
-    await prisma.users.update({
-      where: { user_id: userId },
-      data: { credits: totalCredits },
-    });
+    await db.update(users).set({ credits }).where(eq(users.userId, userId));
 
     return {
       success: true,
-      message: `用户 ${userId} 积分已重新计算: ${totalCredits}`,
+      message: `用户 ${userId} 积分已重新计算: ${credits}`,
       details: {
-        total: totalCredits,
+        total: credits,
       },
     };
   } catch (error) {
@@ -261,22 +247,22 @@ interface MigrationResult {
 }
 
 /**
- * 执行 Prisma db push（同步 schema 到数据库）
- * 这会根据 schema.prisma 创建/修改数据库表结构
+ * 执行 Drizzle db push（同步 schema 到数据库）
+ * 这会根据 schema.ts 创建/修改数据库表结构
  */
 export async function runPrismaDbPush(): Promise<MigrationResult> {
   // 使用不依赖数据库的验证方式，因为数据库表可能还不存在
   await verifyAdminWithoutDb();
 
   try {
-    console.log('🔄 开始执行 prisma db push...');
+    console.log('🔄 开始执行 drizzle-kit push...');
 
-    const { stdout, stderr } = await execAsync('npx prisma db push --accept-data-loss', {
+    const { stdout, stderr } = await execAsync('npx drizzle-kit push', {
       cwd: process.cwd(),
       timeout: 120000, // 2分钟超时
     });
 
-    console.log('✅ prisma db push 完成');
+    console.log('✅ drizzle-kit push 完成');
     console.log('stdout:', stdout);
     if (stderr) console.log('stderr:', stderr);
 
@@ -286,7 +272,7 @@ export async function runPrismaDbPush(): Promise<MigrationResult> {
       output: stdout,
     };
   } catch (error) {
-    console.error('❌ prisma db push 失败:', error);
+    console.error('❌ drizzle-kit push 失败:', error);
     const err = error as { stdout?: string; stderr?: string; message?: string };
     return {
       success: false,
@@ -298,33 +284,33 @@ export async function runPrismaDbPush(): Promise<MigrationResult> {
 }
 
 /**
- * 执行 Prisma generate（重新生成 Prisma Client）
+ * 执行 Drizzle generate（生成迁移文件）
  */
 export async function runPrismaGenerate(): Promise<MigrationResult> {
   // 使用不依赖数据库的验证方式
   await verifyAdminWithoutDb();
 
   try {
-    console.log('🔄 开始执行 prisma generate...');
+    console.log('🔄 开始执行 drizzle-kit generate...');
 
-    const { stdout } = await execAsync('npx prisma generate', {
+    const { stdout } = await execAsync('npx drizzle-kit generate', {
       cwd: process.cwd(),
       timeout: 60000, // 1分钟超时
     });
 
-    console.log('✅ prisma generate 完成');
+    console.log('✅ drizzle-kit generate 完成');
 
     return {
       success: true,
-      message: 'Prisma Client 重新生成完成',
+      message: 'Drizzle 迁移文件生成完成',
       output: stdout,
     };
   } catch (error) {
-    console.error('❌ prisma generate 失败:', error);
+    console.error('❌ drizzle-kit generate 失败:', error);
     const err = error as { stdout?: string; stderr?: string; message?: string };
     return {
       success: false,
-      message: 'Prisma Client 生成失败',
+      message: 'Drizzle 迁移文件生成失败',
       output: err.stdout,
       error: err.stderr || err.message,
     };
@@ -340,7 +326,7 @@ export async function checkDatabaseConnection(): Promise<MigrationResult> {
 
   try {
     // 尝试执行一个简单查询来检查连接
-    await prisma.$queryRaw`SELECT 1`;
+    await db.execute(sql`SELECT 1`);
 
     return {
       success: true,

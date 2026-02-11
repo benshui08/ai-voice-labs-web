@@ -3,7 +3,9 @@
 /**
  * Video 记录管理 Server Actions
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { videoRecords } from '@/db/schema';
+import { eq, and, or, ilike, desc, count, sum, gte, lte, inArray } from 'drizzle-orm';
 import { verifyAdminWithoutDb } from '@/lib/auth-admin';
 
 /**
@@ -64,81 +66,77 @@ export async function getVideoRecords(query: VideoRecordsQuery = {}) {
     endDate,
   } = query;
 
-  // 构建查询条件
-  const where: Record<string, unknown> = {};
+  const conditions = [];
 
   if (status) {
-    where.status = status;
+    conditions.push(eq(videoRecords.status, status));
   }
 
   if (model) {
-    where.model = model;
+    conditions.push(eq(videoRecords.model, model));
   }
 
   if (userId) {
-    where.user_id = {
-      contains: userId,
-      mode: 'insensitive',
-    };
+    conditions.push(ilike(videoRecords.userId, `%${userId}%`));
   }
 
   if (search) {
-    where.OR = [
-      { prompt: { contains: search, mode: 'insensitive' } },
-      { task_id: { contains: search, mode: 'insensitive' } },
-    ];
+    conditions.push(
+      or(
+        ilike(videoRecords.prompt, `%${search}%`),
+        ilike(videoRecords.taskId, `%${search}%`),
+      )
+    );
   }
 
-  if (startDate || endDate) {
-    where.created_at = {};
-    if (startDate) {
-      (where.created_at as Record<string, Date>).gte = new Date(startDate);
-    }
-    if (endDate) {
-      (where.created_at as Record<string, Date>).lte = new Date(endDate + 'T23:59:59.999Z');
-    }
+  if (startDate) {
+    conditions.push(gte(videoRecords.createdAt, new Date(startDate).toISOString()));
+  }
+  if (endDate) {
+    conditions.push(lte(videoRecords.createdAt, new Date(endDate + 'T23:59:59.999Z').toISOString()));
   }
 
-  const [total, records] = await Promise.all([
-    prisma.video_records.count({ where }),
-    prisma.video_records.findMany({
-      where,
-      orderBy: { created_at: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [[{ total }], records] = await Promise.all([
+    db.select({ total: count() }).from(videoRecords).where(whereClause),
+    db.select().from(videoRecords)
+      .where(whereClause)
+      .orderBy(desc(videoRecords.createdAt))
+      .offset((page - 1) * pageSize)
+      .limit(pageSize),
   ]);
 
   const items: VideoRecordItem[] = records.map((record) => ({
     id: record.id,
-    taskId: record.task_id,
-    externalTaskId: record.external_task_id,
-    userId: record.user_id,
-    taskType: record.task_type,
+    taskId: record.taskId,
+    externalTaskId: record.externalTaskId,
+    userId: record.userId,
+    taskType: record.taskType,
     model: record.model,
     prompt: record.prompt,
     resolution: record.resolution,
     duration: record.duration,
-    aspectRatio: record.aspect_ratio,
-    isPublic: record.is_public,
-    creditsCost: record.credits_cost,
+    aspectRatio: record.aspectRatio,
+    isPublic: record.isPublic,
+    creditsCost: record.creditsCost,
     status: record.status,
     progress: record.progress,
-    videoUrl: record.video_url,
-    thumbnailUrl: record.thumbnail_url,
-    actualDuration: record.actual_duration,
-    errorMessage: record.error_message,
-    shareId: record.share_id,
-    createdAt: record.created_at.toISOString(),
-    completedAt: record.completed_at?.toISOString() || null,
+    videoUrl: record.videoUrl,
+    thumbnailUrl: record.thumbnailUrl,
+    actualDuration: record.actualDuration,
+    errorMessage: record.errorMessage,
+    shareId: record.shareId,
+    createdAt: record.createdAt,
+    completedAt: record.completedAt || null,
   }));
 
   return {
     items,
-    total,
+    total: Number(total),
     page,
     pageSize,
-    totalPages: Math.ceil(total / pageSize),
+    totalPages: Math.ceil(Number(total) / pageSize),
   };
 }
 
@@ -149,39 +147,38 @@ export async function getVideoRecordsStats() {
   await verifyAdminWithoutDb();
 
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekStart = new Date(todayStart);
-  weekStart.setDate(weekStart.getDate() - 7);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString();
 
   const [
-    totalRecords,
-    successRecords,
-    failedRecords,
-    processingRecords,
-    todayRecords,
-    weekRecords,
-    totalCredits,
-    publicRecords,
+    [{ total: totalRecords }],
+    [{ total: successRecords }],
+    [{ total: failedRecords }],
+    [{ total: processingRecords }],
+    [{ total: todayRecords }],
+    [{ total: weekRecords }],
+    [{ total: totalCredits }],
+    [{ total: publicRecords }],
   ] = await Promise.all([
-    prisma.video_records.count(),
-    prisma.video_records.count({ where: { status: 'SUCCESS' } }),
-    prisma.video_records.count({ where: { status: 'FAILURE' } }),
-    prisma.video_records.count({ where: { status: { in: ['PENDING', 'PROCESSING'] } } }),
-    prisma.video_records.count({ where: { created_at: { gte: todayStart } } }),
-    prisma.video_records.count({ where: { created_at: { gte: weekStart } } }),
-    prisma.video_records.aggregate({ _sum: { credits_cost: true } }),
-    prisma.video_records.count({ where: { is_public: true } }),
+    db.select({ total: count() }).from(videoRecords),
+    db.select({ total: count() }).from(videoRecords).where(eq(videoRecords.status, 'SUCCESS')),
+    db.select({ total: count() }).from(videoRecords).where(eq(videoRecords.status, 'FAILURE')),
+    db.select({ total: count() }).from(videoRecords).where(or(eq(videoRecords.status, 'PENDING'), eq(videoRecords.status, 'PROCESSING'))),
+    db.select({ total: count() }).from(videoRecords).where(gte(videoRecords.createdAt, todayStart)),
+    db.select({ total: count() }).from(videoRecords).where(gte(videoRecords.createdAt, weekStart)),
+    db.select({ total: sum(videoRecords.creditsCost) }).from(videoRecords),
+    db.select({ total: count() }).from(videoRecords).where(eq(videoRecords.isPublic, true)),
   ]);
 
   return {
-    totalRecords,
-    successRecords,
-    failedRecords,
-    processingRecords,
-    todayRecords,
-    weekRecords,
-    totalCredits: totalCredits._sum.credits_cost || 0,
-    publicRecords,
+    totalRecords: Number(totalRecords),
+    successRecords: Number(successRecords),
+    failedRecords: Number(failedRecords),
+    processingRecords: Number(processingRecords),
+    todayRecords: Number(todayRecords),
+    weekRecords: Number(weekRecords),
+    totalCredits: Number(totalCredits) || 0,
+    publicRecords: Number(publicRecords),
   };
 }
 
@@ -192,17 +189,11 @@ export async function deleteVideoRecord(id: number) {
   await verifyAdminWithoutDb();
 
   try {
-    await prisma.video_records.delete({
-      where: { id },
-    });
-
+    await db.delete(videoRecords).where(eq(videoRecords.id, id));
     return { success: true, message: '删除成功' };
   } catch (error) {
     console.error('删除 Video 记录失败:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : '删除失败',
-    };
+    return { success: false, message: error instanceof Error ? error.message : '删除失败' };
   }
 }
 
@@ -213,20 +204,14 @@ export async function deleteVideoRecords(ids: number[]) {
   await verifyAdminWithoutDb();
 
   try {
-    const result = await prisma.video_records.deleteMany({
-      where: { id: { in: ids } },
-    });
-
+    const result = await db.delete(videoRecords).where(inArray(videoRecords.id, ids)).returning();
     return {
       success: true,
-      message: `成功删除 ${result.count} 条记录`,
-      deleted: result.count,
+      message: `成功删除 ${result.length} 条记录`,
+      deleted: result.length,
     };
   } catch (error) {
     console.error('批量删除 Video 记录失败:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : '删除失败',
-    };
+    return { success: false, message: error instanceof Error ? error.message : '删除失败' };
   }
 }

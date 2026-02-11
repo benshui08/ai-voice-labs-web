@@ -3,7 +3,9 @@
 /**
  * 管理后台统计 Server Actions
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { users, anonymousUsers } from '@/db/schema';
+import { count, gte, sql } from 'drizzle-orm';
 import { verifyAdminWithoutDb } from '@/lib/auth-admin';
 
 export type TimeRange = 'today' | '7days' | '30days';
@@ -81,52 +83,39 @@ export async function getAdminStats(timeRange: TimeRange): Promise<StatsResult> 
       break;
   }
 
-  // 通用任务统计查询函数
+  const startDateStr = startDate.toISOString();
+
+  // 通用任务统计查询函数 (using raw SQL for table name interpolation)
   const getTaskStats = async (tableName: string) => {
     const [total, newCount, success, failure, processing, daily] = await Promise.all([
-      prisma.$queryRawUnsafe<[{ count: bigint }]>(`SELECT COUNT(*) as count FROM ${tableName}`),
-      prisma.$queryRawUnsafe<[{ count: bigint }]>(
-        `SELECT COUNT(*) as count FROM ${tableName} WHERE created_at >= $1`,
-        startDate
-      ),
-      prisma.$queryRawUnsafe<[{ count: bigint }]>(
-        `SELECT COUNT(*) as count FROM ${tableName} WHERE created_at >= $1 AND status = 'SUCCESS'`,
-        startDate
-      ),
-      prisma.$queryRawUnsafe<[{ count: bigint }]>(
-        `SELECT COUNT(*) as count FROM ${tableName} WHERE created_at >= $1 AND status = 'FAILURE'`,
-        startDate
-      ),
-      prisma.$queryRawUnsafe<[{ count: bigint }]>(
-        `SELECT COUNT(*) as count FROM ${tableName} WHERE created_at >= $1 AND status = 'PROCESSING'`,
-        startDate
-      ),
-      prisma.$queryRawUnsafe<{ date: Date; count: bigint }[]>(
-        `SELECT DATE(created_at) as date, COUNT(*) as count FROM ${tableName} WHERE created_at >= $1 GROUP BY DATE(created_at) ORDER BY date ASC`,
-        startDate
-      ),
+      db.execute<{ count: string }>(sql.raw(`SELECT COUNT(*) as count FROM ${tableName}`)),
+      db.execute<{ count: string }>(sql`SELECT COUNT(*) as count FROM ${sql.raw(tableName)} WHERE created_at >= ${startDateStr}`),
+      db.execute<{ count: string }>(sql`SELECT COUNT(*) as count FROM ${sql.raw(tableName)} WHERE created_at >= ${startDateStr} AND status = 'SUCCESS'`),
+      db.execute<{ count: string }>(sql`SELECT COUNT(*) as count FROM ${sql.raw(tableName)} WHERE created_at >= ${startDateStr} AND status = 'FAILURE'`),
+      db.execute<{ count: string }>(sql`SELECT COUNT(*) as count FROM ${sql.raw(tableName)} WHERE created_at >= ${startDateStr} AND status = 'PROCESSING'`),
+      db.execute<{ date: string; count: string }>(sql`SELECT DATE(created_at) as date, COUNT(*) as count FROM ${sql.raw(tableName)} WHERE created_at >= ${startDateStr} GROUP BY DATE(created_at) ORDER BY date ASC`),
     ]);
     return {
-      total: Number(total[0]?.count || 0),
-      newInRange: Number(newCount[0]?.count || 0),
-      successCount: Number(success[0]?.count || 0),
-      failureCount: Number(failure[0]?.count || 0),
-      processingCount: Number(processing[0]?.count || 0),
-      daily: daily,
+      total: Number(total.rows[0]?.count || 0),
+      newInRange: Number(newCount.rows[0]?.count || 0),
+      successCount: Number(success.rows[0]?.count || 0),
+      failureCount: Number(failure.rows[0]?.count || 0),
+      processingCount: Number(processing.rows[0]?.count || 0),
+      daily: daily.rows,
     };
   };
 
   // 并行查询所有统计数据
   const [
     // 用户总数
-    registeredTotal,
-    anonymousTotal,
+    [{ total: registeredTotal }],
+    [{ total: anonymousTotal }],
     // 时间范围内新增用户
-    registeredNew,
-    anonymousNew,
-    // 每日明细数据 (使用原始 SQL 进行分组)
-    registeredDaily,
-    anonymousDaily,
+    [{ total: registeredNew }],
+    [{ total: anonymousNew }],
+    // 每日明细数据
+    registeredDailyResult,
+    anonymousDailyResult,
     // 各类任务统计
     ttsStats,
     musicStats,
@@ -137,31 +126,27 @@ export async function getAdminStats(timeRange: TimeRange): Promise<StatsResult> 
     downloadStats,
   ] = await Promise.all([
     // 用户总数
-    prisma.users.count(),
-    prisma.anonymous_users.count(),
+    db.select({ total: count() }).from(users),
+    db.select({ total: count() }).from(anonymousUsers),
     // 时间范围内新增用户
-    prisma.users.count({
-      where: { created_at: { gte: startDate } },
-    }),
-    prisma.anonymous_users.count({
-      where: { created_at: { gte: startDate } },
-    }),
+    db.select({ total: count() }).from(users).where(gte(users.createdAt, startDateStr)),
+    db.select({ total: count() }).from(anonymousUsers).where(gte(anonymousUsers.createdAt, startDateStr)),
     // 每日明细 - 注册用户
-    prisma.$queryRaw<{ date: Date; count: bigint }[]>`
+    db.execute<{ date: string; count: string }>(sql`
       SELECT DATE(created_at) as date, COUNT(*) as count
       FROM users
-      WHERE created_at >= ${startDate}
+      WHERE created_at >= ${startDateStr}
       GROUP BY DATE(created_at)
       ORDER BY date ASC
-    `,
+    `),
     // 每日明细 - 匿名用户
-    prisma.$queryRaw<{ date: Date; count: bigint }[]>`
+    db.execute<{ date: string; count: string }>(sql`
       SELECT DATE(created_at) as date, COUNT(*) as count
       FROM anonymous_users
-      WHERE created_at >= ${startDate}
+      WHERE created_at >= ${startDateStr}
       GROUP BY DATE(created_at)
       ORDER BY date ASC
-    `,
+    `),
     // 各类任务统计
     getTaskStats('tts_records'),
     getTaskStats('music_records'),
@@ -173,9 +158,9 @@ export async function getAdminStats(timeRange: TimeRange): Promise<StatsResult> 
   ]);
 
   // 转换每日数据格式
-  const formatDailyData = (data: { date: Date; count: bigint }[]): DailyCount[] => {
-    return data.map((item) => ({
-      date: item.date.toISOString().split('T')[0],
+  const formatDailyData = (rows: { date: string; count: string }[]): DailyCount[] => {
+    return rows.map((item) => ({
+      date: typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0],
       count: Number(item.count),
     }));
   };
@@ -193,14 +178,14 @@ export async function getAdminStats(timeRange: TimeRange): Promise<StatsResult> 
   return {
     users: {
       registered: {
-        total: registeredTotal,
-        newInRange: registeredNew,
-        daily: formatDailyData(registeredDaily),
+        total: Number(registeredTotal),
+        newInRange: Number(registeredNew),
+        daily: formatDailyData(registeredDailyResult.rows),
       },
       anonymous: {
-        total: anonymousTotal,
-        newInRange: anonymousNew,
-        daily: formatDailyData(anonymousDaily),
+        total: Number(anonymousTotal),
+        newInRange: Number(anonymousNew),
+        daily: formatDailyData(anonymousDailyResult.rows),
       },
     },
     tasks: {

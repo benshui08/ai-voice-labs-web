@@ -3,7 +3,9 @@
 /**
  * TTS 记录管理 Server Actions
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { ttsRecords } from '@/db/schema';
+import { eq, and, or, ilike, desc, count, sum, gte, lte, inArray } from 'drizzle-orm';
 import { verifyAdminWithoutDb } from '@/lib/auth-admin';
 
 /**
@@ -69,87 +71,84 @@ export async function getTtsRecords(query: TtsRecordsQuery = {}) {
   } = query;
 
   // 构建查询条件
-  const where: Record<string, unknown> = {};
+  const conditions = [];
 
   if (status) {
-    where.status = status;
+    conditions.push(eq(ttsRecords.status, status));
   }
 
   if (userId) {
-    where.user_id = {
-      contains: userId,
-      mode: 'insensitive',
-    };
+    conditions.push(ilike(ttsRecords.userId, `%${userId}%`));
   }
 
   if (search) {
-    where.OR = [
-      { text: { contains: search, mode: 'insensitive' } },
-      { voice_name: { contains: search, mode: 'insensitive' } },
-      { task_id: { contains: search, mode: 'insensitive' } },
-    ];
+    conditions.push(
+      or(
+        ilike(ttsRecords.text, `%${search}%`),
+        ilike(ttsRecords.voiceName, `%${search}%`),
+        ilike(ttsRecords.taskId, `%${search}%`),
+      )
+    );
   }
 
-  if (startDate || endDate) {
-    where.created_at = {};
-    if (startDate) {
-      (where.created_at as Record<string, Date>).gte = new Date(startDate);
-    }
-    if (endDate) {
-      (where.created_at as Record<string, Date>).lte = new Date(endDate + 'T23:59:59.999Z');
-    }
+  if (startDate) {
+    conditions.push(gte(ttsRecords.createdAt, new Date(startDate).toISOString()));
+  }
+  if (endDate) {
+    conditions.push(lte(ttsRecords.createdAt, new Date(endDate + 'T23:59:59.999Z').toISOString()));
   }
 
   if (platform) {
-    where.platform = platform;
+    conditions.push(eq(ttsRecords.platform, platform));
   }
 
   if (isPublic !== undefined) {
-    where.is_public = isPublic;
+    conditions.push(eq(ttsRecords.isPublic, isPublic));
   }
 
-  const [total, records] = await Promise.all([
-    prisma.tts_records.count({ where }),
-    prisma.tts_records.findMany({
-      where,
-      orderBy: { created_at: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [[ { total } ], records] = await Promise.all([
+    db.select({ total: count() }).from(ttsRecords).where(whereClause),
+    db.select().from(ttsRecords)
+      .where(whereClause)
+      .orderBy(desc(ttsRecords.createdAt))
+      .offset((page - 1) * pageSize)
+      .limit(pageSize),
   ]);
 
   const items: TtsRecordItem[] = records.map((record) => ({
     id: record.id,
-    taskId: record.task_id,
-    userId: record.user_id,
+    taskId: record.taskId,
+    userId: record.userId,
     text: record.text,
-    voiceName: record.voice_name,
+    voiceName: record.voiceName,
     language: record.language,
     style: record.style,
     speed: record.speed,
     pitch: record.pitch,
     volume: record.volume,
-    creditsCost: record.credits_cost,
-    characterCount: record.character_count,
+    creditsCost: record.creditsCost,
+    characterCount: record.characterCount,
     status: record.status,
     progress: record.progress,
-    audioUrl: record.audio_url,
+    audioUrl: record.audioUrl,
     duration: record.duration,
     format: record.format,
-    errorMessage: record.error_message,
-    shareId: record.share_id,
+    errorMessage: record.errorMessage,
+    shareId: record.shareId,
     platform: record.platform,
-    isPublic: record.is_public,
-    createdAt: record.created_at.toISOString(),
-    completedAt: record.completed_at?.toISOString() || null,
+    isPublic: record.isPublic,
+    createdAt: record.createdAt,
+    completedAt: record.completedAt || null,
   }));
 
   return {
     items,
-    total,
+    total: Number(total),
     page,
     pageSize,
-    totalPages: Math.ceil(total / pageSize),
+    totalPages: Math.ceil(Number(total) / pageSize),
   };
 }
 
@@ -160,39 +159,38 @@ export async function getTtsRecordsStats() {
   await verifyAdminWithoutDb();
 
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekStart = new Date(todayStart);
-  weekStart.setDate(weekStart.getDate() - 7);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString();
 
   const [
-    totalRecords,
-    completedRecords,
-    failedRecords,
-    pendingRecords,
-    todayRecords,
-    weekRecords,
-    totalCredits,
-    totalCharacters,
+    [{ total: totalRecords }],
+    [{ total: completedRecords }],
+    [{ total: failedRecords }],
+    [{ total: pendingRecords }],
+    [{ total: todayRecords }],
+    [{ total: weekRecords }],
+    [{ total: totalCredits }],
+    [{ total: totalCharacters }],
   ] = await Promise.all([
-    prisma.tts_records.count(),
-    prisma.tts_records.count({ where: { status: 'completed' } }),
-    prisma.tts_records.count({ where: { status: 'failed' } }),
-    prisma.tts_records.count({ where: { status: { in: ['pending', 'processing'] } } }),
-    prisma.tts_records.count({ where: { created_at: { gte: todayStart } } }),
-    prisma.tts_records.count({ where: { created_at: { gte: weekStart } } }),
-    prisma.tts_records.aggregate({ _sum: { credits_cost: true } }),
-    prisma.tts_records.aggregate({ _sum: { character_count: true } }),
+    db.select({ total: count() }).from(ttsRecords),
+    db.select({ total: count() }).from(ttsRecords).where(eq(ttsRecords.status, 'completed')),
+    db.select({ total: count() }).from(ttsRecords).where(eq(ttsRecords.status, 'failed')),
+    db.select({ total: count() }).from(ttsRecords).where(or(eq(ttsRecords.status, 'pending'), eq(ttsRecords.status, 'processing'))),
+    db.select({ total: count() }).from(ttsRecords).where(gte(ttsRecords.createdAt, todayStart)),
+    db.select({ total: count() }).from(ttsRecords).where(gte(ttsRecords.createdAt, weekStart)),
+    db.select({ total: sum(ttsRecords.creditsCost) }).from(ttsRecords),
+    db.select({ total: sum(ttsRecords.characterCount) }).from(ttsRecords),
   ]);
 
   return {
-    totalRecords,
-    completedRecords,
-    failedRecords,
-    pendingRecords,
-    todayRecords,
-    weekRecords,
-    totalCredits: totalCredits._sum.credits_cost || 0,
-    totalCharacters: totalCharacters._sum.character_count || 0,
+    totalRecords: Number(totalRecords),
+    completedRecords: Number(completedRecords),
+    failedRecords: Number(failedRecords),
+    pendingRecords: Number(pendingRecords),
+    todayRecords: Number(todayRecords),
+    weekRecords: Number(weekRecords),
+    totalCredits: Number(totalCredits) || 0,
+    totalCharacters: Number(totalCharacters) || 0,
   };
 }
 
@@ -203,9 +201,7 @@ export async function deleteTtsRecord(id: number) {
   await verifyAdminWithoutDb();
 
   try {
-    await prisma.tts_records.delete({
-      where: { id },
-    });
+    await db.delete(ttsRecords).where(eq(ttsRecords.id, id));
 
     return { success: true, message: '删除成功' };
   } catch (error) {
@@ -224,14 +220,12 @@ export async function deleteTtsRecords(ids: number[]) {
   await verifyAdminWithoutDb();
 
   try {
-    const result = await prisma.tts_records.deleteMany({
-      where: { id: { in: ids } },
-    });
+    const result = await db.delete(ttsRecords).where(inArray(ttsRecords.id, ids)).returning();
 
     return {
       success: true,
-      message: `成功删除 ${result.count} 条记录`,
-      deleted: result.count,
+      message: `成功删除 ${result.length} 条记录`,
+      deleted: result.length,
     };
   } catch (error) {
     console.error('批量删除 TTS 记录失败:', error);
@@ -248,9 +242,7 @@ export async function deleteTtsRecords(ids: number[]) {
 export async function getTtsRecordDetail(id: number) {
   await verifyAdminWithoutDb();
 
-  const record = await prisma.tts_records.findUnique({
-    where: { id },
-  });
+  const [record] = await db.select().from(ttsRecords).where(eq(ttsRecords.id, id)).limit(1);
 
   if (!record) {
     return null;
@@ -258,27 +250,27 @@ export async function getTtsRecordDetail(id: number) {
 
   return {
     id: record.id,
-    taskId: record.task_id,
-    userId: record.user_id,
+    taskId: record.taskId,
+    userId: record.userId,
     text: record.text,
-    voiceName: record.voice_name,
+    voiceName: record.voiceName,
     language: record.language,
     style: record.style,
     speed: record.speed,
     pitch: record.pitch,
     volume: record.volume,
-    creditsCost: record.credits_cost,
-    characterCount: record.character_count,
+    creditsCost: record.creditsCost,
+    characterCount: record.characterCount,
     status: record.status,
     progress: record.progress,
-    audioUrl: record.audio_url,
+    audioUrl: record.audioUrl,
     duration: record.duration,
     format: record.format,
-    errorMessage: record.error_message,
-    shareId: record.share_id,
-    createdAt: record.created_at.toISOString(),
-    updatedAt: record.updated_at?.toISOString() || null,
-    completedAt: record.completed_at?.toISOString() || null,
+    errorMessage: record.errorMessage,
+    shareId: record.shareId,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt || null,
+    completedAt: record.completedAt || null,
   };
 }
 
@@ -289,10 +281,7 @@ export async function updateTtsRecordPublic(id: number, isPublic: boolean) {
   await verifyAdminWithoutDb();
 
   try {
-    await prisma.tts_records.update({
-      where: { id },
-      data: { is_public: isPublic },
-    });
+    await db.update(ttsRecords).set({ isPublic }).where(eq(ttsRecords.id, id));
 
     return { success: true, message: isPublic ? '已设为公开' : '已设为私有' };
   } catch (error) {
@@ -311,15 +300,12 @@ export async function updateTtsRecordsPublic(ids: number[], isPublic: boolean) {
   await verifyAdminWithoutDb();
 
   try {
-    const result = await prisma.tts_records.updateMany({
-      where: { id: { in: ids } },
-      data: { is_public: isPublic },
-    });
+    const result = await db.update(ttsRecords).set({ isPublic }).where(inArray(ttsRecords.id, ids)).returning();
 
     return {
       success: true,
-      message: `成功更新 ${result.count} 条记录`,
-      updated: result.count,
+      message: `成功更新 ${result.length} 条记录`,
+      updated: result.length,
     };
   } catch (error) {
     console.error('批量更新 TTS 记录公开状态失败:', error);

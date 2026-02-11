@@ -5,7 +5,9 @@
  * 获取公开视频列表（无需登录）
  */
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { videoRecords, users } from '@/db/schema';
+import { and, eq, desc, isNotNull, count, inArray } from 'drizzle-orm';
 
 /**
  * 脱敏邮箱
@@ -34,61 +36,56 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const skip = (page - 1) * limit;
 
+    const whereCondition = and(
+      eq(videoRecords.isPublic, true),
+      eq(videoRecords.status, 'SUCCESS'),
+      isNotNull(videoRecords.videoUrl),
+    );
+
     // 查询公开且成功的视频
-    const [videos, total] = await Promise.all([
-      prisma.video_records.findMany({
-        where: {
-          is_public: true,
-          status: 'SUCCESS',
-          video_url: { not: null },
-        },
-        select: {
-          id: true,
-          task_id: true,
-          user_id: true,
-          prompt: true,
-          aspect_ratio: true,
-          video_url: true,
-          thumbnail_url: true,
-          view_count: true,
-          created_at: true,
-        },
-        orderBy: [
-          { view_count: 'desc' },
-          { created_at: 'desc' },
-        ],
-        skip,
-        take: limit,
-      }),
-      prisma.video_records.count({
-        where: {
-          is_public: true,
-          status: 'SUCCESS',
-          video_url: { not: null },
-        },
-      }),
+    const [videos, [{ total }]] = await Promise.all([
+      db.select({
+        id: videoRecords.id,
+        taskId: videoRecords.taskId,
+        userId: videoRecords.userId,
+        prompt: videoRecords.prompt,
+        aspectRatio: videoRecords.aspectRatio,
+        videoUrl: videoRecords.videoUrl,
+        thumbnailUrl: videoRecords.thumbnailUrl,
+        viewCount: videoRecords.viewCount,
+        createdAt: videoRecords.createdAt,
+      })
+        .from(videoRecords)
+        .where(whereCondition)
+        .orderBy(desc(videoRecords.viewCount), desc(videoRecords.createdAt))
+        .offset(skip)
+        .limit(limit),
+      db.select({ total: count() })
+        .from(videoRecords)
+        .where(whereCondition),
     ]);
 
     // 获取用户邮箱（批量查询）
-    const userIds = [...new Set(videos.map((v) => v.user_id))];
-    const users = await prisma.users.findMany({
-      where: { user_id: { in: userIds } },
-      select: { user_id: true, email: true },
-    });
-    const userMap = new Map(users.map((u) => [u.user_id, u.email]));
+    const userIds = [...new Set(videos.map((v) => v.userId))];
+    const userList = userIds.length > 0
+      ? await db.select({ userId: users.userId, email: users.email })
+          .from(users)
+          .where(inArray(users.userId, userIds))
+      : [];
+    const userMap = new Map(userList.map((u) => [u.userId, u.email]));
 
     const response = NextResponse.json({
       success: true,
       videos: videos.map((v) => ({
         id: v.id,
-        taskId: v.task_id,
+        taskId: v.taskId,
         prompt: v.prompt,
-        aspectRatio: v.aspect_ratio,
-        videoUrl: v.video_url,
-        thumbnailUrl: v.thumbnail_url,
-        viewCount: v.view_count,
-        user: maskEmail(userMap.get(v.user_id) || null),
-        createdAt: v.created_at?.toISOString(),
+        aspectRatio: v.aspectRatio,
+        videoUrl: v.videoUrl,
+        thumbnailUrl: v.thumbnailUrl,
+        viewCount: v.viewCount,
+        user: maskEmail(userMap.get(v.userId) || null),
+        createdAt: v.createdAt,
       })),
       pagination: {
         page,

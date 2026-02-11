@@ -10,7 +10,9 @@
  * - 不能信任客户端传来的任何数据
  */
 
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { userSubscriptions, subscriptionHistory } from '@/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth-firebase';
 import { getCreditTierByProductId } from '@/config/subscription';
 import { addCredits } from '@/lib/credits';
@@ -77,12 +79,12 @@ export async function verifyGooglePlayPurchase(params: {
     });
 
     // ========== 第二步：检查是否已处理过此购买（防止重复发放）==========
-    const existingSubscription = await prisma.user_subscriptions.findFirst({
-      where: {
-        external_transaction_id: purchaseToken,
-        platform: 'google_play',
-      },
-    });
+    const [existingSubscription] = await db.select().from(userSubscriptions)
+      .where(and(
+        eq(userSubscriptions.externalTransactionId, purchaseToken),
+        eq(userSubscriptions.platform, 'google_play'),
+      ))
+      .limit(1);
 
     if (existingSubscription) {
       console.log(`⏭️ [GooglePlay] 购买已处理: ${purchaseToken}`);
@@ -121,26 +123,25 @@ export async function verifyGooglePlayPurchase(params: {
     }
 
     // 创建订阅记录
-    const subscription = await prisma.user_subscriptions.create({
-      data: {
-        user_id: userId,
-        product_id: stripeProductId,
-        product_type: null,
-        platform: 'google_play',
-        external_transaction_id: purchaseToken,
-        external_subscription_id: verifiedOrderId || null,
-        request_id: `gp_${purchaseToken.substring(0, 50)}`,
-        status: 'ACTIVE',
-        start_date: now,
-        end_date: endDate,
-        credits_allocated: tier.credits,
-        amount: null, // Google Play 不提供金额
-        currency: null,
-        auto_renew: verification.autoRenewing ?? true,
-        cancel_at_period_end: false,
-        activated_at: now,
-      },
-    });
+    const [subscription] = await db.insert(userSubscriptions).values({
+      userId,
+      productId: stripeProductId,
+      productType: null,
+      platform: 'google_play',
+      externalTransactionId: purchaseToken,
+      externalSubscriptionId: verifiedOrderId || null,
+      requestId: `gp_${purchaseToken.substring(0, 50)}`,
+      status: 'ACTIVE',
+      startDate: now.toISOString(),
+      endDate: endDate.toISOString(),
+      creditsAllocated: tier.credits,
+      amount: null, // Google Play 不提供金额
+      currency: null,
+      autoRenew: verification.autoRenewing ?? true,
+      cancelAtPeriodEnd: false,
+      activatedAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    }).returning();
 
     // 给用户添加积分
     await addCredits(
@@ -154,26 +155,24 @@ export async function verifyGooglePlayPurchase(params: {
     console.log(`✅ [GooglePlay] 订阅已创建: ${subscription.id}, 积分: +${tier.credits}`);
 
     // 记录历史
-    await prisma.subscription_history.create({
-      data: {
-        subscription_id: subscription.id,
-        user_id: userId,
-        event_type: 'CREATED',
-        old_status: null,
-        new_status: 'ACTIVE',
-        stripe_event_id: `gp_${Date.now()}`,
-        stripe_event_type: 'google_play.purchase',
-        amount: null,
-        currency: null,
-        credits_change: tier.credits,
-        metadata: {
-          product_id: verifiedProductId,
-          order_id: verifiedOrderId,
-          plan_name: plan.plan_name,
-          cycle_days: plan.cycle_days,
-          verified_state: verification.subscriptionState,
-          expiry_time: verification.expiryTime,
-        },
+    await db.insert(subscriptionHistory).values({
+      subscriptionId: subscription.id,
+      userId,
+      eventType: 'CREATED',
+      oldStatus: null,
+      newStatus: 'ACTIVE',
+      stripeEventId: `gp_${Date.now()}`,
+      stripeEventType: 'google_play.purchase',
+      amount: null,
+      currency: null,
+      creditsChange: tier.credits,
+      metadata: {
+        product_id: verifiedProductId,
+        order_id: verifiedOrderId,
+        plan_name: plan.plan_name,
+        cycle_days: plan.cycle_days,
+        verified_state: verification.subscriptionState,
+        expiry_time: verification.expiryTime,
       },
     });
 
@@ -223,12 +222,12 @@ export async function handleGooglePlayRenewal(params: {
     console.log(`📦 [GooglePlay] latestOrderId: ${latestOrderId}`);
 
     // 查找现有订阅
-    const subscription = await prisma.user_subscriptions.findFirst({
-      where: {
-        external_transaction_id: purchaseToken,
-        platform: 'google_play',
-      },
-    });
+    const [subscription] = await db.select().from(userSubscriptions)
+      .where(and(
+        eq(userSubscriptions.externalTransactionId, purchaseToken),
+        eq(userSubscriptions.platform, 'google_play'),
+      ))
+      .limit(1);
 
     if (!subscription) {
       console.log(`⏭️ [GooglePlay] 未找到订阅: ${purchaseToken}`);
@@ -238,15 +237,12 @@ export async function handleGooglePlayRenewal(params: {
     // ========== 去重检查：用 orderId 判断是否已处理过此次支付 ==========
     // Google Play 的 orderId 格式：GPA.xxxx-xxxx-xxxx-xxxxx（首次）或 GPA.xxxx..0, GPA.xxxx..1（续订）
     // 每次支付都有唯一的 orderId，用它来判断是否重复
-    const existingHistory = await prisma.subscription_history.findFirst({
-      where: {
-        subscription_id: subscription.id,
-        metadata: {
-          path: ['order_id'],
-          equals: latestOrderId,
-        },
-      },
-    });
+    const [existingHistory] = await db.select().from(subscriptionHistory)
+      .where(and(
+        eq(subscriptionHistory.subscriptionId, subscription.id),
+        sql`${subscriptionHistory.metadata}->>'order_id' = ${latestOrderId}`,
+      ))
+      .limit(1);
 
     if (existingHistory) {
       console.log(`⏭️ [GooglePlay] orderId ${latestOrderId} 已处理过，跳过`);
@@ -275,23 +271,22 @@ export async function handleGooglePlayRenewal(params: {
       newEndDate = new Date(verification.expiryTime);
     } else {
       // 备用方案：基于当前 end_date 计算
-      const currentEndDate = new Date(subscription.end_date);
+      const currentEndDate = new Date(subscription.endDate);
       newEndDate = new Date(currentEndDate);
       newEndDate.setDate(newEndDate.getDate() + plan.cycle_days);
     }
 
-    await prisma.user_subscriptions.update({
-      where: { id: subscription.id },
-      data: {
+    await db.update(userSubscriptions)
+      .set({
         status: 'ACTIVE',
-        end_date: newEndDate,
-        updated_at: now,
-      },
-    });
+        endDate: newEndDate.toISOString(),
+        updatedAt: now.toISOString(),
+      })
+      .where(eq(userSubscriptions.id, subscription.id));
 
     // 给用户添加积分（真正的续费）
     await addCredits(
-      subscription.user_id,
+      subscription.userId,
       tier.credits,
       ProductType.SUBSCRIPTION,
       false,
@@ -301,20 +296,18 @@ export async function handleGooglePlayRenewal(params: {
     console.log(`✅ [GooglePlay] 订阅已续订: ${subscription.id}, 积分: +${tier.credits}`);
 
     // 记录历史（包含 order_id 用于去重）
-    await prisma.subscription_history.create({
-      data: {
-        subscription_id: subscription.id,
-        user_id: subscription.user_id,
-        event_type: 'RENEWED',
-        old_status: oldStatus,
-        new_status: 'ACTIVE',
-        stripe_event_id: `gp_renewal_${eventTime}`,
-        stripe_event_type: 'google_play.renewal',
-        credits_change: tier.credits,
-        metadata: {
-          order_id: latestOrderId,
-          new_end_date: newEndDate.toISOString(),
-        },
+    await db.insert(subscriptionHistory).values({
+      subscriptionId: subscription.id,
+      userId: subscription.userId,
+      eventType: 'RENEWED',
+      oldStatus,
+      newStatus: 'ACTIVE',
+      stripeEventId: `gp_renewal_${eventTime}`,
+      stripeEventType: 'google_play.renewal',
+      creditsChange: tier.credits,
+      metadata: {
+        order_id: latestOrderId,
+        new_end_date: newEndDate.toISOString(),
       },
     });
 
@@ -350,12 +343,12 @@ export async function handleGooglePlayReactivation(params: {
     }
 
     // 查找现有订阅
-    const subscription = await prisma.user_subscriptions.findFirst({
-      where: {
-        external_transaction_id: purchaseToken,
-        platform: 'google_play',
-      },
-    });
+    const [subscription] = await db.select().from(userSubscriptions)
+      .where(and(
+        eq(userSubscriptions.externalTransactionId, purchaseToken),
+        eq(userSubscriptions.platform, 'google_play'),
+      ))
+      .limit(1);
 
     if (!subscription) {
       console.log(`⏭️ [GooglePlay] 未找到订阅: ${purchaseToken}`);
@@ -368,42 +361,39 @@ export async function handleGooglePlayReactivation(params: {
     // 更新状态为 ACTIVE，并同步 Google 的 expiryTime
     const updateData: {
       status: string;
-      auto_renew: boolean;
-      updated_at: Date;
-      end_date?: Date;
+      autoRenew: boolean;
+      updatedAt: string;
+      endDate?: string;
     } = {
       status: 'ACTIVE',
-      auto_renew: verification.autoRenewing ?? true,
-      updated_at: now,
+      autoRenew: verification.autoRenewing ?? true,
+      updatedAt: now.toISOString(),
     };
 
     // 如果 Google 返回了 expiryTime，同步到 end_date
     if (verification.expiryTime) {
-      updateData.end_date = new Date(verification.expiryTime);
+      updateData.endDate = new Date(verification.expiryTime).toISOString();
     }
 
-    await prisma.user_subscriptions.update({
-      where: { id: subscription.id },
-      data: updateData,
-    });
+    await db.update(userSubscriptions)
+      .set(updateData)
+      .where(eq(userSubscriptions.id, subscription.id));
 
     console.log(`✅ [GooglePlay] 订阅已恢复: ${subscription.id} (${oldStatus} -> ACTIVE，无积分变动)`);
 
     // 记录历史（无积分变动）
-    await prisma.subscription_history.create({
-      data: {
-        subscription_id: subscription.id,
-        user_id: subscription.user_id,
-        event_type: 'REACTIVATED',
-        old_status: oldStatus,
-        new_status: 'ACTIVE',
-        stripe_event_id: `gp_reactivate_${Date.now()}`,
-        stripe_event_type: 'google_play.reactivation',
-        credits_change: 0,
-        metadata: {
-          order_id: verification.orderId,
-          expiry_time: verification.expiryTime,
-        },
+    await db.insert(subscriptionHistory).values({
+      subscriptionId: subscription.id,
+      userId: subscription.userId,
+      eventType: 'REACTIVATED',
+      oldStatus,
+      newStatus: 'ACTIVE',
+      stripeEventId: `gp_reactivate_${Date.now()}`,
+      stripeEventType: 'google_play.reactivation',
+      creditsChange: 0,
+      metadata: {
+        order_id: verification.orderId,
+        expiry_time: verification.expiryTime,
       },
     });
 
@@ -429,44 +419,42 @@ export async function handleGooglePlayCancellation(params: {
   try {
     console.log(`❌ [GooglePlay] 处理取消: purchaseToken=${purchaseToken}`);
 
-    const subscription = await prisma.user_subscriptions.findFirst({
-      where: {
-        external_transaction_id: purchaseToken,
-        platform: 'google_play',
-      },
-    });
+    const [subscription] = await db.select().from(userSubscriptions)
+      .where(and(
+        eq(userSubscriptions.externalTransactionId, purchaseToken),
+        eq(userSubscriptions.platform, 'google_play'),
+      ))
+      .limit(1);
 
     if (!subscription) {
       return { success: false, error: 'Subscription not found' };
     }
 
     const oldStatus = subscription.status;
+    const now = new Date();
 
-    await prisma.user_subscriptions.update({
-      where: { id: subscription.id },
-      data: {
+    await db.update(userSubscriptions)
+      .set({
         status: 'CANCELLED',
-        cancelled_at: new Date(),
-        auto_renew: false,
-        updated_at: new Date(),
-      },
-    });
+        cancelledAt: now.toISOString(),
+        autoRenew: false,
+        updatedAt: now.toISOString(),
+      })
+      .where(eq(userSubscriptions.id, subscription.id));
 
     console.log(`✅ [GooglePlay] 订阅已取消: ${subscription.id}`);
 
     // 记录历史
-    await prisma.subscription_history.create({
-      data: {
-        subscription_id: subscription.id,
-        user_id: subscription.user_id,
-        event_type: 'CANCELLED',
-        old_status: oldStatus,
-        new_status: 'CANCELLED',
-        stripe_event_id: `gp_cancel_${Date.now()}`,
-        stripe_event_type: 'google_play.cancellation',
-        metadata: {
-          cancel_reason: cancelReason,
-        },
+    await db.insert(subscriptionHistory).values({
+      subscriptionId: subscription.id,
+      userId: subscription.userId,
+      eventType: 'CANCELLED',
+      oldStatus,
+      newStatus: 'CANCELLED',
+      stripeEventId: `gp_cancel_${Date.now()}`,
+      stripeEventType: 'google_play.cancellation',
+      metadata: {
+        cancel_reason: cancelReason,
       },
     });
 

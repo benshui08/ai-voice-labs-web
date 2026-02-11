@@ -5,7 +5,9 @@
  * DELETE /api/admin/banners/[id] - 删除 Banner
  */
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { nativeBanners } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { verifyAdmin } from '@/lib/auth-admin';
 
 interface RouteParams {
@@ -31,9 +33,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { imageUrl, linkUrl, titles, subtitles, buttonTexts, sortOrder, isActive } = body;
 
     // 检查 Banner 是否存在
-    const existing = await prisma.native_banners.findUnique({
-      where: { id: bannerId },
-    });
+    const [existing] = await db.select().from(nativeBanners).where(eq(nativeBanners.id, bannerId)).limit(1);
 
     if (!existing) {
       return NextResponse.json(
@@ -43,31 +43,28 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // 更新
-    const banner = await prisma.native_banners.update({
-      where: { id: bannerId },
-      data: {
-        ...(imageUrl !== undefined && { image_url: imageUrl }),
-        ...(linkUrl !== undefined && { link_url: linkUrl || null }),
-        ...(titles !== undefined && { titles }),
-        ...(subtitles !== undefined && { subtitles }),
-        ...(buttonTexts !== undefined && { button_texts: buttonTexts || null }),
-        ...(sortOrder !== undefined && { sort_order: sortOrder }),
-        ...(isActive !== undefined && { is_active: isActive }),
-      },
-    });
+    const [banner] = await db.update(nativeBanners).set({
+      ...(imageUrl !== undefined && { imageUrl }),
+      ...(linkUrl !== undefined && { linkUrl: linkUrl || null }),
+      ...(titles !== undefined && { titles }),
+      ...(subtitles !== undefined && { subtitles }),
+      ...(buttonTexts !== undefined && { buttonTexts: buttonTexts || null }),
+      ...(sortOrder !== undefined && { sortOrder }),
+      ...(isActive !== undefined && { isActive }),
+    }).where(eq(nativeBanners.id, bannerId)).returning();
 
     return NextResponse.json({
       success: true,
       banner: {
         id: banner.id,
-        imageUrl: banner.image_url,
-        linkUrl: banner.link_url,
+        imageUrl: banner.imageUrl,
+        linkUrl: banner.linkUrl,
         titles: banner.titles,
         subtitles: banner.subtitles,
-        buttonTexts: banner.button_texts,
-        sortOrder: banner.sort_order,
-        isActive: banner.is_active,
-        updatedAt: banner.updated_at?.toISOString(),
+        buttonTexts: banner.buttonTexts,
+        sortOrder: banner.sortOrder,
+        isActive: banner.isActive,
+        updatedAt: banner.updatedAt,
       },
     });
   } catch (error) {
@@ -96,9 +93,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // 检查 Banner 是否存在
-    const existing = await prisma.native_banners.findUnique({
-      where: { id: bannerId },
-    });
+    const [existing] = await db.select().from(nativeBanners).where(eq(nativeBanners.id, bannerId)).limit(1);
 
     if (!existing) {
       return NextResponse.json(
@@ -107,9 +102,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    await prisma.native_banners.delete({
-      where: { id: bannerId },
-    });
+    await db.delete(nativeBanners).where(eq(nativeBanners.id, bannerId));
 
     return NextResponse.json({
       success: true,

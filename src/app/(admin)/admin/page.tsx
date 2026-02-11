@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import prisma from '@/lib/prisma';
-import { Prisma } from '@/generated/prisma';
+import db from '@/lib/db';
+import { users, anonymousUsers, userSubscriptions, voices } from '@/db/schema';
+import { eq, and, gt, count, sql } from 'drizzle-orm';
 import { verifyAdminWithoutDb } from '@/lib/auth-admin';
 
 /**
@@ -9,55 +10,43 @@ import { verifyAdminWithoutDb } from '@/lib/auth-admin';
 async function getAdminStats() {
   await verifyAdminWithoutDb();
 
-  const now = new Date();
+  const now = new Date().toISOString();
 
   const [
     // 用户统计
-    totalUsers,
-    anonymousUsers,
-    activeSubscriptions,
+    [{ total: totalUsers }],
+    [{ total: anonymousUsersCount }],
+    [{ total: activeSubscriptions }],
     // 语音统计
-    totalVoices,
-    activeVoices,
+    [{ total: totalVoices }],
+    [{ total: activeVoices }],
     totalLocales,
-    voicesWithSamples,
+    [{ total: voicesWithSamples }],
   ] = await Promise.all([
     // 用户统计
-    prisma.users.count(),
-    prisma.anonymous_users.count(),
-    prisma.user_subscriptions.count({
-      where: {
-        status: 'ACTIVE',
-        end_date: { gt: now },
-      },
-    }),
+    db.select({ total: count() }).from(users),
+    db.select({ total: count() }).from(anonymousUsers),
+    db.select({ total: count() }).from(userSubscriptions)
+      .where(and(eq(userSubscriptions.status, 'ACTIVE'), gt(userSubscriptions.endDate, now))),
     // 语音统计
-    prisma.voices.count(),
-    prisma.voices.count({ where: { is_active: true } }),
-    prisma.voices.findMany({
-      select: { locale: true },
-      distinct: ['locale'],
-    }),
-    prisma.voices.count({
-      where: {
-        voice_sample_url: {
-          path: ['default'],
-          not: Prisma.DbNull,
-        },
-      },
-    }),
+    db.select({ total: count() }).from(voices),
+    db.select({ total: count() }).from(voices).where(eq(voices.isActive, true)),
+    db.selectDistinct({ locale: voices.locale }).from(voices),
+    // 有样本的语音：检查 voice_sample_url JSON 中是否有 default 键
+    db.select({ total: count() }).from(voices)
+      .where(sql`voice_sample_url->>'default' IS NOT NULL`),
   ]);
 
   return {
     // 用户统计
-    totalUsers,
-    anonymousUsers,
-    activeSubscriptions,
+    totalUsers: Number(totalUsers),
+    anonymousUsers: Number(anonymousUsersCount),
+    activeSubscriptions: Number(activeSubscriptions),
     // 语音统计
-    totalVoices,
-    activeVoices,
+    totalVoices: Number(totalVoices),
+    activeVoices: Number(activeVoices),
     totalLocales: totalLocales.length,
-    voicesWithSamples,
+    voicesWithSamples: Number(voicesWithSamples),
   };
 }
 

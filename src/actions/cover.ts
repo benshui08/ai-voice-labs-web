@@ -5,7 +5,9 @@
  * 使用 Replicate API 实现 AI 翻唱功能
  * 使用 zsxkib/realistic-voice-cloning 模型一步完成
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { coverRecords, rvcVoiceModels, users, anonymousUsers, creditHistory } from '@/db/schema';
+import { eq, and, asc, desc, sql } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 import { v4 as uuidv4 } from 'uuid';
 import { nanoid } from 'nanoid';
@@ -124,31 +126,37 @@ export interface CoverRecord {
  * 获取可用的 RVC 声音模型列表
  */
 export async function getRvcVoiceModels(category?: string): Promise<RvcVoiceModel[]> {
-  const where: { is_active: boolean; category?: string } = { is_active: true };
+  const conditions = [eq(rvcVoiceModels.isActive, true)];
   if (category && category !== 'all') {
-    where.category = category;
+    conditions.push(eq(rvcVoiceModels.category, category));
   }
 
-  const models = await prisma.rvc_voice_models.findMany({
-    where,
-    orderBy: [
-      { sort_order: 'asc' },
-      { uses_count: 'desc' },
-    ],
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      category: true,
-      avatar_url: true,
-      sample_url: true,
-      uses_count: true,
-      is_builtin: true,
-      builtin_name: true,
-    },
-  });
+  const models = await db.select({
+    id: rvcVoiceModels.id,
+    name: rvcVoiceModels.name,
+    slug: rvcVoiceModels.slug,
+    category: rvcVoiceModels.category,
+    avatarUrl: rvcVoiceModels.avatarUrl,
+    sampleUrl: rvcVoiceModels.sampleUrl,
+    usesCount: rvcVoiceModels.usesCount,
+    isBuiltin: rvcVoiceModels.isBuiltin,
+    builtinName: rvcVoiceModels.builtinName,
+  })
+    .from(rvcVoiceModels)
+    .where(and(...conditions))
+    .orderBy(asc(rvcVoiceModels.sortOrder), desc(rvcVoiceModels.usesCount));
 
-  return models;
+  return models.map(m => ({
+    id: m.id,
+    name: m.name,
+    slug: m.slug,
+    category: m.category,
+    avatar_url: m.avatarUrl,
+    sample_url: m.sampleUrl,
+    uses_count: m.usesCount,
+    is_builtin: m.isBuiltin,
+    builtin_name: m.builtinName,
+  }));
 }
 
 /**
@@ -241,11 +249,12 @@ export async function createCoverTask(request: CoverGenerationRequest): Promise<
     }
 
     // 2. 获取声音模型信息
-    const voiceModel = await prisma.rvc_voice_models.findUnique({
-      where: { id: request.voiceModelId },
-    });
+    const [voiceModel] = await db.select()
+      .from(rvcVoiceModels)
+      .where(eq(rvcVoiceModels.id, request.voiceModelId))
+      .limit(1);
 
-    if (!voiceModel || !voiceModel.is_active) {
+    if (!voiceModel || !voiceModel.isActive) {
       throw new Error('Voice model not found or disabled');
     }
 
@@ -254,20 +263,18 @@ export async function createCoverTask(request: CoverGenerationRequest): Promise<
     const shareId = generateShareId();
 
     // 4. 创建 Cover 记录（状态为 PENDING）
-    await prisma.cover_records.create({
-      data: {
-        user_id: userId,
-        task_id: taskId,
-        original_audio_url: request.originalAudioUrl,
-        voice_model_id: request.voiceModelId,
-        voice_model_name: voiceModel.name,
-        pitch_change: request.pitchChange || 0,
-        credits_cost: COVER_CREDITS_COST,
-        is_public: request.isPublic || false,
-        status: 'PENDING',
-        progress: 0,
-        share_id: shareId,
-      },
+    await db.insert(coverRecords).values({
+      userId,
+      taskId,
+      originalAudioUrl: request.originalAudioUrl,
+      voiceModelId: request.voiceModelId,
+      voiceModelName: voiceModel.name,
+      pitchChange: request.pitchChange || 0,
+      creditsCost: COVER_CREDITS_COST,
+      isPublic: request.isPublic || false,
+      status: 'PENDING',
+      progress: 0,
+      shareId,
     });
 
     console.log(`🎤 [createCoverTask] Cover 记录已创建: ${taskId}`);
@@ -294,13 +301,13 @@ export async function createCoverTask(request: CoverGenerationRequest): Promise<
     };
 
     // 设置声音模型
-    if (voiceModel.is_builtin && voiceModel.builtin_name) {
+    if (voiceModel.isBuiltin && voiceModel.builtinName) {
       // 内置模型：Squidward, MrKrabs, Plankton, Drake, Vader, Trump, Biden, Obama, Guitar, Voilin
-      modelInput.rvc_model = voiceModel.builtin_name;
+      modelInput.rvc_model = voiceModel.builtinName;
     } else {
       // 自定义模型
       modelInput.rvc_model = 'CUSTOM';
-      modelInput.custom_rvc_model_download_url = voiceModel.model_url;
+      modelInput.custom_rvc_model_download_url = voiceModel.modelUrl;
       modelInput.custom_rvc_model_download_name = voiceModel.slug;
     }
 
@@ -313,44 +320,38 @@ export async function createCoverTask(request: CoverGenerationRequest): Promise<
     );
 
     // 更新状态为 PROCESSING
-    await prisma.cover_records.update({
-      where: { task_id: taskId },
-      data: {
+    await db.update(coverRecords)
+      .set({
         status: 'PROCESSING',
         progress: 10,
-        rvc_task_id: prediction.id,
-      },
-    });
+        rvcTaskId: prediction.id,
+      })
+      .where(eq(coverRecords.taskId, taskId));
 
     // 7. 扣减积分
     if (isAnonymous) {
-      await prisma.anonymous_users.update({
-        where: { user_id: userId },
-        data: { credits: { decrement: COVER_CREDITS_COST } },
-      });
+      await db.update(anonymousUsers)
+        .set({ credits: sql`${anonymousUsers.credits} - ${COVER_CREDITS_COST}` })
+        .where(eq(anonymousUsers.userId, userId));
     } else {
-      await prisma.users.update({
-        where: { user_id: userId },
-        data: { credits: { decrement: COVER_CREDITS_COST } },
-      });
+      await db.update(users)
+        .set({ credits: sql`${users.credits} - ${COVER_CREDITS_COST}` })
+        .where(eq(users.userId, userId));
     }
 
     // 记录积分变动
-    await prisma.credit_history.create({
-      data: {
-        user_id: userId,
-        amount: -COVER_CREDITS_COST,
-        task_id: taskId,
-        description: `AI Cover (${voiceModel.name})`,
-        product_type: 'ai_cover',
-      },
+    await db.insert(creditHistory).values({
+      userId,
+      amount: -COVER_CREDITS_COST,
+      taskId,
+      description: `AI Cover (${voiceModel.name})`,
+      productType: 'ai_cover',
     });
 
     // 8. 增加声音模型使用次数
-    await prisma.rvc_voice_models.update({
-      where: { id: request.voiceModelId },
-      data: { uses_count: { increment: 1 } },
-    });
+    await db.update(rvcVoiceModels)
+      .set({ usesCount: sql`${rvcVoiceModels.usesCount} + 1` })
+      .where(eq(rvcVoiceModels.id, request.voiceModelId));
 
     console.log(`🎤 [createCoverTask] 任务创建成功: ${taskId}`);
 
@@ -394,9 +395,10 @@ function getPitchChangeValue(pitchChange?: number): string {
  * 处理 Cover 任务状态查询
  */
 export async function processCoverTask(taskId: string): Promise<CoverTaskStatus> {
-  const record = await prisma.cover_records.findUnique({
-    where: { task_id: taskId },
-  });
+  const [record] = await db.select()
+    .from(coverRecords)
+    .where(eq(coverRecords.taskId, taskId))
+    .limit(1);
 
   if (!record) {
     throw new Error(`Task not found: ${taskId}`);
@@ -407,11 +409,11 @@ export async function processCoverTask(taskId: string): Promise<CoverTaskStatus>
     switch (record.status) {
       case 'PROCESSING': {
         // 检查 Replicate 任务状态
-        if (!record.rvc_task_id) {
+        if (!record.rvcTaskId) {
           throw new Error('Replicate task ID missing');
         }
 
-        const predictionStatus = await getReplicatePrediction(record.rvc_task_id);
+        const predictionStatus = await getReplicatePrediction(record.rvcTaskId);
         console.log('🎤 [processCoverTask] 任务状态:', predictionStatus.status);
 
         if (predictionStatus.status === 'succeeded') {
@@ -424,15 +426,14 @@ export async function processCoverTask(taskId: string): Promise<CoverTaskStatus>
           const r2Url = await downloadAndUploadToR2(replicateOutputUrl, taskId);
           const finalUrl = r2Url || replicateOutputUrl; // 如果 R2 上传失败，保留原始 URL
 
-          await prisma.cover_records.update({
-            where: { task_id: taskId },
-            data: {
+          await db.update(coverRecords)
+            .set({
               status: 'SUCCESS',
               progress: 100,
-              output_url: finalUrl,
-              completed_at: new Date(),
-            },
-          });
+              outputUrl: finalUrl,
+              completedAt: new Date().toISOString(),
+            })
+            .where(eq(coverRecords.taskId, taskId));
 
           console.log(`🎤 [processCoverTask] Cover 完成: ${taskId}`);
 
@@ -446,13 +447,12 @@ export async function processCoverTask(taskId: string): Promise<CoverTaskStatus>
             error: null,
           };
         } else if (predictionStatus.status === 'failed') {
-          await prisma.cover_records.update({
-            where: { task_id: taskId },
-            data: {
+          await db.update(coverRecords)
+            .set({
               status: 'FAILURE',
-              error_message: predictionStatus.error || 'AI Cover 处理失败',
-            },
-          });
+              errorMessage: predictionStatus.error || 'AI Cover 处理失败',
+            })
+            .where(eq(coverRecords.taskId, taskId));
 
           return {
             task_id: taskId,
@@ -464,7 +464,7 @@ export async function processCoverTask(taskId: string): Promise<CoverTaskStatus>
         }
 
         // 仍在处理中，根据时间估计进度
-        const createdAt = record.created_at.getTime();
+        const createdAt = new Date(record.createdAt).getTime();
         const elapsed = Date.now() - createdAt;
         const estimatedProgress = Math.min(90, 10 + Math.floor(elapsed / 3000)); // 每3秒增加1%
 
@@ -483,7 +483,7 @@ export async function processCoverTask(taskId: string): Promise<CoverTaskStatus>
           status: 'SUCCESS',
           progress: 100,
           result: {
-            output_url: record.output_url || '',
+            output_url: record.outputUrl || '',
             duration: record.duration || undefined,
           },
           error: null,
@@ -495,7 +495,7 @@ export async function processCoverTask(taskId: string): Promise<CoverTaskStatus>
           status: 'FAILURE',
           progress: 0,
           result: null,
-          error: record.error_message,
+          error: record.errorMessage,
         };
 
       default:
@@ -510,13 +510,12 @@ export async function processCoverTask(taskId: string): Promise<CoverTaskStatus>
   } catch (error) {
     console.error('❌ [processCoverTask] 处理任务失败:', error);
 
-    await prisma.cover_records.update({
-      where: { task_id: taskId },
-      data: {
+    await db.update(coverRecords)
+      .set({
         status: 'FAILURE',
-        error_message: error instanceof Error ? error.message : '处理失败',
-      },
-    });
+        errorMessage: error instanceof Error ? error.message : '处理失败',
+      })
+      .where(eq(coverRecords.taskId, taskId));
 
     return {
       task_id: taskId,
@@ -542,28 +541,28 @@ export async function getCoverRecords(limit: number = 50): Promise<CoverRecord[]
   const unifiedUser = await getUserOrAnonymous();
   const userId = unifiedUser.user_id;
 
-  const records = await prisma.cover_records.findMany({
-    where: { user_id: userId },
-    orderBy: { created_at: 'desc' },
-    take: limit,
-  });
+  const records = await db.select()
+    .from(coverRecords)
+    .where(eq(coverRecords.userId, userId))
+    .orderBy(desc(coverRecords.createdAt))
+    .limit(limit);
 
   return records.map((r) => ({
     id: r.id,
-    user_id: r.user_id,
-    task_id: r.task_id,
-    original_audio_url: r.original_audio_url,
-    voice_model_id: r.voice_model_id,
-    voice_model_name: r.voice_model_name,
+    user_id: r.userId,
+    task_id: r.taskId,
+    original_audio_url: r.originalAudioUrl,
+    voice_model_id: r.voiceModelId,
+    voice_model_name: r.voiceModelName,
     status: r.status,
     progress: r.progress,
-    output_url: r.output_url,
+    output_url: r.outputUrl,
     duration: r.duration,
-    credits_cost: r.credits_cost,
-    is_public: r.is_public,
-    created_at: r.created_at,
-    completed_at: r.completed_at,
-    share_id: r.share_id,
+    credits_cost: r.creditsCost,
+    is_public: r.isPublic,
+    created_at: new Date(r.createdAt),
+    completed_at: r.completedAt ? new Date(r.completedAt) : null,
+    share_id: r.shareId,
   }));
 }
 
@@ -574,21 +573,20 @@ export async function deleteCoverRecord(recordId: number): Promise<void> {
   const unifiedUser = await getUserOrAnonymous();
   const userId = unifiedUser.user_id;
 
-  const record = await prisma.cover_records.findUnique({
-    where: { id: recordId },
-  });
+  const [record] = await db.select()
+    .from(coverRecords)
+    .where(eq(coverRecords.id, recordId))
+    .limit(1);
 
   if (!record) {
     throw new Error(`Record not found: ${recordId}`);
   }
 
-  if (record.user_id !== userId) {
+  if (record.userId !== userId) {
     throw new Error('Not authorized to delete this record');
   }
 
-  await prisma.cover_records.delete({
-    where: { id: recordId },
-  });
+  await db.delete(coverRecords).where(eq(coverRecords.id, recordId));
 
   console.log(`🎤 Cover 记录已删除: ${recordId}`);
 }

@@ -5,7 +5,9 @@
  */
 import Stripe from 'stripe';
 import { getCurrentUser } from '@/lib/auth-firebase';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { users, userSubscriptions } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { getCreditTierByProductId } from '@/config/subscription';
 
 // Initialize Stripe
@@ -66,9 +68,9 @@ export async function createStripeCheckout(request: StripeCheckoutRequest): Prom
   const unitAmountInCents = Math.round(unitAmount * 100);
 
   // 获取用户信息（用于 Stripe customer）
-  const appUser = await prisma.users.findUnique({
-    where: { user_id: userId },
-  });
+  const [appUser] = await db.select().from(users)
+    .where(eq(users.userId, userId))
+    .limit(1);
 
   // 构建带 session ID 的 success URL
   const successUrl = request.success_url.includes('?')
@@ -145,12 +147,12 @@ export async function verifyStripePayment(params: { request_id: string }): Promi
     // 查找订阅记录
     let subscriptionId: string | undefined;
     if (isPaid) {
-      const subscription = await prisma.user_subscriptions.findFirst({
-        where: {
-          external_transaction_id: session.id,
-          platform: 'stripe',
-        },
-      });
+      const [subscription] = await db.select().from(userSubscriptions)
+        .where(and(
+          eq(userSubscriptions.externalTransactionId, session.id),
+          eq(userSubscriptions.platform, 'stripe'),
+        ))
+        .limit(1);
       subscriptionId = subscription ? String(subscription.id) : undefined;
     }
 

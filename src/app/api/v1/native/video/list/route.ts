@@ -5,7 +5,9 @@
  * 获取用户的视频列表
  */
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { videoRecords } from '@/db/schema';
+import { eq, desc, count } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 
 export async function GET(req: NextRequest) {
@@ -20,49 +22,48 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
 
     // 3. 查询视频列表（按创建时间倒序）
-    const [videos, total] = await Promise.all([
-      prisma.video_records.findMany({
-        where: { user_id },
-        select: {
-          task_id: true,
-          status: true,
-          progress: true,
-          prompt: true,
-          model: true,
-          resolution: true,
-          duration: true,
-          aspect_ratio: true,
-          video_url: true,
-          thumbnail_url: true,
-          error_message: true,
-          created_at: true,
-          completed_at: true,
-        },
-        orderBy: { created_at: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.video_records.count({
-        where: { user_id },
-      }),
+    const [videos, [{ total }]] = await Promise.all([
+      db.select({
+        taskId: videoRecords.taskId,
+        status: videoRecords.status,
+        progress: videoRecords.progress,
+        prompt: videoRecords.prompt,
+        model: videoRecords.model,
+        resolution: videoRecords.resolution,
+        duration: videoRecords.duration,
+        aspectRatio: videoRecords.aspectRatio,
+        videoUrl: videoRecords.videoUrl,
+        thumbnailUrl: videoRecords.thumbnailUrl,
+        errorMessage: videoRecords.errorMessage,
+        createdAt: videoRecords.createdAt,
+        completedAt: videoRecords.completedAt,
+      })
+        .from(videoRecords)
+        .where(eq(videoRecords.userId, user_id))
+        .orderBy(desc(videoRecords.createdAt))
+        .offset(skip)
+        .limit(limit),
+      db.select({ total: count() })
+        .from(videoRecords)
+        .where(eq(videoRecords.userId, user_id)),
     ]);
 
     return NextResponse.json({
       success: true,
       videos: videos.map((v) => ({
-        taskId: v.task_id,
+        taskId: v.taskId,
         status: v.status,
         progress: v.progress,
         prompt: v.prompt,
         model: v.model,
         resolution: v.resolution,
         duration: v.duration,
-        aspectRatio: v.aspect_ratio,
-        videoUrl: v.video_url,
-        thumbnailUrl: v.thumbnail_url,
-        errorMessage: v.error_message,
-        createdAt: v.created_at?.toISOString(),
-        completedAt: v.completed_at?.toISOString(),
+        aspectRatio: v.aspectRatio,
+        videoUrl: v.videoUrl,
+        thumbnailUrl: v.thumbnailUrl,
+        errorMessage: v.errorMessage,
+        createdAt: v.createdAt,
+        completedAt: v.completedAt,
       })),
       pagination: {
         page,

@@ -305,20 +305,20 @@ export default function AppReleasesPage() {
                         <span className="font-medium text-gray-900">
                           v{release.version}
                         </span>
-                        {release.is_latest && (
+                        {release.isLatest && (
                           <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded">
                             最新
                           </span>
                         )}
-                        {release.is_force_update && (
+                        {release.isForceUpdate && (
                           <span className="px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded">
                             强制更新
                           </span>
                         )}
                       </div>
-                      {release.release_notes && (
+                      {release.releaseNotes && (
                         <div className="text-xs text-gray-500 mt-1 max-w-[200px] truncate">
-                          {release.release_notes}
+                          {release.releaseNotes}
                         </div>
                       )}
                     </td>
@@ -334,39 +334,39 @@ export default function AppReleasesPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
-                      {release.version_code}
+                      {release.versionCode}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
-                      {formatFileSize(release.file_size)}
+                      {formatFileSize(release.fileSize)}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
-                      {release.download_count.toLocaleString()}
+                      {release.downloadCount.toLocaleString()}
                     </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded ${
-                          release.is_active
+                          release.isActive
                             ? 'bg-green-100 text-green-700'
                             : 'bg-gray-100 text-gray-500'
                         }`}
                       >
-                        {release.is_active ? '已启用' : '已禁用'}
+                        {release.isActive ? '已启用' : '已禁用'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
-                      {new Date(release.created_at).toLocaleDateString('zh-CN')}
+                      {new Date(release.createdAt).toLocaleDateString('zh-CN')}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <a
-                          href={release.download_url}
+                          href={release.downloadUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm text-blue-600 hover:text-blue-700"
                         >
                           下载
                         </a>
-                        {!release.is_latest && (
+                        {!release.isLatest && (
                           <button
                             onClick={() => handleSetLatest(release.id, release.version)}
                             className="text-sm text-green-600 hover:text-green-700"
@@ -376,23 +376,23 @@ export default function AppReleasesPage() {
                         )}
                         <button
                           onClick={() =>
-                            handleToggleForceUpdate(release.id, release.is_force_update)
+                            handleToggleForceUpdate(release.id, release.isForceUpdate)
                           }
                           className="text-sm text-orange-600 hover:text-orange-700"
                         >
-                          {release.is_force_update ? '取消强制' : '强制更新'}
+                          {release.isForceUpdate ? '取消强制' : '强制更新'}
                         </button>
                         <button
                           onClick={() =>
-                            handleToggleActive(release.id, release.is_active)
+                            handleToggleActive(release.id, release.isActive)
                           }
                           className={`text-sm ${
-                            release.is_active
+                            release.isActive
                               ? 'text-gray-600 hover:text-gray-700'
                               : 'text-green-600 hover:text-green-700'
                           }`}
                         >
-                          {release.is_active ? '禁用' : '启用'}
+                          {release.isActive ? '禁用' : '启用'}
                         </button>
                         <button
                           onClick={() => handleDelete(release.id, release.version)}

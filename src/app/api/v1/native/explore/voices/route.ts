@@ -5,7 +5,9 @@
  * 获取公开 TTS 语音列表（无需登录）
  */
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { ttsRecords, users, voices } from '@/db/schema';
+import { and, eq, desc, isNotNull, count, inArray } from 'drizzle-orm';
 
 /**
  * 脱敏邮箱
@@ -34,80 +36,79 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const skip = (page - 1) * limit;
 
+    const whereCondition = and(
+      eq(ttsRecords.isPublic, true),
+      eq(ttsRecords.status, 'SUCCESS'),
+      isNotNull(ttsRecords.audioUrl),
+    );
+
     // 查询公开且成功的 TTS 记录
-    const [ttsRecords, total] = await Promise.all([
-      prisma.tts_records.findMany({
-        where: {
-          is_public: true,
-          status: 'SUCCESS',
-          audio_url: { not: null },
-        },
-        select: {
-          id: true,
-          task_id: true,
-          user_id: true,
-          text: true,
-          voice_name: true,
-          language: true,
-          duration: true,
-          audio_url: true,
-          created_at: true,
-        },
-        orderBy: { created_at: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.tts_records.count({
-        where: {
-          is_public: true,
-          status: 'SUCCESS',
-          audio_url: { not: null },
-        },
-      }),
+    const [records, [{ total }]] = await Promise.all([
+      db.select({
+        id: ttsRecords.id,
+        taskId: ttsRecords.taskId,
+        userId: ttsRecords.userId,
+        text: ttsRecords.text,
+        voiceName: ttsRecords.voiceName,
+        language: ttsRecords.language,
+        duration: ttsRecords.duration,
+        audioUrl: ttsRecords.audioUrl,
+        createdAt: ttsRecords.createdAt,
+      })
+        .from(ttsRecords)
+        .where(whereCondition)
+        .orderBy(desc(ttsRecords.createdAt))
+        .offset(skip)
+        .limit(limit),
+      db.select({ total: count() })
+        .from(ttsRecords)
+        .where(whereCondition),
     ]);
 
     // 获取用户邮箱（批量查询）
-    const userIds = [...new Set(ttsRecords.map((v) => v.user_id))];
-    const users = await prisma.users.findMany({
-      where: { user_id: { in: userIds } },
-      select: { user_id: true, email: true },
-    });
-    const userMap = new Map(users.map((u) => [u.user_id, u.email]));
+    const userIds = [...new Set(records.map((v) => v.userId))];
+    const userList = userIds.length > 0
+      ? await db.select({ userId: users.userId, email: users.email })
+          .from(users)
+          .where(inArray(users.userId, userIds))
+      : [];
+    const userMap = new Map(userList.map((u) => [u.userId, u.email]));
 
     // 获取 voice 详情（批量查询）
-    const voiceNames = [...new Set(ttsRecords.map((v) => v.voice_name))];
-    const voiceDetails = await prisma.voices.findMany({
-      where: { name: { in: voiceNames } },
-      select: {
-        name: true,
-        display_name: true,
-        avatar_url: true,
-        gender: true,
-        provider: true,
-        locale: true,
-        country: true,
-      },
-    });
-    const voiceMap = new Map(voiceDetails.map((v) => [v.name, v]));
+    const voiceNames = [...new Set(records.map((v) => v.voiceName))];
+    const voiceDetailList = voiceNames.length > 0
+      ? await db.select({
+          name: voices.name,
+          displayName: voices.displayName,
+          avatarUrl: voices.avatarUrl,
+          gender: voices.gender,
+          provider: voices.provider,
+          locale: voices.locale,
+          country: voices.country,
+        })
+          .from(voices)
+          .where(inArray(voices.name, voiceNames))
+      : [];
+    const voiceMap = new Map(voiceDetailList.map((v) => [v.name, v]));
 
     const response = NextResponse.json({
       success: true,
-      voices: ttsRecords.map((v) => {
-        const voice = voiceMap.get(v.voice_name);
+      voices: records.map((v) => {
+        const voice = voiceMap.get(v.voiceName);
         return {
           id: v.id,
-          taskId: v.task_id,
+          taskId: v.taskId,
           text: v.text,
-          voiceName: v.voice_name,
+          voiceName: v.voiceName,
           language: v.language,
           duration: v.duration,
-          audioUrl: v.audio_url,
-          user: maskEmail(userMap.get(v.user_id) || null),
-          createdAt: v.created_at?.toISOString(),
+          audioUrl: v.audioUrl,
+          user: maskEmail(userMap.get(v.userId) || null),
+          createdAt: v.createdAt,
           // Voice details
           voice: voice ? {
-            displayName: voice.display_name,
-            avatarUrl: voice.avatar_url,
+            displayName: voice.displayName,
+            avatarUrl: voice.avatarUrl,
             gender: voice.gender,
             provider: voice.provider,
             locale: voice.locale,

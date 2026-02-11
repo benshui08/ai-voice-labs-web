@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { videoRecords, taskQueue } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { uploadVideo } from '@/lib/services/r2-storage';
 import { refundCreditsSimple } from '@/lib/credits';
 import { ProductType } from '@/config/productType';
@@ -64,39 +66,44 @@ export async function POST(request: NextRequest) {
 
       // 尝试根据 external_task_id 更新记录状态并返还积分（使用乐观锁防止重复）
       if (payload.data?.taskId) {
-        const failedRecord = await prisma.video_records.findFirst({
-          where: { external_task_id: payload.data.taskId },
-        });
+        const [failedRecord] = await db
+          .select()
+          .from(videoRecords)
+          .where(eq(videoRecords.externalTaskId, payload.data.taskId))
+          .limit(1);
 
         if (failedRecord) {
-          const updateResult = await prisma.video_records.updateMany({
-            where: {
-              id: failedRecord.id,
-              status: 'PROCESSING', // 乐观锁：防止重复处理
-            },
-            data: {
+          const updateResult = await db
+            .update(videoRecords)
+            .set({
               status: 'FAILURE',
-              error_message: payload.msg || 'Generation failed',
-              completed_at: new Date(),
-            },
-          });
+              errorMessage: payload.msg || 'Generation failed',
+              completedAt: new Date().toISOString(),
+            })
+            .where(
+              and(
+                eq(videoRecords.id, failedRecord.id),
+                eq(videoRecords.status, 'PROCESSING') // 乐观锁：防止重复处理
+              )
+            )
+            .returning();
 
-          // 如果更新成功（count > 0），说明是第一个处理的，需要返还积分
-          if (updateResult.count > 0 && failedRecord.credits_cost && failedRecord.credits_cost > 0) {
+          // 如果更新成功（有返回行），说明是第一个处理的，需要返还积分
+          if (updateResult.length > 0 && failedRecord.creditsCost && failedRecord.creditsCost > 0) {
             try {
               await refundCreditsSimple(
-                failedRecord.user_id,
-                failedRecord.credits_cost,
+                failedRecord.userId,
+                failedRecord.creditsCost,
                 ProductType.TEXT_TO_VIDEO,
                 `Video generation failed (KIE callback error): ${payload.msg || 'Unknown error'}`,
-                failedRecord.task_id
+                failedRecord.taskId
               );
-              console.log(`💰 [KIE Video Callback] 积分已返还: ${failedRecord.credits_cost}`);
+              console.log(`💰 [KIE Video Callback] 积分已返还: ${failedRecord.creditsCost}`);
             } catch (refundError) {
               console.error(`❌ [KIE Video Callback] 积分返还失败:`, refundError);
             }
-          } else if (updateResult.count === 0) {
-            console.log(`⚠️ [KIE Video Callback] 任务已被其他请求处理，跳过: ${failedRecord.task_id}`);
+          } else if (updateResult.length === 0) {
+            console.log(`⚠️ [KIE Video Callback] 任务已被其他请求处理，跳过: ${failedRecord.taskId}`);
           }
         }
       }
@@ -107,62 +114,67 @@ export async function POST(request: NextRequest) {
     const { taskId: externalTaskId, state, resultJson, failMsg, costTime } = payload.data;
 
     // 查找对应的记录（通过 external_task_id）
-    const record = await prisma.video_records.findFirst({
-      where: { external_task_id: externalTaskId },
-    });
+    const [record] = await db
+      .select()
+      .from(videoRecords)
+      .where(eq(videoRecords.externalTaskId, externalTaskId))
+      .limit(1);
 
     if (!record) {
       console.warn(`🎬 [KIE Video Callback] 找不到对应记录: ${externalTaskId}`);
       return NextResponse.json({ success: false, error: 'Record not found' });
     }
 
-    console.log(`🎬 [KIE Video Callback] 状态: ${state}, 记录ID: ${record.task_id}`);
+    console.log(`🎬 [KIE Video Callback] 状态: ${state}, 记录ID: ${record.taskId}`);
 
     if (state === 'fail') {
       // 生成失败 - 使用乐观锁，只有 PROCESSING 状态才能更新为 FAILURE
-      const updateResult = await prisma.video_records.updateMany({
-        where: {
-          id: record.id,
-          status: 'PROCESSING', // 乐观锁：防止重复处理
-        },
-        data: {
+      const updateResult = await db
+        .update(videoRecords)
+        .set({
           status: 'FAILURE',
           progress: 0,
-          error_message: failMsg || 'Video generation failed',
-          completed_at: new Date(),
-        },
-      });
+          errorMessage: failMsg || 'Video generation failed',
+          completedAt: new Date().toISOString(),
+        })
+        .where(
+          and(
+            eq(videoRecords.id, record.id),
+            eq(videoRecords.status, 'PROCESSING') // 乐观锁：防止重复处理
+          )
+        )
+        .returning();
 
-      // 如果更新成功（count > 0），说明是第一个处理的，需要返还积分
-      if (updateResult.count > 0) {
-        await prisma.task_queue.updateMany({
-          where: { task_id: record.task_id },
-          data: {
+      // 如果更新成功（有返回行），说明是第一个处理的，需要返还积分
+      if (updateResult.length > 0) {
+        await db
+          .update(taskQueue)
+          .set({
             status: 'FAILURE',
-            error_message: failMsg || 'Video generation failed',
-            completed_at: new Date(),
-          },
-        });
+            errorMessage: failMsg || 'Video generation failed',
+            completedAt: new Date().toISOString(),
+          })
+          .where(eq(taskQueue.taskId, record.taskId));
 
         // 返还积分
-        if (record.credits_cost && record.credits_cost > 0) {
+        if (record.creditsCost && record.creditsCost > 0) {
           try {
             await refundCreditsSimple(
-              record.user_id,
-              record.credits_cost,
+              record.userId,
+              record.creditsCost,
               ProductType.TEXT_TO_VIDEO,
               `Video generation failed (KIE): ${failMsg || 'Unknown error'}`,
-              record.task_id
+              record.taskId
             );
-            console.log(`💰 [KIE Video Callback] 积分已返还: ${record.credits_cost}`);
+            console.log(`💰 [KIE Video Callback] 积分已返还: ${record.creditsCost}`);
           } catch (refundError) {
             console.error(`❌ [KIE Video Callback] 积分返还失败:`, refundError);
           }
         }
 
-        console.log(`🎬 [KIE Video Callback] 视频生成失败: ${record.task_id}`);
+        console.log(`🎬 [KIE Video Callback] 视频生成失败: ${record.taskId}`);
       } else {
-        console.log(`⚠️ [KIE Video Callback] 任务已被其他请求处理，跳过: ${record.task_id}`);
+        console.log(`⚠️ [KIE Video Callback] 任务已被其他请求处理，跳过: ${record.taskId}`);
       }
 
       return NextResponse.json({ success: true });
@@ -185,32 +197,32 @@ export async function POST(request: NextRequest) {
 
       // 下载视频并上传到 R2
       console.log('🎬 [KIE Video Callback] 开始下载视频到 R2...');
-      const r2VideoUrl = await downloadAndUploadVideoToR2(videoUrl, record.task_id, record.user_id);
+      const r2VideoUrl = await downloadAndUploadVideoToR2(videoUrl, record.taskId, record.userId);
 
       // 使用 R2 URL（如果上传成功），否则保留原始 URL
       const finalVideoUrl = r2VideoUrl || videoUrl;
 
       // 更新记录
-      await prisma.video_records.update({
-        where: { id: record.id },
-        data: {
+      await db
+        .update(videoRecords)
+        .set({
           status: 'SUCCESS',
           progress: 100,
-          video_url: finalVideoUrl,
-          api_cost: costTime ? costTime / 1000 : null,
-          completed_at: new Date(),
-        },
-      });
+          videoUrl: finalVideoUrl,
+          apiCost: costTime ? costTime / 1000 : null,
+          completedAt: new Date().toISOString(),
+        })
+        .where(eq(videoRecords.id, record.id));
 
-      await prisma.task_queue.updateMany({
-        where: { task_id: record.task_id },
-        data: {
+      await db
+        .update(taskQueue)
+        .set({
           status: 'SUCCESS',
-          completed_at: new Date(),
-        },
-      });
+          completedAt: new Date().toISOString(),
+        })
+        .where(eq(taskQueue.taskId, record.taskId));
 
-      console.log(`🎬 [KIE Video Callback] 视频处理完成: ${record.task_id}`);
+      console.log(`🎬 [KIE Video Callback] 视频处理完成: ${record.taskId}`);
     }
 
     return NextResponse.json({ success: true });

@@ -3,7 +3,9 @@
 /**
  * Fish Audio TTS 语音同步 Server Actions
  */
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { voices } from '@/db/schema';
+import { eq, and, count } from 'drizzle-orm';
 import { verifyAdminWithoutDb } from '@/lib/auth-admin';
 import { getLocaleInfo } from '@/utils/localeMapper';
 import { uploadImage, uploadAudio } from '@/lib/services/r2-storage';
@@ -435,31 +437,31 @@ export async function getFishVoiceStatsByLanguage(): Promise<FishLanguageStats[]
     }
 
     // 获取数据库中 Fish 语音的统计（provider = 'fish'）
-    const dbStats = await prisma.voices.groupBy({
-      by: ['locale'],
-      where: { provider: 'fish' },
-      _count: { id: true },
-    });
+    const dbStats = await db.select({ locale: voices.locale, count: count() })
+      .from(voices)
+      .where(eq(voices.provider, 'fish'))
+      .groupBy(voices.locale);
 
     const dbCountByLocale: Record<string, number> = {};
     for (const stat of dbStats) {
-      dbCountByLocale[stat.locale] = stat._count.id;
+      dbCountByLocale[stat.locale] = stat.count;
     }
 
     // 获取已有语音样例和头像的统计
-    const dbVoices = await prisma.voices.findMany({
-      where: { provider: 'fish' },
-      select: { locale: true, voice_sample_url: true, avatar_url: true },
-    });
+    const dbVoices = await db.select({
+      locale: voices.locale,
+      voiceSampleUrl: voices.voiceSampleUrl,
+      avatarUrl: voices.avatarUrl,
+    }).from(voices).where(eq(voices.provider, 'fish'));
 
     const sampleCountByLocale: Record<string, number> = {};
     const avatarCountByLocale: Record<string, number> = {};
     for (const voice of dbVoices) {
       const hasSample =
-        voice.voice_sample_url &&
-        typeof voice.voice_sample_url === 'object' &&
-        Object.keys(voice.voice_sample_url).length > 0;
-      const hasAvatar = voice.avatar_url && voice.avatar_url.length > 0;
+        voice.voiceSampleUrl &&
+        typeof voice.voiceSampleUrl === 'object' &&
+        Object.keys(voice.voiceSampleUrl as Record<string, unknown>).length > 0;
+      const hasAvatar = voice.avatarUrl && voice.avatarUrl.length > 0;
 
       if (hasSample) {
         sampleCountByLocale[voice.locale] = (sampleCountByLocale[voice.locale] || 0) + 1;
@@ -586,12 +588,10 @@ export async function syncFishVoice(
     const voiceName = `${normalizedLocale}:${model._id}`;
 
     // 检查是否已存在
-    const existing = await prisma.voices.findFirst({
-      where: {
-        provider: 'fish',
-        name: voiceName,
-      },
-    });
+    const [existing] = await db.select({ id: voices.id })
+      .from(voices)
+      .where(and(eq(voices.provider, 'fish'), eq(voices.name, voiceName)))
+      .limit(1);
 
     if (existing) {
       return {
@@ -627,23 +627,21 @@ export async function syncFishVoice(
       normalizedLocale === 'zh-TW' ? toTraditionalChinese(model.title) : model.title;
 
     // 插入数据库
-    await prisma.voices.create({
-      data: {
-        name: voiceName,
-        display_name: displayName,
-        provider: 'fish',
-        locale: normalizedLocale,
-        country,
-        role: 'Celebrity', // Fish 语音多为名人/角色克隆
-        gender: 'unknown', // Fish 不提供性别信息
-        avatar_url: avatarUrl,
-        voice_sample_url: voiceSampleUrl,
-        voice_sample_text: model.default_text || model.samples?.[0]?.text || '',
-        tags: buildTags(model),
-        style_list: ['default'],
-        is_active: true,
-        sort_order: 0,
-      },
+    await db.insert(voices).values({
+      name: voiceName,
+      displayName: displayName,
+      provider: 'fish',
+      locale: normalizedLocale,
+      country,
+      role: 'Celebrity', // Fish 语音多为名人/角色克隆
+      gender: 'unknown', // Fish 不提供性别信息
+      avatarUrl: avatarUrl,
+      voiceSampleUrl: voiceSampleUrl,
+      voiceSampleText: model.default_text || model.samples?.[0]?.text || '',
+      tags: buildTags(model),
+      styleList: ['default'],
+      isActive: true,
+      sortOrder: 0,
     });
 
     return {
@@ -681,10 +679,9 @@ export async function syncFishPopularVoices(
     const data = await fetchVoicesFromFish(pageSize, 1, language);
 
     // 获取已存在的 name（格式为 locale:id）
-    const existingVoices = await prisma.voices.findMany({
-      where: { provider: 'fish' },
-      select: { name: true },
-    });
+    const existingVoices = await db.select({ name: voices.name })
+      .from(voices)
+      .where(eq(voices.provider, 'fish'));
     const existingNames = new Set(existingVoices.map((v) => v.name));
 
     // 过滤出需要插入的
@@ -738,23 +735,21 @@ export async function syncFishPopularVoices(
         const displayName =
           normalizedLocale === 'zh-TW' ? toTraditionalChinese(model.title) : model.title;
 
-        await prisma.voices.create({
-          data: {
-            name: voiceName,
-            display_name: displayName,
-            provider: 'fish',
-            locale: normalizedLocale,
-            country,
-            role: 'Celebrity',
-            gender: 'unknown',
-            avatar_url: avatarUrl,
-            voice_sample_url: voiceSampleUrl,
-            voice_sample_text: model.default_text || model.samples?.[0]?.text || '',
-            tags: buildTags(model),
-            style_list: ['default'],
-            is_active: true,
-            sort_order: 0,
-          },
+        await db.insert(voices).values({
+          name: voiceName,
+          displayName: displayName,
+          provider: 'fish',
+          locale: normalizedLocale,
+          country,
+          role: 'Celebrity',
+          gender: 'unknown',
+          avatarUrl: avatarUrl,
+          voiceSampleUrl: voiceSampleUrl,
+          voiceSampleText: model.default_text || model.samples?.[0]?.text || '',
+          tags: buildTags(model),
+          styleList: ['default'],
+          isActive: true,
+          sortOrder: 0,
         });
 
         inserted++;
@@ -802,10 +797,11 @@ export async function updateFishVoices(): Promise<SyncResult> {
     console.log('🔄 开始更新 Fish 语音数据...');
 
     // 获取数据库中所有 Fish 语音
-    const dbVoices = await prisma.voices.findMany({
-      where: { provider: 'fish' },
-      select: { id: true, name: true, locale: true },
-    });
+    const dbVoices = await db.select({
+      id: voices.id,
+      name: voices.name,
+      locale: voices.locale,
+    }).from(voices).where(eq(voices.provider, 'fish'));
 
     let updated = 0;
     let failed = 0;
@@ -827,16 +823,13 @@ export async function updateFishVoices(): Promise<SyncResult> {
         const displayName =
           dbVoice.locale === 'zh-TW' ? toTraditionalChinese(model.title) : model.title;
 
-        await prisma.voices.update({
-          where: { id: dbVoice.id },
-          data: {
-            display_name: displayName,
-            avatar_url: avatarUrl,
-            voice_sample_url: voiceSampleUrl,
-            voice_sample_text: model.default_text || model.samples?.[0]?.text || '',
-            tags: buildTags(model),
-          },
-        });
+        await db.update(voices).set({
+          displayName: displayName,
+          avatarUrl: avatarUrl,
+          voiceSampleUrl: voiceSampleUrl,
+          voiceSampleText: model.default_text || model.samples?.[0]?.text || '',
+          tags: buildTags(model),
+        }).where(eq(voices.id, dbVoice.id));
 
         updated++;
       } catch (error) {
@@ -870,15 +863,17 @@ export async function syncFishVoiceAvatars(): Promise<SyncResult> {
 
   try {
     // 获取没有头像的 Fish 语音
-    const voices = await prisma.voices.findMany({
-      where: {
-        provider: 'fish',
-        avatar_url: '',
-      },
-      select: { id: true, name: true },
-    });
+    const voiceList = await db.select({
+      id: voices.id,
+      name: voices.name,
+    }).from(voices).where(
+      and(
+        eq(voices.provider, 'fish'),
+        eq(voices.avatarUrl, ''),
+      )
+    );
 
-    if (voices.length === 0) {
+    if (voiceList.length === 0) {
       return {
         success: true,
         message: '所有 Fish 语音都已有头像',
@@ -889,7 +884,7 @@ export async function syncFishVoiceAvatars(): Promise<SyncResult> {
     let updated = 0;
     let failed = 0;
 
-    for (const voice of voices) {
+    for (const voice of voiceList) {
       try {
         // 从 name 中提取 modelId
         const modelId = extractModelId(voice.name);
@@ -905,10 +900,9 @@ export async function syncFishVoiceAvatars(): Promise<SyncResult> {
           avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(voice.name)}`;
         }
 
-        await prisma.voices.update({
-          where: { id: voice.id },
-          data: { avatar_url: avatarUrl },
-        });
+        await db.update(voices).set({
+          avatarUrl: avatarUrl,
+        }).where(eq(voices.id, voice.id));
 
         updated++;
       } catch (error) {
@@ -939,9 +933,7 @@ export async function deleteFishVoice(voiceId: number): Promise<SyncResult> {
   await verifyAdminWithoutDb();
 
   try {
-    await prisma.voices.delete({
-      where: { id: voiceId },
-    });
+    await db.delete(voices).where(eq(voices.id, voiceId));
 
     return {
       success: true,

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { imageRecords } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { uploadImage } from '@/lib/services/r2-storage';
 import { refundCreditsSimple } from '@/lib/credits';
 import { ProductType } from '@/config/productType';
@@ -66,34 +68,39 @@ export async function POST(request: NextRequest) {
 
       // 尝试更新记录状态并返还积分
       if (payload.data?.taskId) {
-        const failedRecord = await prisma.image_records.findFirst({
-          where: { task_id: payload.data.taskId },
-        });
+        const [failedRecord] = await db
+          .select()
+          .from(imageRecords)
+          .where(eq(imageRecords.taskId, payload.data.taskId))
+          .limit(1);
 
         if (failedRecord) {
-          const updateResult = await prisma.image_records.updateMany({
-            where: {
-              id: failedRecord.id,
-              status: 'PENDING', // 乐观锁：防止重复处理
-            },
-            data: {
+          const updateResult = await db
+            .update(imageRecords)
+            .set({
               status: 'FAILURE',
               error: payload.msg || 'Generation failed',
-              completed_at: new Date(),
-            },
-          });
+              completedAt: new Date().toISOString(),
+            })
+            .where(
+              and(
+                eq(imageRecords.id, failedRecord.id),
+                eq(imageRecords.status, 'PENDING') // 乐观锁：防止重复处理
+              )
+            )
+            .returning();
 
           // 如果更新成功，返还积分
-          if (updateResult.count > 0 && failedRecord.credits_used && failedRecord.credits_used > 0) {
+          if (updateResult.length > 0 && failedRecord.creditsUsed && failedRecord.creditsUsed > 0) {
             try {
               await refundCreditsSimple(
-                failedRecord.user_id,
-                failedRecord.credits_used,
+                failedRecord.userId,
+                failedRecord.creditsUsed,
                 ProductType.IMAGE,
                 `Image generation failed (KIE callback error): ${payload.msg || 'Unknown error'}`,
-                failedRecord.task_id
+                failedRecord.taskId
               );
-              console.log(`💰 [KIE Image Callback] 积分已返还: ${failedRecord.credits_used}`);
+              console.log(`💰 [KIE Image Callback] 积分已返还: ${failedRecord.creditsUsed}`);
             } catch (refundError) {
               console.error(`❌ [KIE Image Callback] 积分返还失败:`, refundError);
             }
@@ -107,9 +114,11 @@ export async function POST(request: NextRequest) {
     const { taskId, state, resultJson, failMsg } = payload.data;
 
     // 查找对应的记录
-    const record = await prisma.image_records.findFirst({
-      where: { task_id: taskId },
-    });
+    const [record] = await db
+      .select()
+      .from(imageRecords)
+      .where(eq(imageRecords.taskId, taskId))
+      .limit(1);
 
     if (!record) {
       console.warn(`🖼️ [KIE Image Callback] 找不到对应记录: ${taskId}`);
@@ -120,29 +129,32 @@ export async function POST(request: NextRequest) {
 
     if (state === 'fail') {
       // 生成失败
-      const updateResult = await prisma.image_records.updateMany({
-        where: {
-          id: record.id,
-          status: 'PENDING',
-        },
-        data: {
+      const updateResult = await db
+        .update(imageRecords)
+        .set({
           status: 'FAILURE',
           error: failMsg || 'Image generation failed',
-          completed_at: new Date(),
-        },
-      });
+          completedAt: new Date().toISOString(),
+        })
+        .where(
+          and(
+            eq(imageRecords.id, record.id),
+            eq(imageRecords.status, 'PENDING')
+          )
+        )
+        .returning();
 
       // 返还积分
-      if (updateResult.count > 0 && record.credits_used && record.credits_used > 0) {
+      if (updateResult.length > 0 && record.creditsUsed && record.creditsUsed > 0) {
         try {
           await refundCreditsSimple(
-            record.user_id,
-            record.credits_used,
+            record.userId,
+            record.creditsUsed,
             ProductType.IMAGE,
             `Image generation failed (KIE): ${failMsg || 'Unknown error'}`,
-            record.task_id
+            record.taskId
           );
-          console.log(`💰 [KIE Image Callback] 积分已返还: ${record.credits_used}`);
+          console.log(`💰 [KIE Image Callback] 积分已返还: ${record.creditsUsed}`);
         } catch (refundError) {
           console.error(`❌ [KIE Image Callback] 积分返还失败:`, refundError);
         }
@@ -170,20 +182,20 @@ export async function POST(request: NextRequest) {
 
       // 下载图片并上传到 R2
       console.log('🖼️ [KIE Image Callback] 开始下载图片到 R2...');
-      const r2ImageUrl = await downloadAndUploadImageToR2(imageUrl, taskId, record.user_id);
+      const r2ImageUrl = await downloadAndUploadImageToR2(imageUrl, taskId, record.userId);
 
       // 使用 R2 URL（如果上传成功），否则保留原始 URL
       const finalImageUrl = r2ImageUrl || imageUrl;
 
       // 更新记录
-      await prisma.image_records.update({
-        where: { id: record.id },
-        data: {
+      await db
+        .update(imageRecords)
+        .set({
           status: 'SUCCESS',
-          image_url: finalImageUrl,
-          completed_at: new Date(),
-        },
-      });
+          imageUrl: finalImageUrl,
+          completedAt: new Date().toISOString(),
+        })
+        .where(eq(imageRecords.id, record.id));
 
       console.log(`🖼️ [KIE Image Callback] 图片处理完成: ${taskId}`);
     }

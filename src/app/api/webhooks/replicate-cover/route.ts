@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from '@/lib/db';
+import { coverRecords } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { uploadAudio } from '@/lib/services/r2-storage';
 
 /**
@@ -70,9 +72,11 @@ export async function POST(request: NextRequest) {
     });
 
     // 查找对应的 Cover 记录
-    const record = await prisma.cover_records.findUnique({
-      where: { task_id: taskId },
-    });
+    const [record] = await db
+      .select()
+      .from(coverRecords)
+      .where(eq(coverRecords.taskId, taskId))
+      .limit(1);
 
     if (!record) {
       console.warn(`🎤 [Replicate Callback] 找不到对应记录: ${taskId}`);
@@ -93,26 +97,26 @@ export async function POST(request: NextRequest) {
       const r2Url = await downloadAndUploadToR2(replicateOutputUrl, taskId);
       const finalUrl = r2Url || replicateOutputUrl; // 如果 R2 上传失败，保留原始 URL
 
-      await prisma.cover_records.update({
-        where: { task_id: taskId },
-        data: {
+      await db
+        .update(coverRecords)
+        .set({
           status: 'SUCCESS',
           progress: 100,
-          output_url: finalUrl,
-          completed_at: new Date(),
-        },
-      });
+          outputUrl: finalUrl,
+          completedAt: new Date().toISOString(),
+        })
+        .where(eq(coverRecords.taskId, taskId));
 
       console.log(`🎤 [Replicate Callback] Cover 任务完成: ${taskId}, URL: ${finalUrl.substring(0, 50)}...`);
     } else if (prediction.status === 'failed') {
       // 失败
-      await prisma.cover_records.update({
-        where: { task_id: taskId },
-        data: {
+      await db
+        .update(coverRecords)
+        .set({
           status: 'FAILURE',
-          error_message: prediction.error || 'AI Cover 处理失败',
-        },
-      });
+          errorMessage: prediction.error || 'AI Cover 处理失败',
+        })
+        .where(eq(coverRecords.taskId, taskId));
 
       console.error(`🎤 [Replicate Callback] 任务失败:`, prediction.error);
     }
