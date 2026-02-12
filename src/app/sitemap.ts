@@ -4,6 +4,7 @@ import { ALL_SEO_LOCALES, buildSeoUrl } from '@/config/seo/locales';
 const PAGES = [
   { path: '', priority: 1.0, changeFrequency: 'daily' as const },
   { path: 'ai-voice', priority: 0.8, changeFrequency: 'weekly' as const },
+  { path: 'ai-music', priority: 0.8, changeFrequency: 'weekly' as const },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
