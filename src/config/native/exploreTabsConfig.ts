@@ -3,7 +3,7 @@
  * 控制 Explore 区域显示哪些内容标签
  */
 
-export type ExploreTabId = 'voices' | 'music' | 'video';
+export type ExploreTabId = 'voices' | 'dialogue' | 'music' | 'video';
 
 export interface ExploreTabConfig {
   id: ExploreTabId;
@@ -23,6 +23,11 @@ export const exploreTabsConfig: ExploreTabConfig[] = [
   {
     id: 'voices',
     label: 'Voices',
+    enabled: { development: true, production: true },
+  },
+  {
+    id: 'dialogue',
+    label: 'Dialogue',
     enabled: { development: true, production: true },
   },
   {

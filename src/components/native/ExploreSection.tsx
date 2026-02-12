@@ -6,6 +6,7 @@ import { getPublicMusicRecords, type PublicMusicRecord } from '@/actions/music';
 import MusicPlayerModal from './MusicPlayerModal';
 import VideoPlayerModal, { type PublicVideoData } from './VideoPlayerModal';
 import VoicePlayerModal, { type PublicVoiceData } from './VoicePlayerModal';
+import DialoguePlayerModal, { type PublicDialogueData } from './DialoguePlayerModal';
 import {
   getAvailableExploreTabs,
   getDefaultExploreTab,
@@ -206,8 +207,55 @@ function ExploreVideoCard({ video, index, onClick }: { video: PublicVideoData; i
 }
 
 /**
+ * 对话卡片组件 - 紧凑设计（2列布局）
+ */
+function DialogueCard({ dialogue, index, onClick }: { dialogue: PublicDialogueData; index: number; onClick: () => void }) {
+  const gradient = gradients[index % gradients.length];
+  const speakerLabel = dialogue.speakerNames.length > 0
+    ? dialogue.speakerNames.join(' & ')
+    : 'AI Dialogue';
+
+  return (
+    <div
+      onClick={onClick}
+      className="relative rounded-xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform bg-gray-800/50 border border-gray-700/50 p-2.5"
+    >
+      {/* 顶部：对话图标 + 角色名 + 播放按钮 */}
+      <div className="flex items-center gap-2 mb-2">
+        {/* 对话图标 */}
+        <div className={`w-9 h-9 rounded-full overflow-hidden flex-shrink-0 bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+          <svg className="w-4 h-4 text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        </div>
+
+        {/* 角色名 */}
+        <div className="flex-1 min-w-0">
+          <p className="text-white text-xs font-medium truncate">{speakerLabel}</p>
+          {dialogue.duration && (
+            <p className="text-gray-500 text-[10px] mt-0.5">
+              {Math.floor(dialogue.duration / 60)}:{String(Math.floor(dialogue.duration % 60)).padStart(2, '0')}
+            </p>
+          )}
+        </div>
+
+        {/* 播放按钮 */}
+        <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+          <svg className="w-3 h-3 text-white/80 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </div>
+      </div>
+
+      {/* 首句文本预览 */}
+      <p className="text-gray-400 text-[11px] truncate">{dialogue.previewText}</p>
+    </div>
+  );
+}
+
+/**
  * Explore 区域
- * 包含 Voices / Music / Video 三个 Tab
+ * 包含 Voices / Dialogue / Music / Video 四个 Tab
  */
 export default function ExploreSection() {
   const router = useRouter();
@@ -215,10 +263,12 @@ export default function ExploreSection() {
   const defaultTab = useMemo(() => getDefaultExploreTab(), []);
   const [activeTab, setActiveTab] = useState<ExploreTabId>(defaultTab);
   const [voiceList, setVoiceList] = useState<PublicVoiceData[]>([]);
+  const [dialogueList, setDialogueList] = useState<PublicDialogueData[]>([]);
   const [musicList, setMusicList] = useState<PublicMusicRecord[]>([]);
   const [videoList, setVideoList] = useState<PublicVideoData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<PublicVoiceData | null>(null);
+  const [selectedDialogue, setSelectedDialogue] = useState<PublicDialogueData | null>(null);
   const [selectedMusic, setSelectedMusic] = useState<PublicMusicRecord | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<PublicVideoData | null>(null);
 
@@ -236,6 +286,14 @@ export default function ExploreSection() {
     localStorage.setItem('tts_draft_voice_name', voice.voiceName);
     router.push('/native/create/voice');
     setSelectedVoice(null);
+  };
+
+  // 处理 Dialogue Recreate
+  const handleDialogueRecreate = (dialogue: PublicDialogueData) => {
+    // 保存对话 JSON 到 localStorage，Dialogue 页面会读取
+    localStorage.setItem('dialogue_draft_json', dialogue.dialogueJson);
+    router.push('/native/create/dialogue');
+    setSelectedDialogue(null);
   };
 
   // 处理 Music Recreate
@@ -272,6 +330,22 @@ export default function ExploreSection() {
         })
         .catch((err) => {
           console.error('Failed to load public voices:', err);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    } else if (activeTab === 'dialogue') {
+      if (dialogueList.length > 0) return;
+      setIsLoading(true);
+      fetch('/api/v1/native/explore/dialogues?limit=20')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            setDialogueList(data.dialogues || []);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load public dialogues:', err);
         })
         .finally(() => {
           setIsLoading(false);
@@ -397,6 +471,45 @@ export default function ExploreSection() {
             No public voices yet
           </div>
         )
+      ) : activeTab === 'dialogue' ? (
+        isLoading ? (
+          // 加载骨架屏 - 2列紧凑设计
+          <div className="grid grid-cols-2 gap-2.5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="rounded-xl overflow-hidden bg-gray-800/50 border border-gray-700/50 p-2.5"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${gradients[i % gradients.length]}`} />
+                  <div className="flex-1">
+                    <div className="h-3 w-20 bg-gray-700 rounded animate-pulse mb-1" />
+                    <div className="h-2.5 w-10 bg-gray-700/50 rounded animate-pulse" />
+                  </div>
+                  <div className="w-7 h-7 rounded-full bg-white/10" />
+                </div>
+                <div className="h-2.5 w-full bg-gray-700/30 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        ) : dialogueList.length > 0 ? (
+          // 对话网格 - 2列布局
+          <div className="grid grid-cols-2 gap-2.5">
+            {dialogueList.map((dialogue, index) => (
+              <DialogueCard
+                key={dialogue.id}
+                dialogue={dialogue}
+                index={index}
+                onClick={() => setSelectedDialogue(dialogue)}
+              />
+            ))}
+          </div>
+        ) : (
+          // 空状态
+          <div className="text-center py-12 text-gray-500">
+            No public dialogues yet
+          </div>
+        )
       ) : activeTab === 'music' ? (
         isLoading ? (
           // 加载骨架屏 - 带渐变背景
@@ -508,6 +621,15 @@ export default function ExploreSection() {
           voice={selectedVoice}
           onClose={() => setSelectedVoice(null)}
           onRecreate={() => handleVoiceRecreate(selectedVoice)}
+        />
+      )}
+
+      {/* 对话播放器弹窗 */}
+      {selectedDialogue && (
+        <DialoguePlayerModal
+          dialogue={selectedDialogue}
+          onClose={() => setSelectedDialogue(null)}
+          onRecreate={() => handleDialogueRecreate(selectedDialogue)}
         />
       )}
     </div>

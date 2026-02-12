@@ -14,7 +14,7 @@ export type ReportReason =
   | 'other';
 
 interface ReportContentParams {
-  contentType: 'music' | 'video' | 'image' | 'tts';
+  contentType: 'music' | 'video' | 'image' | 'tts' | 'dialogue';
   contentId: string;
   reason: ReportReason;
 }
