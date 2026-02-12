@@ -19,6 +19,14 @@ export const metadata: Metadata = {
     siteName: 'Voicica AI',
     locale: 'en_US',
     type: 'website',
+    images: [
+      {
+        url: 'https://voicica.ai/og/og-home.png',
+        width: 1200,
+        height: 630,
+        alt: 'Voicica AI',
+      },
+    ],
   },
 };
 

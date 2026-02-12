@@ -38,6 +38,14 @@ export async function generateMetadata({
       siteName: 'Voicica AI',
       locale: loc.ogLocale,
       type: 'website',
+      images: [
+        {
+          url: 'https://voicica.ai/og/og-home.png',
+          width: 1200,
+          height: 630,
+          alt: 'Voicica AI',
+        },
+      ],
     },
   };
 }
