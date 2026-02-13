@@ -8,7 +8,7 @@ import { Search, Mic, Play, Pause, Trash2, Loader2, ChevronDown } from 'lucide-r
 
 const STORAGE_KEY = 'fish_voice_language';
 const DEFAULT_LANGUAGE = 'en';
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 const MY_CLONES = 'my_clones';
 
 // Fish Audio supported languages
@@ -346,7 +346,7 @@ export default function FishVoiceGrid({
         )
       ) : loading ? (
         <div className="grid grid-cols-4 gap-3">
-          {[...Array(12)].map((_, i) => (
+          {[...Array(8)].map((_, i) => (
             <div key={i} className="flex flex-col items-center gap-1.5">
               <div className="w-14 h-14 rounded-full bg-gray-800/40 animate-pulse" />
               <div className="w-12 h-3 bg-gray-800/40 rounded animate-pulse" />
