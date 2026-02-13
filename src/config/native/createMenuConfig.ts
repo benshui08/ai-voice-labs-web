@@ -82,7 +82,7 @@ export const createMenuItems: CreateMenuItem[] = [
     shortName: 'Voice Clone',
     description: 'Clone your voice with AI',
     href: '/native/create/clone',
-    enabled: { development: true, production: false },
+    enabled: { development: true, production: true },
   },
 
   // ========== AI Music 类别 ==========

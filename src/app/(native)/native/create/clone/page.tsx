@@ -168,6 +168,7 @@ export default function VoiceClonePage() {
         text: text.trim(),
         fishVoiceId: activeVoiceId,
         voiceName: selectedClonedVoice?.name || selectedVoice?.title || 'Fish Voice',
+        language: selectedVoice?.languages?.[0] || undefined,
         platform: detectPlatform(),
       });
 

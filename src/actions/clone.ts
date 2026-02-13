@@ -145,6 +145,7 @@ export async function createCloneTtsTask(params: {
   text: string;
   fishVoiceId: string;
   voiceName?: string;
+  language?: string;
   platform?: string;
 }): Promise<CloneTtsResult> {
   console.log('🐟 [createCloneTtsTask] Starting Fish Audio TTS generation');
@@ -197,8 +198,8 @@ export async function createCloneTtsTask(params: {
       userId,
       taskId,
       text: params.text,
-      voiceName: `fish:${params.fishVoiceId}`,
-      language: null,
+      voiceName: params.voiceName || `fish:${params.fishVoiceId}`,
+      language: params.language || null,
       style: null,
       speed: 1.0,
       pitch: 50,
