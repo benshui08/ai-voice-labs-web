@@ -365,8 +365,28 @@ export async function getTtsRecords(limit: number = 50): Promise<TtsRecord[]> {
   // 创建 voice_name -> voice 的映射
   const voiceMap = new Map(voiceRows.map(v => [v.name, v]));
 
+  // Fish Audio cover image URL builder
+  const FISH_R2_CDN = 'https://public-platform.r2.fish.audio/cdn-cgi/image/width=200,format=webp';
+
   return records.map((r) => {
     const voice = voiceMap.get(r.voiceName);
+
+    // For Fish Audio voices (style starts with "fish:"), create synthetic voice info
+    let fishVoice: TtsRecord['voice'] = null;
+    if (!voice && r.style?.startsWith('fish:')) {
+      const fishId = r.style.slice(5);
+      fishVoice = {
+        id: 0,
+        name: r.voiceName,
+        display_name: r.voiceName,
+        provider: 'Fish Audio',
+        locale: r.language || '',
+        country: '',
+        gender: '',
+        avatar_url: `${FISH_R2_CDN}/coverimage/${fishId}`,
+      };
+    }
+
     return {
       id: r.id,
       user_id: r.userId,
@@ -399,7 +419,7 @@ export async function getTtsRecords(limit: number = 50): Promise<TtsRecord[]> {
         country: voice.country,
         gender: voice.gender,
         avatar_url: voice.avatarUrl,
-      } : null,
+      } : fishVoice,
     };
   });
 }
@@ -656,6 +676,23 @@ export async function getTtsRecordByTaskId(taskId: string): Promise<TtsRecord> {
   // 获取语音信息
   const [voice] = await db.select().from(voices).where(eq(voices.name, record.voiceName)).limit(1);
 
+  // For Fish Audio voices (style starts with "fish:"), create synthetic voice info
+  const FISH_R2_CDN = 'https://public-platform.r2.fish.audio/cdn-cgi/image/width=200,format=webp';
+  let fishVoice: TtsRecord['voice'] = null;
+  if (!voice && record.style?.startsWith('fish:')) {
+    const fishId = record.style.slice(5);
+    fishVoice = {
+      id: 0,
+      name: record.voiceName,
+      display_name: record.voiceName,
+      provider: 'Fish Audio',
+      locale: record.language || '',
+      country: '',
+      gender: '',
+      avatar_url: `${FISH_R2_CDN}/coverimage/${fishId}`,
+    };
+  }
+
   return {
     id: record.id,
     user_id: record.userId,
@@ -688,7 +725,7 @@ export async function getTtsRecordByTaskId(taskId: string): Promise<TtsRecord> {
       country: voice.country,
       gender: voice.gender,
       avatar_url: voice.avatarUrl,
-    } : null,
+    } : fishVoice,
   };
 }
 

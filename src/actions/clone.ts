@@ -200,7 +200,7 @@ export async function createCloneTtsTask(params: {
       text: params.text,
       voiceName: params.voiceName || `fish:${params.fishVoiceId}`,
       language: params.language || null,
-      style: null,
+      style: `fish:${params.fishVoiceId}`,
       speed: 1.0,
       pitch: 50,
       volume: 50,

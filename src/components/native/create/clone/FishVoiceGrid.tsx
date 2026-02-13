@@ -60,6 +60,7 @@ interface FishVoiceGridProps {
   selectedClonedVoice: ClonedVoiceData | null;
   onDeleteCloned?: (id: number) => void;
   onGoToCloneTab?: () => void;
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export default function FishVoiceGrid({
@@ -70,6 +71,7 @@ export default function FishVoiceGrid({
   selectedClonedVoice,
   onDeleteCloned,
   onGoToCloneTab,
+  scrollContainerRef,
 }: FishVoiceGridProps) {
   const { t } = useLanguage();
   const [query, setQuery] = useState('');
@@ -161,11 +163,11 @@ export default function FishVoiceGrid({
     if (!el) return;
     const observer = new IntersectionObserver(
       (entries) => { if (entries[0].isIntersecting) handleLoadMore(); },
-      { threshold: 0.1 }
+      { root: scrollContainerRef?.current ?? null, rootMargin: '100px', threshold: 0.1 }
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [handleLoadMore]);
+  }, [handleLoadMore, scrollContainerRef]);
 
   const togglePlay = useCallback((e: React.MouseEvent, url: string, id: string) => {
     e.stopPropagation();
@@ -358,7 +360,7 @@ export default function FishVoiceGrid({
             {voices.map(renderVoiceCard)}
           </div>
           {hasMore && (
-            <div ref={loadMoreRef} className="flex justify-center py-4">
+            <div ref={loadMoreRef} className="flex justify-center py-4" onClick={handleLoadMore} role="button" tabIndex={0}>
               {loadingMore ? (
                 <Loader2 className="w-5 h-5 text-gray-500 animate-spin" />
               ) : (

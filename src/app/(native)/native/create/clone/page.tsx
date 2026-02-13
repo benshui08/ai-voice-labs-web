@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useCredits } from '@/contexts/CreditsContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -54,6 +54,7 @@ export default function VoiceClonePage() {
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabId>('generate');
+  const voiceGridScrollRef = useRef<HTMLDivElement>(null);
 
   // Login & Credits modals
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -186,6 +187,19 @@ export default function VoiceClonePage() {
       if (result.task_id) {
         try {
           const voiceRecord = await getTtsRecordByTaskId(result.task_id);
+          // Augment with Fish Audio voice info (not in our voices table)
+          if (!voiceRecord.voice) {
+            voiceRecord.voice = {
+              id: 0,
+              name: voiceRecord.voice_name,
+              display_name: selectedClonedVoice?.name || selectedVoice?.title || voiceRecord.voice_name,
+              provider: 'Fish Audio',
+              locale: selectedVoice?.languages?.[0] || '',
+              country: '',
+              gender: '',
+              avatar_url: selectedVoice?.coverImage || '',
+            };
+          }
           setGeneratedVoice(voiceRecord);
           setIsGeneratingModalOpen(false);
         } catch {
@@ -357,6 +371,7 @@ export default function VoiceClonePage() {
 
             {/* Scrollable voice grid */}
             <div
+              ref={voiceGridScrollRef}
               className="flex-1 min-h-0 overflow-y-auto"
               style={{ paddingBottom: 'calc(110px + var(--safe-area-inset-bottom, 0px))' }}
             >
@@ -368,6 +383,7 @@ export default function VoiceClonePage() {
                 selectedClonedVoice={selectedClonedVoice}
                 onDeleteCloned={handleDeleteClonedVoice}
                 onGoToCloneTab={() => setActiveTab('clone')}
+                scrollContainerRef={voiceGridScrollRef}
               />
             </div>
           </div>

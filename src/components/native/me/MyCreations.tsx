@@ -471,8 +471,12 @@ export default function MyCreations() {
   };
 
   const handleVoiceRecreate = () => {
-    // 跳转到创建页面
-    router.push('/native/create/voice');
+    // Fish Audio clone voices → clone page, regular voices → voice page
+    if (selectedVoice?.style?.startsWith('fish:')) {
+      router.push('/native/create/clone');
+    } else {
+      router.push('/native/create/voice');
+    }
     setSelectedVoice(null);
   };
 
