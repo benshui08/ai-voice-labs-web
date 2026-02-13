@@ -8,7 +8,7 @@ import ExploreSection from '@/components/native/ExploreSection';
  */
 export default function NativePage() {
   return (
-    <div className="pt-2">
+    <div className="pt-2 pb-20">
       {/* 首页横幅原生广告 */}
       <NativeBannerAd />
 
