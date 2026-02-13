@@ -79,7 +79,6 @@ export default function FishVoiceGrid({
   const [voices, setVoices] = useState<FishVoiceItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null);
@@ -88,6 +87,24 @@ export default function FishVoiceGrid({
 
   const clientCache = useRef<Map<string, SearchFishVoicesResult>>(new Map());
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Race condition prevention: ignore stale responses
+  const requestIdRef = useRef(0);
+
+  // Refs for stable IntersectionObserver callback (avoids re-creating observer on every state change)
+  const pageRef = useRef(1);
+  const filterRef = useRef(filter);
+  const queryRef = useRef(query);
+  const loadingMoreRef = useRef(false);
+  const hasMoreRef = useRef(false);
+  const isMyClonesRef = useRef(isMyClones);
+
+  // Keep refs in sync with state
+  filterRef.current = filter;
+  queryRef.current = query;
+  loadingMoreRef.current = loadingMore;
+  hasMoreRef.current = hasMore;
+  isMyClonesRef.current = isMyClones;
 
   const loadVoices = useCallback(async (searchQuery: string, lang: string, pageNum: number, append: boolean) => {
     const cacheKey = `${searchQuery}|${lang}|${pageNum}`;
@@ -98,33 +115,50 @@ export default function FishVoiceGrid({
       } else {
         setVoices(cached.items);
       }
-      setHasMore(cached.total > pageNum * PAGE_SIZE);
+      const more = cached.total > pageNum * PAGE_SIZE;
+      setHasMore(more);
+      hasMoreRef.current = more;
       return;
     }
 
+    // Increment request ID — any in-flight request with a lower ID will be ignored
+    const requestId = ++requestIdRef.current;
+
     if (append) {
       setLoadingMore(true);
+      loadingMoreRef.current = true;
     } else {
       setLoading(true);
     }
 
     try {
       const result = await searchFishVoices(searchQuery || undefined, pageNum, PAGE_SIZE, lang || undefined);
+
+      // Stale response — user switched language/searched while this was in flight
+      if (requestId !== requestIdRef.current) return;
+
       clientCache.current.set(cacheKey, result);
       if (append) {
         setVoices(prev => [...prev, ...result.items]);
       } else {
         setVoices(result.items);
       }
-      setHasMore(result.total > pageNum * PAGE_SIZE);
+      const more = result.total > pageNum * PAGE_SIZE;
+      setHasMore(more);
+      hasMoreRef.current = more;
     } catch {
+      if (requestId !== requestIdRef.current) return;
       console.error('Failed to load Fish voices');
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+        loadingMoreRef.current = false;
+      }
     }
   }, []);
 
+  // Initial load
   useEffect(() => {
     const saved = getSavedLanguage();
     if (saved !== MY_CLONES) {
@@ -134,7 +168,7 @@ export default function FishVoiceGrid({
 
   const handleSearch = () => {
     if (isMyClones) return;
-    setPage(1);
+    pageRef.current = 1;
     loadVoices(query, filter, 1, false);
   };
 
@@ -144,20 +178,28 @@ export default function FishVoiceGrid({
 
   const handleFilterChange = (value: string) => {
     setFilter(value);
-    if (value !== MY_CLONES) {
+    pageRef.current = 1;
+    if (value === MY_CLONES) {
+      // Cancel any in-flight request
+      requestIdRef.current++;
+      setLoading(false);
+      setLoadingMore(false);
+      loadingMoreRef.current = false;
+    } else {
       localStorage.setItem(STORAGE_KEY, value);
-      setPage(1);
       loadVoices(query, value, 1, false);
     }
   };
 
+  // Stable handleLoadMore using refs — never changes, so IntersectionObserver is set up once
   const handleLoadMore = useCallback(() => {
-    if (loadingMore || !hasMore || isMyClones) return;
-    const nextPage = page + 1;
-    setPage(nextPage);
-    loadVoices(query, filter, nextPage, true);
-  }, [loadingMore, hasMore, isMyClones, page, query, filter, loadVoices]);
+    if (loadingMoreRef.current || !hasMoreRef.current || isMyClonesRef.current) return;
+    const nextPage = pageRef.current + 1;
+    pageRef.current = nextPage;
+    loadVoices(queryRef.current, filterRef.current, nextPage, true);
+  }, [loadVoices]);
 
+  // IntersectionObserver — set up once since handleLoadMore is stable
   useEffect(() => {
     const el = loadMoreRef.current;
     if (!el) return;
