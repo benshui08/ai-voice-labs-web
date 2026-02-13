@@ -30,6 +30,7 @@ export interface FishAudioModel {
 
 export interface FishAudioSample {
   url: string;
+  audio: string;
   text: string;
   task_id: string | null;
 }

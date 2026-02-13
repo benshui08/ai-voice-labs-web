@@ -78,17 +78,26 @@ export interface CreateVoiceCloneResult {
 
 // ==================== Helper ====================
 
+const FISH_R2_CDN = 'https://public-platform.r2.fish.audio/cdn-cgi/image/width=200,format=webp';
+
+function fishCoverUrl(coverImage: string | undefined): string {
+  if (!coverImage) return '';
+  // coverImage is like "coverimage/{id}" — prepend CDN base
+  return `${FISH_R2_CDN}/${coverImage}`;
+}
+
 function mapFishModel(model: FishAudioModel): FishVoiceItem {
+  const sample = model.samples?.[0];
   return {
     id: model._id,
     title: model.title,
     description: model.description,
-    coverImage: model.cover_image,
+    coverImage: fishCoverUrl(model.cover_image),
     languages: model.languages || [],
     tags: model.tags || [],
-    sampleUrl: model.samples?.[0]?.url || null,
+    sampleUrl: sample?.audio || sample?.url || null,
     authorName: model.author?.nickname || '',
-    authorAvatar: model.author?.avatar || '',
+    authorAvatar: '',
     likeCount: model.like_count || 0,
     createdAt: model.created_at,
   };

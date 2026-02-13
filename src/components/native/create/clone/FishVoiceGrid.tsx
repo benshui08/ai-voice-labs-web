@@ -6,6 +6,44 @@ import { searchFishVoices } from '@/actions/clone';
 import type { FishVoiceItem, ClonedVoiceData } from '@/actions/clone';
 import { Search, Mic, Play, Pause, ChevronDown, Trash2 } from 'lucide-react';
 
+// Fish Audio supported languages
+const FISH_LANGUAGES = [
+  { code: '', label: 'All' },
+  { code: 'en', label: 'English' },
+  { code: 'zh', label: '中文' },
+  { code: 'ja', label: '日本語' },
+  { code: 'ko', label: '한국어' },
+  { code: 'es', label: 'Español' },
+  { code: 'fr', label: 'Français' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'ar', label: 'العربية' },
+  { code: 'pt', label: 'Português' },
+  { code: 'ru', label: 'Русский' },
+] as const;
+
+// Generate a consistent color from a string
+function stringToColor(str: string): string {
+  const colors = [
+    'from-purple-500 to-pink-500',
+    'from-blue-500 to-cyan-500',
+    'from-green-500 to-emerald-500',
+    'from-orange-500 to-amber-500',
+    'from-red-500 to-rose-500',
+    'from-indigo-500 to-violet-500',
+    'from-teal-500 to-green-500',
+    'from-pink-500 to-fuchsia-500',
+  ];
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function getInitials(name: string): string {
+  return name.slice(0, 2).toUpperCase();
+}
+
 interface FishVoiceGridProps {
   selectedVoice: FishVoiceItem | null;
   onSelect: (voice: FishVoiceItem) => void;
@@ -25,6 +63,7 @@ export default function FishVoiceGrid({
 }: FishVoiceGridProps) {
   const { t } = useLanguage();
   const [query, setQuery] = useState('');
+  const [language, setLanguage] = useState('');
   const [voices, setVoices] = useState<FishVoiceItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -32,29 +71,34 @@ export default function FishVoiceGrid({
   const [showCloned, setShowCloned] = useState(true);
   const [showLibrary, setShowLibrary] = useState(true);
 
-  // Load default voices on mount
-  useEffect(() => {
-    loadVoices('');
-  }, []);
-
-  const loadVoices = async (searchQuery: string) => {
+  const loadVoices = useCallback(async (searchQuery: string, lang: string) => {
     setLoading(true);
     try {
-      const result = await searchFishVoices(searchQuery || undefined, 1, 30);
+      const result = await searchFishVoices(searchQuery || undefined, 1, 30, lang || undefined);
       setVoices(result.items);
     } catch {
       console.error('Failed to load Fish voices');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Load default voices on mount
+  useEffect(() => {
+    loadVoices('', '');
+  }, [loadVoices]);
 
   const handleSearch = () => {
-    loadVoices(query);
+    loadVoices(query, language);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleSearch();
+  };
+
+  const handleLanguageChange = (lang: string) => {
+    setLanguage(lang);
+    loadVoices(query, lang);
   };
 
   const togglePlay = useCallback((url: string, id: string) => {
@@ -103,6 +147,23 @@ export default function FishVoiceGrid({
         >
           {t('native.createClone.generate.searchButton')}
         </button>
+      </div>
+
+      {/* Language Filter */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+        {FISH_LANGUAGES.map((lang) => (
+          <button
+            key={lang.code}
+            onClick={() => handleLanguageChange(lang.code)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+              language === lang.code
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-800/60 text-gray-400 hover:text-white hover:bg-gray-700/60'
+            }`}
+          >
+            {lang.label}
+          </button>
+        ))}
       </div>
 
       {/* My Cloned Voices Section */}
@@ -217,8 +278,8 @@ export default function FishVoiceGrid({
                           className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                         />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
-                          <Mic className="w-4 h-4 text-gray-400" />
+                        <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${stringToColor(voice.id)} flex items-center justify-center flex-shrink-0`}>
+                          <span className="text-white text-xs font-bold">{getInitials(voice.title)}</span>
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
