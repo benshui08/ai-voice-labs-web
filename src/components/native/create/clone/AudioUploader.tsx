@@ -64,10 +64,23 @@ export default function AudioUploader({
   // Start recording
   const startRecording = useCallback(async () => {
     try {
+      // Check API availability
+      if (!navigator.mediaDevices?.getUserMedia) {
+        alert('Recording is not supported in this browser.');
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4',
-      });
+
+      // Find a supported mimeType
+      const mimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg', ''];
+      const mimeType = mimeTypes.find(t => t === '' || MediaRecorder.isTypeSupported(t)) || '';
+
+      const options: MediaRecorderOptions = {};
+      if (mimeType) options.mimeType = mimeType;
+
+      const mediaRecorder = new MediaRecorder(stream, options);
+      const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
 
       chunksRef.current = [];
       mediaRecorderRef.current = mediaRecorder;
@@ -85,7 +98,7 @@ export default function AudioUploader({
         const reader = new FileReader();
         reader.onload = () => {
           const base64 = (reader.result as string).split(',')[1];
-          onAudioChange(base64, 'recording.webm');
+          onAudioChange(base64, `recording.${ext}`);
 
           const url = URL.createObjectURL(blob);
           if (audioUrl) URL.revokeObjectURL(audioUrl);
@@ -111,7 +124,8 @@ export default function AudioUploader({
       }, 1000);
     } catch (err) {
       console.error('Failed to start recording:', err);
-      alert('Unable to access microphone. Please check permissions.');
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`Unable to start recording: ${msg}`);
     }
   }, [onAudioChange, audioUrl]);
 
