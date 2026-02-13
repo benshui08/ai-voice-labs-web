@@ -107,6 +107,9 @@ export default function FishVoiceGrid({
   isMyClonesRef.current = isMyClones;
 
   const loadVoices = useCallback(async (searchQuery: string, lang: string, pageNum: number, append: boolean) => {
+    // Always increment — invalidates any in-flight request (including load-more)
+    const requestId = ++requestIdRef.current;
+
     const cacheKey = `${searchQuery}|${lang}|${pageNum}`;
     const cached = clientCache.current.get(cacheKey);
     if (cached) {
@@ -118,16 +121,19 @@ export default function FishVoiceGrid({
       const more = cached.total > pageNum * PAGE_SIZE;
       setHasMore(more);
       hasMoreRef.current = more;
+      setLoadingMore(false);
+      loadingMoreRef.current = false;
+      setLoading(false);
       return;
     }
-
-    // Increment request ID — any in-flight request with a lower ID will be ignored
-    const requestId = ++requestIdRef.current;
 
     if (append) {
       setLoadingMore(true);
       loadingMoreRef.current = true;
     } else {
+      // Fresh load: clear stale loadingMore and show skeleton
+      setLoadingMore(false);
+      loadingMoreRef.current = false;
       setLoading(true);
     }
 
