@@ -39,6 +39,30 @@ interface KieCallbackPayload {
 }
 
 /**
+ * 从 URL 下载文件（带重试）
+ * cover 图片可能在音频就绪后仍未上传完成，需要重试
+ */
+async function fetchWithRetry(
+  url: string,
+  maxRetries: number = 3,
+  delayMs: number = 2000
+): Promise<Response | null> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return response;
+      console.warn(`📥 [R2 Upload] 下载失败 (${attempt}/${maxRetries}): ${response.status}`);
+    } catch (error) {
+      console.warn(`📥 [R2 Upload] 下载异常 (${attempt}/${maxRetries}):`, error);
+    }
+    if (attempt < maxRetries) {
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+  return null;
+}
+
+/**
  * 从 URL 下载文件并上传到 R2
  */
 async function downloadAndUploadToR2(
@@ -50,9 +74,13 @@ async function downloadAndUploadToR2(
   try {
     console.log(`📥 [R2 Upload] 下载文件: ${url}`);
 
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.error(`📥 [R2 Upload] 下载失败: ${response.status}`);
+    // cover 用重试（图片可能延迟就绪），audio 直接下载
+    const response = type === 'cover'
+      ? await fetchWithRetry(url, 3, 2000)
+      : await fetchWithRetry(url, 1, 0);
+
+    if (!response) {
+      console.error(`📥 [R2 Upload] 下载最终失败: ${url}`);
       return null;
     }
 
