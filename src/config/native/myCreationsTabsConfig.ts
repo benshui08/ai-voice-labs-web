@@ -74,7 +74,7 @@ export const myCreationsTabsConfig: MyCreationsTabConfig[] = [
       subtitle: 'Create your first AI video.',
       createLink: '/native/create/video',
     },
-    enabled: { development: true, production: false },
+    enabled: { development: true, production: true },
   },
   {
     id: 'image',
