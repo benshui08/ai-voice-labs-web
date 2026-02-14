@@ -636,6 +636,56 @@ export async function getMusicTaskStatus(taskId: string): Promise<MusicTaskStatu
   }
 
   // 生产环境或任务已完成，直接从数据库读取
+  // 如果已成功但 cover 还在第三方 CDN，尝试重新下载到 R2
+  if (record.status === 'SUCCESS') {
+    const r2PublicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL || '';
+    const needsReupload1 = record.coverUrl && !record.coverUrl.startsWith(r2PublicUrl);
+    const needsReupload2 = record.coverUrl2 && !record.coverUrl2.startsWith(r2PublicUrl);
+
+    if (needsReupload1 || needsReupload2) {
+      console.log(`🎵 [getMusicTaskStatus] Cover 不在 R2，尝试重新下载: ${taskId}`);
+      let updatedCoverUrl = record.coverUrl;
+      let updatedCoverUrl2 = record.coverUrl2;
+
+      if (needsReupload1 && record.coverUrl) {
+        const r2Url = await downloadAndUploadToR2(record.coverUrl, taskId, 'cover', 1);
+        if (r2Url) updatedCoverUrl = r2Url;
+      }
+      if (needsReupload2 && record.coverUrl2) {
+        const r2Url = await downloadAndUploadToR2(record.coverUrl2, taskId, 'cover', 2);
+        if (r2Url) updatedCoverUrl2 = r2Url;
+      }
+
+      if (updatedCoverUrl !== record.coverUrl || updatedCoverUrl2 !== record.coverUrl2) {
+        await db.update(musicRecords)
+          .set({
+            coverUrl: updatedCoverUrl,
+            coverUrl2: updatedCoverUrl2,
+          })
+          .where(eq(musicRecords.taskId, taskId));
+        console.log(`✅ [getMusicTaskStatus] Cover 已更新到 R2: ${taskId}`);
+      }
+
+      return {
+        task_id: taskId,
+        status: 'SUCCESS',
+        progress: 100,
+        result: {
+          audio_url: record.audioUrl || '',
+          audio_url_2: record.audioUrl2 || undefined,
+          cover_url: updatedCoverUrl || undefined,
+          cover_url_2: updatedCoverUrl2 || undefined,
+          duration: record.duration || undefined,
+          duration_2: record.duration2 || undefined,
+          title: record.title || undefined,
+          tags: record.tags || undefined,
+          lyrics: record.lyrics || undefined,
+        },
+        error: null,
+      };
+    }
+  }
+
   switch (record.status) {
     case 'PENDING':
       return {
