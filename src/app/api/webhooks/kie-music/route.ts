@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { musicRecords } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { downloadAndUploadToR2 } from '@/lib/services/r2-storage';
 import { refundCreditsSimple } from '@/lib/credits';
 import { ProductType } from '@/config/productType';
@@ -195,9 +195,21 @@ export async function POST(request: NextRequest) {
       case 'complete':
         // 所有歌曲完成，下载文件到 R2
         if (tracks && tracks.length > 0) {
-          // 乐观锁：只在记录仍为 PROCESSING 时才处理，防止覆盖 Polling 已保存的 R2 URL
-          if (record.status === 'SUCCESS') {
-            console.log(`⚠️ [KIE Callback] 记录已被 Polling 处理为 SUCCESS，跳过: ${record.taskId}`);
+          // 原子抢占：将 progress 设为 99 表示"正在下载到 R2"，防止 Polling 重复下载
+          const claimResult = await db
+            .update(musicRecords)
+            .set({ progress: 99 })
+            .where(
+              and(
+                eq(musicRecords.id, record.id),
+                eq(musicRecords.status, 'PROCESSING'),
+                sql`${musicRecords.progress} < 99`
+              )
+            )
+            .returning();
+
+          if (claimResult.length === 0) {
+            console.log(`⚠️ [KIE Callback] 记录已被其他请求抢占或已完成，跳过: ${record.taskId}`);
             break;
           }
 
@@ -212,7 +224,8 @@ export async function POST(request: NextRequest) {
             secondTrackData = await processTrackData(tracks[1], record.taskId, 2);
           }
 
-          const updateResult = await db
+          // 已抢占成功，直接写入最终结果
+          await db
             .update(musicRecords)
             .set({
               status: 'SUCCESS',
@@ -235,19 +248,9 @@ export async function POST(request: NextRequest) {
               lyrics: firstTrackData.lyrics || record.lyrics,
               completedAt: new Date().toISOString(),
             })
-            .where(
-              and(
-                eq(musicRecords.id, record.id),
-                eq(musicRecords.status, 'PROCESSING') // 乐观锁：防止覆盖 Polling 已保存的数据
-              )
-            )
-            .returning();
+            .where(eq(musicRecords.id, record.id));
 
-          if (updateResult.length > 0) {
-            console.log(`🎵 [KIE Callback] 所有歌曲处理完成: ${record.taskId}, 共 ${tracks.length} 首, track_ids: [${firstTrackData.track_id}, ${secondTrackData?.track_id || 'N/A'}]`);
-          } else {
-            console.log(`⚠️ [KIE Callback] 记录已被 Polling 处理，跳过更新: ${record.taskId}`);
-          }
+          console.log(`🎵 [KIE Callback] 所有歌曲处理完成: ${record.taskId}, 共 ${tracks.length} 首, track_ids: [${firstTrackData.track_id}, ${secondTrackData?.track_id || 'N/A'}]`);
         }
         break;
 

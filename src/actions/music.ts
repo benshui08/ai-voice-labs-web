@@ -444,18 +444,26 @@ export async function getMusicTaskStatus(taskId: string): Promise<MusicTaskStatu
 
     // 如果 KIE 返回成功，下载到 R2 并更新本地数据库
     if (kieStatus.status === 'SUCCESS' && kieStatus.data && kieStatus.data.length > 0) {
-      // 再次检查记录状态，避免 Webhook 已处理后重复下载
-      const [freshRecord] = await db.select({ status: musicRecords.status })
-        .from(musicRecords).where(eq(musicRecords.taskId, taskId)).limit(1);
-      if (freshRecord?.status === 'SUCCESS') {
-        console.log(`⚠️ [getMusicTaskStatus] 记录已被 Webhook 处理为 SUCCESS，跳过下载: ${taskId}`);
-        // 直接从数据库读取已有数据返回
+      // 原子抢占：将 progress 设为 99 表示"正在下载到 R2"，防止 Webhook 重复下载
+      const claimResult = await db.update(musicRecords)
+        .set({ progress: 99 })
+        .where(and(
+          eq(musicRecords.taskId, taskId),
+          eq(musicRecords.status, 'PROCESSING'),
+          sql`${musicRecords.progress} < 99`
+        ))
+        .returning();
+
+      if (claimResult.length === 0) {
+        console.log(`⚠️ [getMusicTaskStatus] 记录已被 Webhook 抢占或已完成，跳过下载: ${taskId}`);
+        // 等一下让 Webhook 写完，再从数据库读取
+        await new Promise(r => setTimeout(r, 3000));
         const [existingRecord] = await db.select().from(musicRecords).where(eq(musicRecords.taskId, taskId)).limit(1);
         return {
           task_id: taskId,
-          status: 'SUCCESS',
-          progress: 100,
-          result: {
+          status: existingRecord.status === 'SUCCESS' ? 'SUCCESS' : 'PROCESSING',
+          progress: existingRecord.progress || 90,
+          result: existingRecord.status === 'SUCCESS' ? {
             audio_url: existingRecord.audioUrl || '',
             audio_url_2: existingRecord.audioUrl2 || undefined,
             cover_url: existingRecord.coverUrl || undefined,
@@ -465,7 +473,7 @@ export async function getMusicTaskStatus(taskId: string): Promise<MusicTaskStatu
             title: existingRecord.title || undefined,
             tags: existingRecord.tags || undefined,
             lyrics: existingRecord.lyrics || undefined,
-          },
+          } : null,
           error: null,
         };
       }
@@ -501,8 +509,8 @@ export async function getMusicTaskStatus(taskId: string): Promise<MusicTaskStatu
       const finalAudioUrl2 = r2AudioUrl2 || secondTrack?.audio_url;
       const finalCoverUrl2 = r2CoverUrl2 || secondTrack?.image_url;
 
-      // 乐观锁：仅在仍为 PROCESSING 时更新，防止覆盖 Webhook 已保存的数据
-      const updateResult = await db.update(musicRecords)
+      // 已抢占成功，直接写入最终结果
+      await db.update(musicRecords)
         .set({
           status: 'SUCCESS',
           progress: 100,
@@ -519,14 +527,9 @@ export async function getMusicTaskStatus(taskId: string): Promise<MusicTaskStatu
           duration2: secondTrack?.duration || null,
           completedAt: new Date().toISOString(),
         })
-        .where(and(eq(musicRecords.taskId, taskId), eq(musicRecords.status, 'PROCESSING')))
-        .returning();
+        .where(eq(musicRecords.taskId, taskId));
 
-      if (updateResult.length > 0) {
-        console.log('🎵 [getMusicTaskStatus] 文件下载到 R2 完成');
-      } else {
-        console.log(`⚠️ [getMusicTaskStatus] 记录已被 Webhook 处理，跳过更新: ${taskId}`);
-      }
+      console.log('🎵 [getMusicTaskStatus] 文件下载到 R2 完成');
 
       return {
         task_id: taskId,
