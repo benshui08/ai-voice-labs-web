@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 
 interface ImageLightboxProps {
@@ -41,9 +42,9 @@ export default function ImageLightbox({
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm"
       onClick={onClose}
     >
       {/* Close button */}
@@ -106,6 +107,7 @@ export default function ImageLightbox({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
