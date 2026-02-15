@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import CreatePageHeader from '@/components/native/common/CreatePageHeader';
 import PromptSection from '@/components/native/create/PromptSection';
 import ImageGuidance from '@/components/native/create/ImageGuidance';
@@ -73,7 +72,6 @@ const LoadingIcon = () => (
 const VIDEO_PROMPT_STORAGE_KEY = 'video_draft_prompt';
 
 export default function CreateVideoPage() {
-  const router = useRouter();
   const { token } = useFirebaseAuth();
   const { credits: userCredits, refreshCredits } = useCredits();
   const { isSubscribed } = useSubscription();
