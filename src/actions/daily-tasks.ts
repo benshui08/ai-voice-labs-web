@@ -1,10 +1,34 @@
 'use server';
 
 import db from '@/lib/db';
-import { dailyTasks, users, creditHistory } from '@/db/schema';
+import { dailyTasks, users, anonymousUsers, creditHistory } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 import { getDailyTasksConfig } from '@/config/appConfig';
+
+/**
+ * 增加用户积分（根据是否匿名用户选择正确的表）
+ * 匿名用户只有 credits（永久积分），没有 monthlyCredits
+ */
+async function addUserCredits(userId: string, isAnonymous: boolean, amount: number, addToPermanent: boolean) {
+  if (isAnonymous) {
+    // 匿名用户只有 credits 字段
+    await db
+      .update(anonymousUsers)
+      .set({ credits: sql`${anonymousUsers.credits} + ${amount}` })
+      .where(eq(anonymousUsers.userId, userId));
+  } else if (addToPermanent) {
+    await db
+      .update(users)
+      .set({ credits: sql`${users.credits} + ${amount}` })
+      .where(eq(users.userId, userId));
+  } else {
+    await db
+      .update(users)
+      .set({ monthlyCredits: sql`${users.monthlyCredits} + ${amount}` })
+      .where(eq(users.userId, userId));
+  }
+}
 
 /**
  * 每日任务状态
@@ -122,7 +146,7 @@ export async function getDailyTasksStatus(isNative: boolean = false): Promise<Da
  */
 export async function checkin(addToPermanent: boolean = false, isNative: boolean = false): Promise<TaskResult> {
   try {
-    const { user_id } = await getUserOrAnonymous();
+    const { user_id, is_anonymous } = await getUserOrAnonymous();
     if (!user_id) {
       return { success: false, message: 'Please login first' };
     }
@@ -172,18 +196,8 @@ export async function checkin(addToPermanent: boolean = false, isNative: boolean
 
     console.log(`[checkin] Successfully checked in, updating ${addToPermanent ? 'credits' : 'monthly_credits'}...`);
 
-    // 增加用户积分（credits 是永久积分，monthly_credits 是当月积分）
-    if (addToPermanent) {
-      await db
-        .update(users)
-        .set({ credits: sql`${users.credits} + ${credits}` })
-        .where(eq(users.userId, user_id));
-    } else {
-      await db
-        .update(users)
-        .set({ monthlyCredits: sql`${users.monthlyCredits} + ${credits}` })
-        .where(eq(users.userId, user_id));
-    }
+    // 增加用户积分（根据是否匿名用户选择正确的表）
+    await addUserCredits(user_id, is_anonymous, credits, addToPermanent);
 
     // 记录积分历史
     await db.insert(creditHistory).values({
@@ -214,7 +228,7 @@ export async function claimAdReward(adWatched: boolean = true, addToPermanent: b
       return { success: false, message: 'Please watch the ad first' };
     }
 
-    const { user_id } = await getUserOrAnonymous();
+    const { user_id, is_anonymous } = await getUserOrAnonymous();
     if (!user_id) {
       return { success: false, message: 'Please login first' };
     }
@@ -269,18 +283,8 @@ export async function claimAdReward(adWatched: boolean = true, addToPermanent: b
       if (updateResult.length > 0) {
         console.log(`[claimAdReward] Successfully claimed tier ${newClaimed}, credits: ${tierCredits}, addToPermanent: ${addToPermanent}`);
 
-        // 增加用户积分（credits 是永久积分，monthly_credits 是当月积分）
-        if (addToPermanent) {
-          await db
-            .update(users)
-            .set({ credits: sql`${users.credits} + ${tierCredits}` })
-            .where(eq(users.userId, user_id));
-        } else {
-          await db
-            .update(users)
-            .set({ monthlyCredits: sql`${users.monthlyCredits} + ${tierCredits}` })
-            .where(eq(users.userId, user_id));
-        }
+        // 增加用户积分（根据是否匿名用户选择正确的表）
+        await addUserCredits(user_id, is_anonymous, tierCredits, addToPermanent);
 
         // 记录积分历史
         await db.insert(creditHistory).values({
@@ -312,18 +316,8 @@ export async function claimAdReward(adWatched: boolean = true, addToPermanent: b
           )
         );
 
-      // 增加用户积分
-      if (addToPermanent) {
-        await db
-          .update(users)
-          .set({ credits: sql`${users.credits} + ${bonusCredits}` })
-          .where(eq(users.userId, user_id));
-      } else {
-        await db
-          .update(users)
-          .set({ monthlyCredits: sql`${users.monthlyCredits} + ${bonusCredits}` })
-          .where(eq(users.userId, user_id));
-      }
+      // 增加用户积分（根据是否匿名用户选择正确的表）
+      await addUserCredits(user_id, is_anonymous, bonusCredits, addToPermanent);
 
       // 记录积分历史
       await db.insert(creditHistory).values({
