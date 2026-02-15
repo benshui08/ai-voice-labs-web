@@ -6,6 +6,7 @@ import {
   getAdminUserList,
   getAdminAnonymousUserList,
   updateUserCredits,
+  updateAnonymousUserCredits,
   deleteAnonymousUser,
   cleanExpiredAnonymousUsers,
   getUserCreditHistory,
@@ -94,6 +95,7 @@ export default function UsersManagementPage() {
     currentCredits: number;
     newCredits: number;
     reason: string;
+    isAnonymous?: boolean;
   } | null>(null);
 
   // 积分历史模态框
@@ -191,15 +193,25 @@ export default function UsersManagementPage() {
   const handleSaveCredits = async () => {
     if (!editingCredits) return;
 
-    const result = await updateUserCredits(
-      editingCredits.userId,
-      editingCredits.newCredits,
-      editingCredits.reason
-    );
+    const result = editingCredits.isAnonymous
+      ? await updateAnonymousUserCredits(
+          editingCredits.userId,
+          editingCredits.newCredits,
+          editingCredits.reason
+        )
+      : await updateUserCredits(
+          editingCredits.userId,
+          editingCredits.newCredits,
+          editingCredits.reason
+        );
 
     if (result.success) {
       setEditingCredits(null);
-      loadRegisteredUsers();
+      if (editingCredits.isAnonymous) {
+        loadAnonymousUsers();
+      } else {
+        loadRegisteredUsers();
+      }
     } else {
       alert(result.message);
     }
@@ -647,12 +659,34 @@ export default function UsersManagementPage() {
                           {formatDate(user.expires_at)}
                         </td>
                         <td className="px-4 py-3">
-                          <button
-                            onClick={() => handleDeleteAnonymous(user.id)}
-                            className="text-sm text-red-600 hover:text-red-700"
-                          >
-                            删除
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => loadCreditHistory(user.user_id, user.user_id.substring(0, 12) + '...')}
+                              className="text-sm text-purple-600 hover:text-purple-700"
+                            >
+                              积分历史
+                            </button>
+                            <button
+                              onClick={() =>
+                                setEditingCredits({
+                                  userId: user.user_id,
+                                  currentCredits: user.credits,
+                                  newCredits: user.credits,
+                                  reason: '',
+                                  isAnonymous: true,
+                                })
+                              }
+                              className="text-sm text-blue-600 hover:text-blue-700"
+                            >
+                              调整积分
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAnonymous(user.id)}
+                              className="text-sm text-red-600 hover:text-red-700"
+                            >
+                              删除
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))

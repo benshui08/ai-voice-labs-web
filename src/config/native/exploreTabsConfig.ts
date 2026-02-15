@@ -38,7 +38,7 @@ export const exploreTabsConfig: ExploreTabConfig[] = [
   {
     id: 'video',
     label: 'Video',
-    enabled: { development: true, production: false },
+    enabled: { development: true, production: true },
   },
 ];
 

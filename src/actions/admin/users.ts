@@ -317,6 +317,40 @@ export async function updateUserCredits(
 }
 
 /**
+ * 更新匿名用户积分
+ */
+export async function updateAnonymousUserCredits(
+  userId: string,
+  credits: number,
+  reason: string
+): Promise<{ success: boolean; message: string }> {
+  await verifyAdminWithoutDb();
+
+  try {
+    const [user] = await db.select({ credits: anonymousUsers.credits }).from(anonymousUsers).where(eq(anonymousUsers.userId, userId)).limit(1);
+
+    if (!user) {
+      return { success: false, message: '匿名用户不存在' };
+    }
+
+    const diff = credits - user.credits;
+
+    await db.update(anonymousUsers).set({ credits }).where(eq(anonymousUsers.userId, userId));
+    await db.insert(creditHistory).values({
+      userId,
+      amount: diff,
+      description: `[管理员调整] ${reason}`,
+      productType: 'admin_adjustment',
+    });
+
+    return { success: true, message: '积分已更新' };
+  } catch (error) {
+    console.error('更新匿名用户积分失败:', error);
+    return { success: false, message: error instanceof Error ? error.message : '更新失败' };
+  }
+}
+
+/**
  * 删除匿名用户
  */
 export async function deleteAnonymousUser(
