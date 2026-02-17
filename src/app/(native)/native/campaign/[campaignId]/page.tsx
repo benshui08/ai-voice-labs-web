@@ -1,14 +1,39 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useNativeBack } from '@/hooks/useNativeBack';
 import { activeCampaign } from '@/config/native/campaignConfig';
 import GradientButton from '@/components/native/common/GradientButton';
 
+/* ─── Confetti particle generator ─── */
+const CONFETTI_COLORS = ['#a855f7', '#ec4899', '#f59e0b', '#10b981', '#6366f1', '#f43f5e', '#facc15', '#22d3ee'];
+
+interface ConfettiParticle {
+  id: number;
+  x: number;
+  color: string;
+  delay: number;
+  duration: number;
+  size: number;
+  drift: number;
+}
+
+function generateConfetti(count: number): ConfettiParticle[] {
+  return Array.from({ length: count }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+    delay: Math.random() * 0.5,
+    duration: 1.5 + Math.random() * 1.5,
+    size: 4 + Math.random() * 6,
+    drift: (Math.random() - 0.5) * 60,
+  }));
+}
+
 /* ─── Mock data ─── */
 const MOCK_SOLD = 1847;
-const MOCK_MY_ENTRIES = 3; // 0 = 未购买, >0 = 已购买 (mock)
+const MOCK_MY_ENTRIES: number = 3; // 0 = 未购买, >0 = 已购买 (mock)
 
 const MOCK_RECENT_ENTRIES = [
   { id: 1, name: 'Adi**', qty: 5, timeAgo: '2min ago' },
@@ -118,6 +143,24 @@ export default function CampaignDetailPage() {
   // Rules bottom sheet
   const [rulesOpen, setRulesOpen] = useState(false);
 
+  // Success modal
+  const [successInfo, setSuccessInfo] = useState<{ credits: number; draws: number } | null>(null);
+  const [confetti, setConfetti] = useState<ConfettiParticle[]>([]);
+  const confettiTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const showSuccess = useCallback((credits: number, draws: number) => {
+    setSuccessInfo({ credits, draws });
+    setConfetti(generateConfetti(60));
+    // Clear confetti after animation ends
+    confettiTimerRef.current = setTimeout(() => setConfetti([]), 3500);
+  }, []);
+
+  const closeSuccess = useCallback(() => {
+    setSuccessInfo(null);
+    setConfetti([]);
+    if (confettiTimerRef.current) clearTimeout(confettiTimerRef.current);
+  }, []);
+
   const clampQty = useCallback((n: number) => Math.max(1, Math.min(n, REMAINING_SLOTS)), []);
 
   const winProbability = ((qty / totalSlots) * 100).toFixed(2);
@@ -166,9 +209,11 @@ export default function CampaignDetailPage() {
               {prize}
             </span>
           </h2>
-          <p className="text-purple-200/60 text-sm mt-1">
-            + <span className="text-white font-semibold">{creditsPerPurchase} AI Credits</span> per entry
+          <p className="text-white text-sm mt-1 font-semibold">
+            {creditsPerPurchase} AI Credits
+            <span className="text-purple-200/50 font-normal"> — $1</span>
           </p>
+          <p className="text-emerald-400 text-xs mt-1 font-medium">+ FREE Draw Entry</p>
 
           {/* Draw trigger hint */}
           <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 bg-amber-500/10 rounded-full">
@@ -209,17 +254,17 @@ export default function CampaignDetailPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-white font-bold text-lg">{MOCK_MY_ENTRIES}</span>
-                    <span className="text-purple-200/70 text-sm">entries</span>
+                    <span className="text-purple-200/70 text-sm">{MOCK_MY_ENTRIES === 1 ? 'pack' : 'packs'} purchased</span>
                   </div>
                   <p className="text-purple-300/60 text-xs">
-                    Win probability: <span className="text-amber-400 font-semibold">{myWinProbability}%</span>
+                    {MOCK_MY_ENTRIES * creditsPerPurchase} credits + <span className="text-emerald-400 font-semibold">{MOCK_MY_ENTRIES} free draws</span>
                   </p>
                 </div>
                 <button
                   onClick={() => { setQty(1); setSheetOpen(true); }}
                   className="px-4 py-2 bg-purple-600 text-white text-xs font-semibold rounded-full hover:bg-purple-500 transition-colors"
                 >
-                  + Add More
+                  + Buy More
                 </button>
               </div>
             </div>
@@ -242,7 +287,7 @@ export default function CampaignDetailPage() {
                   <span className="text-white text-sm">{entry.name}</span>
                 </div>
                 <span className="text-purple-300 text-xs font-medium flex-shrink-0">
-                  {entry.qty} {entry.qty === 1 ? 'entry' : 'entries'}
+                  {entry.qty} {entry.qty === 1 ? 'pack' : 'packs'}
                 </span>
                 <span className="text-gray-500 text-[11px] flex-shrink-0 w-14 text-right">
                   {entry.timeAgo}
@@ -301,7 +346,7 @@ export default function CampaignDetailPage() {
         style={{ paddingBottom: 'calc(var(--safe-area-inset-bottom, 0px) + 16px)' }}
       >
         <GradientButton onClick={() => { setQty(1); setSheetOpen(true); }}>
-          TRY MY LUCK — from ${cryptoPriceUsd.toFixed(0)}
+          TRY MY LUCK — Free
         </GradientButton>
       </div>
 
@@ -322,7 +367,7 @@ export default function CampaignDetailPage() {
 
             <div className="px-5 pb-4">
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-white font-bold text-lg">Choose Entries</h3>
+                <h3 className="text-white font-bold text-lg">Get Credit Packs</h3>
                 <button
                   onClick={() => setSheetOpen(false)}
                   className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-gray-400 hover:text-white"
@@ -369,15 +414,20 @@ export default function CampaignDetailPage() {
                 ))}
               </div>
 
-              {/* Probability + Credits info */}
-              <div className="bg-white/5 rounded-xl p-3 mb-5">
+              {/* Credits + Draw info */}
+              <div className="bg-white/5 rounded-xl p-3 mb-5 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-sm">Win probability</span>
-                  <span className="text-amber-400 font-bold text-lg">{winProbability}%</span>
+                  <span className="text-gray-400 text-sm">AI Credits</span>
+                  <span className="text-white font-bold text-lg">{totalCredits.toLocaleString()}</span>
                 </div>
-                <p className="text-gray-500 text-[11px] mt-1">
-                  +{totalCredits.toLocaleString()} AI credits included
-                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400 text-sm">Free draw entries</span>
+                  <span className="text-emerald-400 font-bold">{qty}</span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                  <span className="text-gray-400 text-sm">Win probability</span>
+                  <span className="text-amber-400 font-bold">{winProbability}%</span>
+                </div>
               </div>
 
               {/* Payment method selector */}
@@ -417,11 +467,12 @@ export default function CampaignDetailPage() {
 
               <GradientButton
                 onClick={() => {
+                  // TODO: Replace with real payment flow
                   setSheetOpen(false);
-                  setToastMsg(payMethod === 'crypto' ? 'Crypto payment coming soon!' : 'Stripe payment coming soon!');
+                  showSuccess(totalCredits, qty);
                 }}
               >
-                JOIN NOW — ${(payMethod === 'crypto' ? cryptoPriceUsd * qty : stripePriceUsd * qty).toFixed(2)}
+                GET {totalCredits.toLocaleString()} CREDITS — ${(payMethod === 'crypto' ? cryptoPriceUsd * qty : stripePriceUsd * qty).toFixed(2)}
               </GradientButton>
             </div>
           </div>
@@ -457,14 +508,14 @@ export default function CampaignDetailPage() {
               </div>
 
               <div className="space-y-4 text-sm text-gray-300 leading-relaxed">
-                {/* Entry */}
+                {/* Credit Packs */}
                 <div>
-                  <h4 className="text-white font-semibold text-xs uppercase tracking-wider mb-2">Entry</h4>
+                  <h4 className="text-white font-semibold text-xs uppercase tracking-wider mb-2">Credit Packs</h4>
                   <ul className="space-y-1.5 text-gray-400 text-xs">
-                    <li>Each entry costs ${cryptoPriceUsd.toFixed(2)} (crypto) or ${stripePriceUsd.toFixed(2)} (card).</li>
-                    <li>Every entry includes {creditsPerPurchase} AI credits for use on the platform.</li>
-                    <li>Maximum {totalSlots.toLocaleString()} entries per draw round.</li>
-                    <li>No limit on entries per user — more entries, higher win probability.</li>
+                    <li>Each credit pack contains {creditsPerPurchase} AI credits, priced at ${cryptoPriceUsd.toFixed(2)} (crypto) or ${stripePriceUsd.toFixed(2)} (card).</li>
+                    <li>Every pack purchase includes a FREE lucky draw entry.</li>
+                    <li>Maximum {totalSlots.toLocaleString()} packs per draw round.</li>
+                    <li>No limit per user — more packs, more credits, higher win probability.</li>
                   </ul>
                 </div>
 
@@ -500,6 +551,72 @@ export default function CampaignDetailPage() {
                   </ul>
                 </div>
               </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ═══════════ Success Modal + Confetti ═══════════ */}
+      {successInfo && (
+        <>
+          <div className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm" />
+
+          {/* Confetti layer */}
+          <div className="fixed inset-0 z-[10002] pointer-events-none overflow-hidden">
+            {confetti.map((p) => (
+              <div
+                key={p.id}
+                className="absolute top-0 animate-[confettiFall_var(--dur)_ease-out_var(--delay)_forwards]"
+                style={{
+                  left: `${p.x}%`,
+                  '--delay': `${p.delay}s`,
+                  '--dur': `${p.duration}s`,
+                  '--drift': `${p.drift}px`,
+                } as React.CSSProperties}
+              >
+                <div
+                  className="rounded-sm animate-[confettiSpin_0.6s_linear_infinite]"
+                  style={{
+                    width: p.size,
+                    height: p.size * 0.6,
+                    backgroundColor: p.color,
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Modal card */}
+          <div className="fixed inset-0 z-[10001] flex items-center justify-center px-8">
+            <div className="bg-[#111127] rounded-3xl p-6 w-full max-w-sm text-center animate-[successPop_0.4s_ease-out]">
+              {/* Success icon */}
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <svg className="w-8 h-8 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              </div>
+
+              <h3 className="text-white font-bold text-xl mb-1">Purchase Complete!</h3>
+              <p className="text-gray-400 text-sm mb-5">Your credits and draw entries are ready</p>
+
+              {/* Details */}
+              <div className="bg-white/5 rounded-2xl p-4 mb-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400 text-sm">AI Credits</span>
+                  <span className="text-white font-bold text-lg">+{successInfo.credits.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400 text-sm">Free Draw Entries</span>
+                  <span className="text-emerald-400 font-bold text-lg">+{successInfo.draws}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={closeSuccess}
+                className="w-full py-3.5 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-500 transition-colors"
+              >
+                Continue
+              </button>
             </div>
           </div>
         </>
