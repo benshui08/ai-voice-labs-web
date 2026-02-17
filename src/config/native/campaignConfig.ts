@@ -1,7 +1,12 @@
+/** 首页入口图标类型 */
+export type CampaignIcon = 'trophy' | 'coin';
+
 export interface CampaignConfig {
   id: string;
   /** 按环境控制是否展示 */
   enabled: { development: boolean; production: boolean };
+  /** 首页入口图标 */
+  icon: CampaignIcon;
   title: string;
   prize: string;
   /** 首页入口显示名，如 "Lucky Draw\nWin iPhone 17 Pro" */
@@ -27,6 +32,7 @@ export const campaigns: CampaignConfig[] = [
   {
     id: 'iphone17pro-launch',
     enabled: { development: true, production: true },
+    icon: 'trophy',
     title: 'AI CREATIVE FEST',
     prize: 'iPhone 17 Pro',
     shortLabel: 'Lucky Draw\nWin iPhone 17 Pro',
@@ -43,6 +49,7 @@ export const campaigns: CampaignConfig[] = [
   {
     id: 'usdt-1000',
     enabled: { development: true, production: false },
+    icon: 'coin',
     title: 'CRYPTO GIVEAWAY',
     prize: '1000 USDT',
     shortLabel: 'Lucky Draw\nWin 1000 USDT',
