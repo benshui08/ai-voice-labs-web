@@ -96,7 +96,8 @@
         "music": "音樂",
         "cover": "翻唱",
         "video": "影片",
-        "image": "圖像"
+        "image": "圖像",
+        "luckyDraw": "抽獎"
       },
       "emptyState": {
         "noContent": "暫無內容",
@@ -105,7 +106,8 @@
         "createFirstMusic": "創建您的第一首 AI 音樂。",
         "createFirstCover": "創建您的第一個 AI 翻唱。",
         "createFirstVideo": "創建您的第一個 AI 影片。",
-        "createFirstImage": "創建您的第一張 AI 圖像。"
+        "createFirstImage": "創建您的第一張 AI 圖像。",
+        "tryLuckyDraw": "試試手氣，贏取大獎！"
       },
       "stats": {
         "plan": "方案",

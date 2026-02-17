@@ -96,7 +96,8 @@
         "music": "音乐",
         "cover": "翻唱",
         "video": "视频",
-        "image": "图像"
+        "image": "图像",
+        "luckyDraw": "抽奖"
       },
       "emptyState": {
         "noContent": "暂无内容",
@@ -105,7 +106,8 @@
         "createFirstMusic": "创建您的第一个音乐作品",
         "createFirstCover": "创建您的第一个翻唱作品",
         "createFirstVideo": "创建您的第一个视频作品",
-        "createFirstImage": "创建您的第一个图像作品"
+        "createFirstImage": "创建您的第一个图像作品",
+        "tryLuckyDraw": "试试手气，赢取大奖！"
       },
       "stats": {
         "plan": "计划",

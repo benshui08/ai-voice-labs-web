@@ -96,7 +96,8 @@
         "music": "Music",
         "cover": "Cover",
         "video": "Video",
-        "image": "Image"
+        "image": "Image",
+        "luckyDraw": "Lucky Draw"
       },
       "emptyState": {
         "noContent": "No content yet.",
@@ -105,7 +106,8 @@
         "createFirstMusic": "Create your first AI music.",
         "createFirstCover": "Create your first AI cover.",
         "createFirstVideo": "Create your first AI video.",
-        "createFirstImage": "Create your first AI image."
+        "createFirstImage": "Create your first AI image.",
+        "tryLuckyDraw": "Try your luck and win prizes!"
       },
       "stats": {
         "plan": "Plan",

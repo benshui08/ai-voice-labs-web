@@ -96,7 +96,8 @@
         "music": "Musik",
         "cover": "Cover",
         "video": "Video",
-        "image": "Gambar"
+        "image": "Gambar",
+        "luckyDraw": "Undian"
       },
       "emptyState": {
         "noContent": "Belum ada konten.",
@@ -105,7 +106,8 @@
         "createFirstMusic": "Buat musik AI pertama Anda.",
         "createFirstCover": "Buat cover AI pertama Anda.",
         "createFirstVideo": "Buat video AI pertama Anda.",
-        "createFirstImage": "Buat gambar AI pertama Anda."
+        "createFirstImage": "Buat gambar AI pertama Anda.",
+        "tryLuckyDraw": "Coba keberuntunganmu dan menangkan hadiah!"
       },
       "stats": {
         "plan": "Paket",

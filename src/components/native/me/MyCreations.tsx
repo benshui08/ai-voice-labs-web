@@ -32,6 +32,7 @@ import DialogueDetailModal from './DialogueDetailModal';
 import ImageDetailModal from './ImageDetailModal';
 import VideoDetailModal from './VideoDetailModal';
 import { MusicCard, CoverCard, VoiceCard, DialogueCard, VideoCard, ImageCard } from './cards';
+import LuckyDrawTab from './LuckyDrawTab';
 import { formatDateLong } from './utils';
 
 interface VideoItem {
@@ -562,6 +563,7 @@ export default function MyCreations() {
     cover: 'native.me.emptyState.createFirstCover',
     video: 'native.me.emptyState.createFirstVideo',
     image: 'native.me.emptyState.createFirstImage',
+    'lucky-draw': 'native.me.emptyState.tryLuckyDraw',
   };
   const emptyState = {
     title: t('native.me.emptyState.noContent'),
@@ -577,6 +579,7 @@ export default function MyCreations() {
     cover: 'native.me.tabs.cover',
     video: 'native.me.tabs.video',
     image: 'native.me.tabs.image',
+    'lucky-draw': 'native.me.tabs.luckyDraw',
   };
   const isEmpty = activeTab === 'video'
     ? filteredVideoRecords.length === 0
@@ -590,6 +593,8 @@ export default function MyCreations() {
     ? filteredCoverRecords.length === 0
     : activeTab === 'dialogues'
     ? filteredDialogueRecords.length === 0
+    : activeTab === 'lucky-draw'
+    ? false  // Lucky Draw tab 内部管理自己的空状态
     : true;
 
   // 按日期分组
@@ -926,6 +931,8 @@ export default function MyCreations() {
               ))}
             </div>
           )
+        ) : activeTab === 'lucky-draw' ? (
+          <LuckyDrawTab />
         ) : isEmpty ? (
           // 其他 tab 的空状态
           <div className="flex flex-col items-center justify-center py-8">

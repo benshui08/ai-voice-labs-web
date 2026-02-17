@@ -96,7 +96,8 @@
         "music": "เพลง",
         "cover": "คัฟเวอร์",
         "video": "วิดีโอ",
-        "image": "รูปภาพ"
+        "image": "รูปภาพ",
+        "luckyDraw": "ลุ้นรางวัล"
       },
       "emptyState": {
         "noContent": "ยังไม่มีเนื้อหา",
@@ -105,7 +106,8 @@
         "createFirstMusic": "สร้างเพลง AI แรกของคุณ",
         "createFirstCover": "สร้างคัฟเวอร์ AI แรกของคุณ",
         "createFirstVideo": "สร้างวิดีโอ AI แรกของคุณ",
-        "createFirstImage": "สร้างรูปภาพ AI แรกของคุณ"
+        "createFirstImage": "สร้างรูปภาพ AI แรกของคุณ",
+        "tryLuckyDraw": "ลองเสี่ยงโชคและลุ้นรับรางวัล!"
       },
       "stats": {
         "plan": "แผน",

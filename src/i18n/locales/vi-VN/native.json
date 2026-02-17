@@ -96,7 +96,8 @@
         "music": "Âm nhạc",
         "cover": "Cover",
         "video": "Video",
-        "image": "Hình ảnh"
+        "image": "Hình ảnh",
+        "luckyDraw": "Quay số"
       },
       "emptyState": {
         "noContent": "Chưa có nội dung.",
@@ -105,7 +106,8 @@
         "createFirstMusic": "Tạo bài nhạc AI đầu tiên của bạn.",
         "createFirstCover": "Tạo bản cover AI đầu tiên của bạn.",
         "createFirstVideo": "Tạo video AI đầu tiên của bạn.",
-        "createFirstImage": "Tạo hình ảnh AI đầu tiên của bạn."
+        "createFirstImage": "Tạo hình ảnh AI đầu tiên của bạn.",
+        "tryLuckyDraw": "Thử vận may và giành giải thưởng!"
       },
       "stats": {
         "plan": "Gói",

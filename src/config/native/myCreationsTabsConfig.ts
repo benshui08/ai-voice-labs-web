@@ -3,7 +3,7 @@
  * 控制 Me 页面 My Creations 区域显示哪些内容标签
  */
 
-export type MyCreationsTabId = 'voices' | 'dialogues' | 'music' | 'cover' | 'video' | 'image';
+export type MyCreationsTabId = 'voices' | 'dialogues' | 'music' | 'cover' | 'video' | 'image' | 'lucky-draw';
 
 export interface MyCreationsTabConfig {
   id: MyCreationsTabId;
@@ -83,6 +83,16 @@ export const myCreationsTabsConfig: MyCreationsTabConfig[] = [
       title: 'No content yet.',
       subtitle: 'Create your first AI image.',
       createLink: '/native/create/image',
+    },
+    enabled: { development: true, production: true },
+  },
+  {
+    id: 'lucky-draw',
+    label: 'Lucky Draw',
+    emptyState: {
+      title: 'No draws yet.',
+      subtitle: 'Try your luck and win prizes!',
+      createLink: '/native/campaign/iphone17pro-launch',
     },
     enabled: { development: true, production: true },
   },

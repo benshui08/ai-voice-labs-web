@@ -96,7 +96,8 @@
         "music": "ဂီတ",
         "cover": "Cover",
         "video": "ဗီဒီယို",
-        "image": "ပုံ"
+        "image": "ပုံ",
+        "luckyDraw": "ကံစမ်း"
       },
       "emptyState": {
         "noContent": "အကြောင်းအရာ မရှိသေးပါ။",
@@ -105,7 +106,8 @@
         "createFirstMusic": "သင့်ပထမဆုံး AI ဂီတကို ဖန်တီးပါ။",
         "createFirstCover": "သင့်ပထမဆုံး AI cover ကို ဖန်တီးပါ။",
         "createFirstVideo": "သင့်ပထမဆုံး AI ဗီဒီယိုကို ဖန်တီးပါ။",
-        "createFirstImage": "သင့်ပထမဆုံး AI ပုံကို ဖန်တီးပါ။"
+        "createFirstImage": "သင့်ပထမဆုံး AI ပုံကို ဖန်တီးပါ။",
+        "tryLuckyDraw": "ကံစမ်းကြည့်ပြီး ဆုများရယူပါ!"
       },
       "stats": {
         "plan": "အစီအစဉ်",

@@ -96,7 +96,8 @@
         "music": "Música",
         "cover": "Cover",
         "video": "Video",
-        "image": "Imagen"
+        "image": "Imagen",
+        "luckyDraw": "Sorteo"
       },
       "emptyState": {
         "noContent": "Sin contenido aún.",
@@ -105,7 +106,8 @@
         "createFirstMusic": "Crea tu primera música con IA.",
         "createFirstCover": "Crea tu primer cover con IA.",
         "createFirstVideo": "Crea tu primer video con IA.",
-        "createFirstImage": "Crea tu primera imagen con IA."
+        "createFirstImage": "Crea tu primera imagen con IA.",
+        "tryLuckyDraw": "¡Prueba tu suerte y gana premios!"
       },
       "stats": {
         "plan": "Plan",
