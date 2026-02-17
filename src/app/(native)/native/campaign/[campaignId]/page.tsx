@@ -31,9 +31,14 @@ function generateConfetti(count: number): ConfettiParticle[] {
   }));
 }
 
+/* ─── Campaign status type ─── */
+type CampaignStatus = 'selling' | 'drawing' | 'completed';
+
 /* ─── Mock data ─── */
-const MOCK_SOLD = 1847;
-const MOCK_MY_ENTRIES: number = 3; // 0 = 未购买, >0 = 已购买 (mock)
+// 切换这个值来预览不同状态的 UI
+const MOCK_STATUS: CampaignStatus = 'completed';
+const MOCK_SOLD: number = 1847;
+const MOCK_MY_ENTRIES: number = 3; // 0 = 未购买, >0 = 已购买
 
 const MOCK_RECENT_ENTRIES = [
   { id: 1, name: 'Adi**', qty: 5, timeAgo: '2min ago' },
@@ -47,6 +52,17 @@ const MOCK_RECENT_ENTRIES = [
 ];
 
 const REMAINING_SLOTS = activeCampaign.totalSlots - MOCK_SOLD;
+
+/* ─── Mock draw result (for completed state) ─── */
+const MOCK_DRAW_RESULT = {
+  winnerSlot: 1247,
+  winnerName: 'Riz**',
+  isMe: false, // true = 当前用户中奖
+  mySlots: [892, 893, 894],
+  blockNumber: 48291037,
+  blockHash: '0xa7f3e29d1b8c4f6a0e5d7c3b9a1f8e2d4c6b0a7f3e29d1b8c4f6a0e5d7c3b9a',
+  txHash: '0x1234abcd5678ef90',
+};
 
 /* ─── Icons ─── */
 const CloseIcon = () => (
@@ -92,6 +108,12 @@ const InfoIcon = () => (
 const TicketIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
     <path d="M2 9a3 3 0 013-3h14a3 3 0 013 3v0a3 3 0 00-3 3v0a3 3 0 003 3v0a3 3 0 01-3 3H5a3 3 0 01-3-3v0a3 3 0 003-3v0a3 3 0 00-3-3z" />
+  </svg>
+);
+
+const TrophyIcon = () => (
+  <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M6 9H4a2 2 0 01-2-2V5a2 2 0 012-2h2M18 9h2a2 2 0 002-2V5a2 2 0 00-2-2h-2M6 3h12v6a6 6 0 01-12 0V3zM9 21h6M12 15v6" />
   </svg>
 );
 
@@ -190,154 +212,303 @@ export default function CampaignDetailPage() {
       {/* ─── Scrollable Content ─── */}
       <div className="relative z-10 flex-1 overflow-y-auto pb-28">
 
-        {/* ─── Hero ─── */}
-        <div className="px-6 pt-4 pb-6 text-center">
-          <div className="relative inline-block">
-            <Image
-              src="/images/campaign/iphone17pro.png"
-              alt={prize}
-              width={220}
-              height={440}
-              className="w-[180px] h-auto drop-shadow-[0_0_40px_rgba(168,85,247,0.5)]"
-              priority
-            />
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-24 h-6 bg-fuchsia-500/40 blur-xl rounded-full" />
-          </div>
-
-          <h2 className="mt-4 text-2xl font-black">
-            <span className="bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-transparent">
-              {prize}
-            </span>
-          </h2>
-          <p className="text-white text-sm mt-1 font-semibold">
-            {creditsPerPurchase} AI Credits
-            <span className="text-purple-200/50 font-normal"> — $1</span>
-          </p>
-          <p className="text-emerald-400 text-xs mt-1 font-medium">+ FREE Draw Entry</p>
-
-          {/* Draw trigger hint */}
-          <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 bg-amber-500/10 rounded-full">
-            <span className="text-amber-400 text-xs font-medium">
-              Draw when all {totalSlots.toLocaleString()} slots sold
-            </span>
-          </div>
-        </div>
-
-        {/* ─── Progress ─── */}
-        <div className="px-4 mb-4">
-          <div className="bg-white/5 rounded-2xl p-4">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-purple-200/80">
-                <span className="text-white font-bold">{MOCK_SOLD.toLocaleString()}</span> / {totalSlots.toLocaleString()} slots
-              </span>
-              <span className="text-amber-400 font-semibold">
-                {REMAINING_SLOTS.toLocaleString()} left
-              </span>
-            </div>
-            <div className="h-3 rounded-full bg-white/10 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 shadow-[0_0_14px_rgba(245,158,11,0.5)] transition-all"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ─── My Entries (only when user has entries) ─── */}
-        {MOCK_MY_ENTRIES > 0 && (
-          <div className="px-4 mb-4">
-            <div className="bg-gradient-to-r from-purple-900/40 to-fuchsia-900/30 border border-purple-500/20 rounded-2xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-300">
-                  <TicketIcon />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-white font-bold text-lg">{MOCK_MY_ENTRIES}</span>
-                    <span className="text-purple-200/70 text-sm">{MOCK_MY_ENTRIES === 1 ? 'pack' : 'packs'} purchased</span>
+        {MOCK_STATUS === 'completed' ? (
+          /* ═══════════ COMPLETED STATE ═══════════ */
+          <>
+            {/* ─── Result Hero ─── */}
+            <div className="px-6 pt-4 pb-6 text-center">
+              {MOCK_DRAW_RESULT.isMe ? (
+                <>
+                  <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
+                    <TrophyIcon />
                   </div>
-                  <p className="text-purple-300/60 text-xs">
-                    {MOCK_MY_ENTRIES * creditsPerPurchase} credits + <span className="text-emerald-400 font-semibold">{MOCK_MY_ENTRIES} free draws</span>
+                  <h2 className="text-3xl font-black bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-transparent">
+                    YOU WON!
+                  </h2>
+                  <div className="relative inline-block mt-4">
+                    <Image
+                      src="/images/campaign/iphone17pro.png"
+                      alt={prize}
+                      width={220}
+                      height={440}
+                      className="w-[160px] h-auto drop-shadow-[0_0_40px_rgba(168,85,247,0.5)]"
+                    />
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-24 h-6 bg-fuchsia-500/40 blur-xl rounded-full" />
+                  </div>
+                  <h3 className="mt-4 text-xl font-bold text-white">{prize}</h3>
+                  <p className="text-purple-200/60 text-sm mt-2">
+                    We&apos;ll contact you via email within 48 hours
                   </p>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-center mb-3">
+                    <span className="text-gray-300 text-xs font-medium bg-white/10 px-3 py-1.5 rounded-full">Draw Complete</span>
+                  </div>
+                  <Image
+                    src="/images/campaign/iphone17pro.png"
+                    alt={prize}
+                    width={220}
+                    height={440}
+                    className="w-[100px] h-auto opacity-50 mx-auto"
+                  />
+                  <h2 className="mt-3 text-xl font-black text-white">{prize}</h2>
+                </>
+              )}
+            </div>
+
+            {/* ─── Winner Card ─── */}
+            <div className="px-4 mb-4">
+              <div className={`rounded-2xl p-4 ${MOCK_DRAW_RESULT.isMe
+                ? 'bg-gradient-to-r from-amber-900/40 to-yellow-900/30 border border-amber-500/30'
+                : 'bg-white/5'
+              }`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                    {MOCK_DRAW_RESULT.winnerName[0]}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-semibold">
+                      {MOCK_DRAW_RESULT.isMe ? 'You' : MOCK_DRAW_RESULT.winnerName}
+                      <span className="text-amber-400 text-xs ml-2">Winner</span>
+                    </p>
+                    <p className="text-gray-400 text-xs">
+                      Slot #{MOCK_DRAW_RESULT.winnerSlot.toLocaleString()}
+                    </p>
+                  </div>
                 </div>
-                <button
-                  onClick={() => { setQty(1); setSheetOpen(true); }}
-                  className="px-4 py-2 bg-purple-600 text-white text-xs font-semibold rounded-full hover:bg-purple-500 transition-colors"
-                >
-                  + Buy More
-                </button>
+                <div className="text-xs text-gray-500 font-mono bg-black/20 rounded-lg p-2.5">
+                  blockHash % {totalSlots.toLocaleString()} = {MOCK_DRAW_RESULT.winnerSlot.toLocaleString()}
+                </div>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* ─── Recent Entries ─── */}
-        <div className="px-4 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-white font-semibold text-sm">Recent Entries</h3>
-            <span className="text-purple-400/50 text-xs">{MOCK_SOLD.toLocaleString()} total</span>
-          </div>
-          <div className="space-y-2">
-            {MOCK_RECENT_ENTRIES.map((entry) => (
-              <div key={entry.id} className="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                  {entry.name[0]}
+            {/* ─── My Slots (if participated but didn't win) ─── */}
+            {!MOCK_DRAW_RESULT.isMe && MOCK_MY_ENTRIES > 0 && (
+              <div className="px-4 mb-4">
+                <div className="bg-white/5 rounded-2xl p-4">
+                  <h3 className="text-white font-semibold text-sm mb-2">Your Slots</h3>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {MOCK_DRAW_RESULT.mySlots.map((slot) => (
+                      <span key={slot} className="text-purple-300 text-xs font-mono bg-purple-500/10 px-2.5 py-1 rounded-lg">
+                        #{slot.toLocaleString()}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 pt-3 border-t border-white/5">
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-400 text-xs">
+                      Your <span className="text-white font-semibold">{MOCK_MY_ENTRIES * creditsPerPurchase}</span> AI credits are still in your account
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <span className="text-white text-sm">{entry.name}</span>
-                </div>
-                <span className="text-purple-300 text-xs font-medium flex-shrink-0">
-                  {entry.qty} {entry.qty === 1 ? 'pack' : 'packs'}
-                </span>
-                <span className="text-gray-500 text-[11px] flex-shrink-0 w-14 text-right">
-                  {entry.timeAgo}
-                </span>
               </div>
-            ))}
-          </div>
-        </div>
+            )}
 
-        {/* ─── Provably Fair + Rules & Terms link ─── */}
-        <div className="px-4 mb-6">
-          <div className="bg-white/5 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <ShieldIcon />
-              <h3 className="text-white font-semibold text-sm">Provably Fair</h3>
-              <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">{chainName}</span>
+            {/* ─── Verification ─── */}
+            <div className="px-4 mb-4">
+              <div className="bg-white/5 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <ShieldIcon />
+                  <h3 className="text-white font-semibold text-sm">Verification</h3>
+                  <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">{chainName}</span>
+                </div>
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Block</span>
+                    <span className="text-white font-mono">#{MOCK_DRAW_RESULT.blockNumber.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-gray-400 flex-shrink-0">Hash</span>
+                    <span className="text-purple-400 font-mono truncate">
+                      {MOCK_DRAW_RESULT.blockHash.slice(0, 10)}...{MOCK_DRAW_RESULT.blockHash.slice(-8)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Winner Slot</span>
+                    <span className="text-amber-400 font-mono font-bold">#{MOCK_DRAW_RESULT.winnerSlot.toLocaleString()}</span>
+                  </div>
+                  <a
+                    href={blockExplorerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1.5 mt-2 pt-2.5 border-t border-white/5 text-purple-400 hover:text-purple-300 transition-colors"
+                  >
+                    <span>View on Polygonscan</span>
+                    <ExternalLinkIcon />
+                  </a>
+                </div>
+              </div>
             </div>
 
-            {/* Contract address */}
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-gray-400 text-xs">Contract:</span>
-              <a
-                href={blockExplorerUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-purple-400 text-xs font-mono hover:text-purple-300 flex items-center gap-1"
-              >
-                {shortAddr}
-                <ExternalLinkIcon />
-              </a>
-            </div>
-
-            {/* How it works — short summary */}
-            <div className="space-y-1.5 text-xs text-gray-400 leading-relaxed">
-              <p>Winner = <span className="text-white font-mono">blockHash % {totalSlots.toLocaleString()}</span> at the trigger block.</p>
-              <p>Result is recorded on-chain — anyone can verify.</p>
-            </div>
-
-            {/* Rules & Terms link */}
-            <div className="mt-3 pt-3 border-t border-white/5 flex justify-end">
+            {/* ─── Rules & Terms link ─── */}
+            <div className="px-4 mb-6">
               <button
                 onClick={() => setRulesOpen(true)}
-                className="flex items-center gap-1.5 text-purple-400/70 text-xs hover:text-purple-300 transition-colors"
+                className="flex items-center gap-1.5 text-purple-400/50 text-xs hover:text-purple-300 transition-colors mx-auto"
               >
                 <span>Rules & Terms</span>
                 <InfoIcon />
               </button>
             </div>
-          </div>
-        </div>
+          </>
+        ) : (
+          /* ═══════════ SELLING STATE ═══════════ */
+          <>
+            {/* ─── Hero ─── */}
+            <div className="px-6 pt-4 pb-6 text-center">
+              <div className="relative inline-block">
+                <Image
+                  src="/images/campaign/iphone17pro.png"
+                  alt={prize}
+                  width={220}
+                  height={440}
+                  className="w-[180px] h-auto drop-shadow-[0_0_40px_rgba(168,85,247,0.5)]"
+                  priority
+                />
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-24 h-6 bg-fuchsia-500/40 blur-xl rounded-full" />
+              </div>
+
+              <h2 className="mt-4 text-2xl font-black">
+                <span className="bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-transparent">
+                  {prize}
+                </span>
+              </h2>
+              <p className="text-white text-sm mt-1 font-semibold">
+                {creditsPerPurchase} AI Credits
+                <span className="text-purple-200/50 font-normal"> — $1</span>
+              </p>
+              <p className="text-emerald-400 text-xs mt-1 font-medium">+ FREE Draw Entry</p>
+
+              {/* Draw trigger hint */}
+              <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 bg-amber-500/10 rounded-full">
+                <span className="text-amber-400 text-xs font-medium">
+                  Draw when all {totalSlots.toLocaleString()} slots sold
+                </span>
+              </div>
+            </div>
+
+            {/* ─── Progress ─── */}
+            <div className="px-4 mb-4">
+              <div className="bg-white/5 rounded-2xl p-4">
+                <div className="flex items-center justify-between text-xs mb-2">
+                  <span className="text-purple-200/80">
+                    <span className="text-white font-bold">{MOCK_SOLD.toLocaleString()}</span> / {totalSlots.toLocaleString()} slots
+                  </span>
+                  <span className="text-amber-400 font-semibold">
+                    {REMAINING_SLOTS.toLocaleString()} left
+                  </span>
+                </div>
+                <div className="h-3 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 shadow-[0_0_14px_rgba(245,158,11,0.5)] transition-all"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ─── My Entries (only when user has entries) ─── */}
+            {MOCK_MY_ENTRIES > 0 && (
+              <div className="px-4 mb-4">
+                <div className="bg-gradient-to-r from-purple-900/40 to-fuchsia-900/30 border border-purple-500/20 rounded-2xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-300">
+                      <TicketIcon />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold text-lg">{MOCK_MY_ENTRIES}</span>
+                        <span className="text-purple-200/70 text-sm">{MOCK_MY_ENTRIES === 1 ? 'pack' : 'packs'} purchased</span>
+                      </div>
+                      <p className="text-purple-300/60 text-xs">
+                        {MOCK_MY_ENTRIES * creditsPerPurchase} credits + <span className="text-emerald-400 font-semibold">{MOCK_MY_ENTRIES} free draws</span>
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setQty(1); setSheetOpen(true); }}
+                      className="px-4 py-2 bg-purple-600 text-white text-xs font-semibold rounded-full hover:bg-purple-500 transition-colors"
+                    >
+                      + Buy More
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ─── Recent Entries ─── */}
+            <div className="px-4 mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-white font-semibold text-sm">Recent Entries</h3>
+                <span className="text-purple-400/50 text-xs">{MOCK_SOLD.toLocaleString()} total</span>
+              </div>
+              <div className="space-y-2">
+                {MOCK_RECENT_ENTRIES.map((entry) => (
+                  <div key={entry.id} className="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      {entry.name[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-white text-sm">{entry.name}</span>
+                    </div>
+                    <span className="text-purple-300 text-xs font-medium flex-shrink-0">
+                      {entry.qty} {entry.qty === 1 ? 'pack' : 'packs'}
+                    </span>
+                    <span className="text-gray-500 text-[11px] flex-shrink-0 w-14 text-right">
+                      {entry.timeAgo}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ─── Provably Fair + Rules & Terms link ─── */}
+            <div className="px-4 mb-6">
+              <div className="bg-white/5 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <ShieldIcon />
+                  <h3 className="text-white font-semibold text-sm">Provably Fair</h3>
+                  <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">{chainName}</span>
+                </div>
+
+                {/* Contract address */}
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-gray-400 text-xs">Contract:</span>
+                  <a
+                    href={blockExplorerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-purple-400 text-xs font-mono hover:text-purple-300 flex items-center gap-1"
+                  >
+                    {shortAddr}
+                    <ExternalLinkIcon />
+                  </a>
+                </div>
+
+                {/* How it works — short summary */}
+                <div className="space-y-1.5 text-xs text-gray-400 leading-relaxed">
+                  <p>Winner = <span className="text-white font-mono">blockHash % {totalSlots.toLocaleString()}</span> at the trigger block.</p>
+                  <p>Result is recorded on-chain — anyone can verify.</p>
+                </div>
+
+                {/* Rules & Terms link */}
+                <div className="mt-3 pt-3 border-t border-white/5 flex justify-end">
+                  <button
+                    onClick={() => setRulesOpen(true)}
+                    className="flex items-center gap-1.5 text-purple-400/70 text-xs hover:text-purple-300 transition-colors"
+                  >
+                    <span>Rules & Terms</span>
+                    <InfoIcon />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ─── Bottom CTA ─── */}
@@ -345,9 +516,15 @@ export default function CampaignDetailPage() {
         className="absolute bottom-0 left-0 right-0 z-20 px-4 py-4 bg-gradient-to-t from-[#0a0a1a] via-[#0a0a1a] to-transparent"
         style={{ paddingBottom: 'calc(var(--safe-area-inset-bottom, 0px) + 16px)' }}
       >
-        <GradientButton onClick={() => { setQty(1); setSheetOpen(true); }}>
-          TRY MY LUCK — Free
-        </GradientButton>
+        {MOCK_STATUS === 'completed' ? (
+          <GradientButton onClick={goBack}>
+            {MOCK_DRAW_RESULT.isMe ? 'Claim Prize' : 'Join Next Round'}
+          </GradientButton>
+        ) : (
+          <GradientButton onClick={() => { setQty(1); setSheetOpen(true); }}>
+            TRY MY LUCK — Free
+          </GradientButton>
+        )}
       </div>
 
       {/* ═══════════ Payment Bottom Sheet ═══════════ */}

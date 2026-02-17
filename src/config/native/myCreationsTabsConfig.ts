@@ -64,7 +64,7 @@ export const myCreationsTabsConfig: MyCreationsTabConfig[] = [
       subtitle: 'Create your first AI cover.',
       createLink: '/native/create/cover',
     },
-    enabled: { development: true, production: false },
+    enabled: { development: false, production: false },
   },
   {
     id: 'video',
