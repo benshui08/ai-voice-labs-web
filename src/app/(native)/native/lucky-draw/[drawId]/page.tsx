@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import GradientButton from '@/components/native/common/GradientButton';
+import LoginModal from '@/components/native/LoginModal';
+import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { getLuckyDrawStatus, createLuckyDrawCheckout, type LuckyDrawStatusResult } from '@/actions/lucky-draw';
 
 /* ─── Confetti particle generator ─── */
@@ -105,6 +107,10 @@ export default function LuckyDrawDetailPage() {
   const params = useParams();
   const drawId = params.drawId as string;
 
+  // Auth
+  const { user } = useFirebaseAuth();
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
   // Server data
   const [drawStatus, setDrawStatus] = useState<LuckyDrawStatusResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -168,6 +174,11 @@ export default function LuckyDrawDetailPage() {
 
   // Handle purchase
   const handlePurchase = async () => {
+    if (!user) {
+      setIsLoginModalOpen(true);
+      return;
+    }
+
     if (payMethod === 'crypto') {
       setToastMsg('Crypto payment coming soon!');
       return;
@@ -981,6 +992,13 @@ export default function LuckyDrawDetailPage() {
           {toastMsg}
         </div>
       )}
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLoginSuccess={() => setIsLoginModalOpen(false)}
+      />
     </div>
   );
 }

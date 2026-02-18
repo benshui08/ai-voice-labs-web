@@ -17,10 +17,17 @@ import { luckyDrawProducts } from '@/config/native/luckyDrawConfig';
  * 表格列表 + 模态框表单
  */
 
+const firstProduct = luckyDrawProducts[0];
+
 const emptyFormData: CreateLuckyDrawInput = {
-  productId: luckyDrawProducts[0]?.productId ?? '',
+  productId: firstProduct?.productId ?? '',
   title: '',
   enabled: false,
+  totalSlots: firstProduct?.totalSlots ?? 1500,
+  creditsPerPurchase: firstProduct?.creditsPerPurchase ?? 100,
+  stripePriceCents: firstProduct?.stripePriceCents ?? 100,
+  cryptoPriceCents: firstProduct?.cryptoPriceCents ?? 100,
+  chainName: firstProduct?.chainName ?? 'Polygon',
 };
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -65,6 +72,11 @@ export default function LuckyDrawsPage() {
       productId: draw.productId,
       title: draw.title ?? '',
       enabled: draw.enabled,
+      totalSlots: draw.totalSlots,
+      creditsPerPurchase: draw.creditsPerPurchase,
+      stripePriceCents: draw.stripePriceCents,
+      cryptoPriceCents: draw.cryptoPriceCents,
+      chainName: draw.chainName ?? 'Polygon',
     });
     setShowModal(true);
   };
@@ -295,7 +307,20 @@ export default function LuckyDrawsPage() {
                 </label>
                 <select
                   value={formData.productId}
-                  onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
+                  onChange={(e) => {
+                    const p = luckyDrawProducts.find((x) => x.productId === e.target.value);
+                    setFormData({
+                      ...formData,
+                      productId: e.target.value,
+                      ...(p && !editingDraw && {
+                        totalSlots: p.totalSlots,
+                        creditsPerPurchase: p.creditsPerPurchase,
+                        stripePriceCents: p.stripePriceCents,
+                        cryptoPriceCents: p.cryptoPriceCents,
+                        chainName: p.chainName,
+                      }),
+                    });
+                  }}
                   disabled={!!editingDraw}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
                 >
@@ -305,20 +330,6 @@ export default function LuckyDrawsPage() {
                     </option>
                   ))}
                 </select>
-                {/* 显示选中产品的配置参数 */}
-                {(() => {
-                  const p = luckyDrawProducts.find((x) => x.productId === formData.productId);
-                  if (!p) return null;
-                  return (
-                    <div className="mt-2 text-xs text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
-                      <span>Slots: {p.totalSlots}</span>
-                      <span>积分/包: {p.creditsPerPurchase}</span>
-                      <span>Stripe: ${(p.stripePriceCents / 100).toFixed(2)}</span>
-                      <span>Crypto: ${(p.cryptoPriceCents / 100).toFixed(2)}</span>
-                      <span>Chain: {p.chainName}</span>
-                    </div>
-                  );
-                })()}
               </div>
 
               {/* Title */}
@@ -329,6 +340,71 @@ export default function LuckyDrawsPage() {
                   value={formData.title ?? ''}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="可选，如：第1期"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Numeric fields — 2-column grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    总 Slots <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.totalSlots}
+                    onChange={(e) => setFormData({ ...formData, totalSlots: Number(e.target.value) })}
+                    min={1}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    积分/包 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.creditsPerPurchase}
+                    onChange={(e) => setFormData({ ...formData, creditsPerPurchase: Number(e.target.value) })}
+                    min={1}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Stripe 价格 (美分) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.stripePriceCents}
+                    onChange={(e) => setFormData({ ...formData, stripePriceCents: Number(e.target.value) })}
+                    min={1}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">${(formData.stripePriceCents / 100).toFixed(2)}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Crypto 价格 (美分) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.cryptoPriceCents}
+                    onChange={(e) => setFormData({ ...formData, cryptoPriceCents: Number(e.target.value) })}
+                    min={1}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">${(formData.cryptoPriceCents / 100).toFixed(2)}</p>
+                </div>
+              </div>
+
+              {/* Chain Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Chain Name</label>
+                <input
+                  type="text"
+                  value={formData.chainName}
+                  onChange={(e) => setFormData({ ...formData, chainName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
               </div>

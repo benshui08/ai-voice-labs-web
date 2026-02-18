@@ -35,6 +35,11 @@ export interface CreateLuckyDrawInput {
   productId: string;
   title?: string;
   enabled: boolean;
+  totalSlots: number;
+  creditsPerPurchase: number;
+  stripePriceCents: number;
+  cryptoPriceCents: number;
+  chainName: string;
 }
 
 interface ActionResult {
@@ -106,11 +111,11 @@ export async function createLuckyDraw(data: CreateLuckyDrawInput): Promise<Actio
       title: data.title || null,
       enabled: data.enabled,
       status: 'selling',
-      totalSlots: product.totalSlots,
-      creditsPerPurchase: product.creditsPerPurchase,
-      stripePriceCents: product.stripePriceCents,
-      cryptoPriceCents: product.cryptoPriceCents,
-      chainName: product.chainName,
+      totalSlots: data.totalSlots,
+      creditsPerPurchase: data.creditsPerPurchase,
+      stripePriceCents: data.stripePriceCents,
+      cryptoPriceCents: data.cryptoPriceCents,
+      chainName: data.chainName,
       contractAddress: null,
       blockExplorerUrl: null,
     });
@@ -140,6 +145,11 @@ export async function updateLuckyDraw(
       .set({
         ...(data.title !== undefined && { title: data.title || null }),
         ...(data.enabled !== undefined && { enabled: data.enabled }),
+        ...(data.totalSlots !== undefined && { totalSlots: data.totalSlots }),
+        ...(data.creditsPerPurchase !== undefined && { creditsPerPurchase: data.creditsPerPurchase }),
+        ...(data.stripePriceCents !== undefined && { stripePriceCents: data.stripePriceCents }),
+        ...(data.cryptoPriceCents !== undefined && { cryptoPriceCents: data.cryptoPriceCents }),
+        ...(data.chainName !== undefined && { chainName: data.chainName }),
       })
       .where(eq(luckyDrawInstances.id, id));
 
