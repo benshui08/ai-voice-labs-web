@@ -193,13 +193,20 @@ export async function getActiveDraw(): Promise<ActiveDrawInfo | null> {
 
   const product = mergeProductInfo(draw);
 
+  // Count actual entries (ground truth) instead of denormalized sold_count
+  const [soldResult] = await db
+    .select({ count: count() })
+    .from(luckyDrawEntries)
+    .where(eq(luckyDrawEntries.drawId, draw.drawId));
+  const soldSlots = soldResult?.count ?? 0;
+
   return {
     drawId: draw.drawId,
     productId: draw.productId,
     title: draw.title,
     ...product,
     totalSlots: draw.totalSlots,
-    soldSlots: draw.soldCount,
+    soldSlots,
     creditsPerPurchase: draw.creditsPerPurchase,
     stripePriceCents: draw.stripePriceCents,
     cryptoPriceCents: draw.cryptoPriceCents,
@@ -231,13 +238,19 @@ export async function getActiveDrawsByProduct(): Promise<ActiveDrawInfo[]> {
 
     const product = mergeProductInfo(draw);
 
+    const [soldResult] = await db
+      .select({ count: count() })
+      .from(luckyDrawEntries)
+      .where(eq(luckyDrawEntries.drawId, draw.drawId));
+    const soldSlots = soldResult?.count ?? 0;
+
     result.push({
       drawId: draw.drawId,
       productId: draw.productId,
       title: draw.title,
       ...product,
       totalSlots: draw.totalSlots,
-      soldSlots: draw.soldCount,
+      soldSlots,
       creditsPerPurchase: draw.creditsPerPurchase,
       stripePriceCents: draw.stripePriceCents,
       cryptoPriceCents: draw.cryptoPriceCents,

@@ -165,6 +165,12 @@ export default function FeatureGrid() {
     getActiveDrawsByProduct()
       .then(setActiveLuckyDraws)
       .catch(() => setActiveLuckyDraws([]));
+    const interval = setInterval(() => {
+      getActiveDrawsByProduct()
+        .then(setActiveLuckyDraws)
+        .catch(() => {});
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // 获取菜单项的翻译名称

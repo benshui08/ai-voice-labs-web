@@ -26,6 +26,13 @@ export default function NativeBannerAd() {
     getActiveDraw()
       .then(setActiveDraw)
       .catch(() => setActiveDraw(null));
+    // Poll every 30s to keep soldSlots / remaining fresh
+    const interval = setInterval(() => {
+      getActiveDraw()
+        .then(setActiveDraw)
+        .catch(() => {});
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Loading — show nothing while checking
