@@ -77,6 +77,13 @@ export interface AdminLuckyDrawDetail {
     email: string | null;
     country: string | null;
     address: string | null;
+    zipCode: string | null;
+    telegram: string | null;
+    carrier: string | null;
+    trackingNumber: string | null;
+    trackingUrl: string | null;
+    shippedAt: string | null;
+    deliveredAt: string | null;
     createdAt: string;
   } | null;
 }
@@ -318,6 +325,13 @@ export async function getAdminLuckyDrawDetail(drawId: string): Promise<AdminLuck
         email: luckyDrawClaims.email,
         country: luckyDrawClaims.country,
         address: luckyDrawClaims.address,
+        zipCode: luckyDrawClaims.zipCode,
+        telegram: luckyDrawClaims.telegram,
+        carrier: luckyDrawClaims.carrier,
+        trackingNumber: luckyDrawClaims.trackingNumber,
+        trackingUrl: luckyDrawClaims.trackingUrl,
+        shippedAt: luckyDrawClaims.shippedAt,
+        deliveredAt: luckyDrawClaims.deliveredAt,
         createdAt: luckyDrawClaims.createdAt,
       })
       .from(luckyDrawClaims)
@@ -330,4 +344,93 @@ export async function getAdminLuckyDrawDetail(drawId: string): Promise<AdminLuck
     result: resultRows[0] ?? null,
     claim: claimRows[0] ?? null,
   };
+}
+
+// ─── Claim Actions ───
+
+export interface ShipClaimInput {
+  carrier: string;
+  trackingNumber: string;
+  trackingUrl?: string;
+}
+
+/**
+ * 标记发货：info_submitted → shipped
+ */
+export async function updateClaimShipped(drawId: string, data: ShipClaimInput): Promise<ActionResult> {
+  await verifyAdminWithoutDb();
+
+  try {
+    const [claim] = await db
+      .select({ status: luckyDrawClaims.status })
+      .from(luckyDrawClaims)
+      .where(eq(luckyDrawClaims.drawId, drawId))
+      .limit(1);
+
+    if (!claim) {
+      return { success: false, message: '领奖记录不存在' };
+    }
+
+    if (claim.status !== 'info_submitted') {
+      return { success: false, message: `当前状态为 ${claim.status}，无法标记发货` };
+    }
+
+    await db
+      .update(luckyDrawClaims)
+      .set({
+        status: 'shipped',
+        carrier: data.carrier,
+        trackingNumber: data.trackingNumber,
+        trackingUrl: data.trackingUrl || null,
+        shippedAt: new Date().toISOString(),
+      })
+      .where(eq(luckyDrawClaims.drawId, drawId));
+
+    return { success: true, message: '已标记发货' };
+  } catch (error) {
+    console.error('标记发货失败:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : '标记发货失败',
+    };
+  }
+}
+
+/**
+ * 标记签收：shipped → delivered
+ */
+export async function updateClaimDelivered(drawId: string): Promise<ActionResult> {
+  await verifyAdminWithoutDb();
+
+  try {
+    const [claim] = await db
+      .select({ status: luckyDrawClaims.status })
+      .from(luckyDrawClaims)
+      .where(eq(luckyDrawClaims.drawId, drawId))
+      .limit(1);
+
+    if (!claim) {
+      return { success: false, message: '领奖记录不存在' };
+    }
+
+    if (claim.status !== 'shipped') {
+      return { success: false, message: `当前状态为 ${claim.status}，无法标记签收` };
+    }
+
+    await db
+      .update(luckyDrawClaims)
+      .set({
+        status: 'delivered',
+        deliveredAt: new Date().toISOString(),
+      })
+      .where(eq(luckyDrawClaims.drawId, drawId));
+
+    return { success: true, message: '已标记签收' };
+  } catch (error) {
+    console.error('标记签收失败:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : '标记签收失败',
+    };
+  }
 }
