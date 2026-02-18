@@ -9,7 +9,8 @@ interface LuckyDrawBannerProps {
 }
 
 export default function LuckyDrawBanner({ draw }: LuckyDrawBannerProps) {
-  const { totalSlots, creditsPerPurchase, prize, prizeImageUrl, href, soldSlots } = draw;
+  const { totalSlots, creditsPerPurchase, prize, prizeImageUrl, href, soldSlots, status } = draw;
+  const isCompleted = status === 'completed';
   const progressPct = Math.min((soldSlots / totalSlots) * 100, 100);
   const remaining = totalSlots - soldSlots;
 
@@ -27,14 +28,20 @@ export default function LuckyDrawBanner({ draw }: LuckyDrawBannerProps) {
         {/* Content */}
         <div className="relative z-10 flex flex-col gap-4 p-5">
 
-          {/* === Top: Tag + Remaining === */}
+          {/* === Top: Tag + Badge === */}
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold tracking-[0.2em] text-fuchsia-300/80 uppercase">
               FREE LUCKY DRAW
             </span>
-            <span className="text-[10px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded-full">
-              {remaining.toLocaleString()} left
-            </span>
+            {isCompleted ? (
+              <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                Drawn
+              </span>
+            ) : (
+              <span className="text-[10px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded-full">
+                {remaining.toLocaleString()} left
+              </span>
+            )}
           </div>
 
           {/* === Center: Hero — Prize + headline === */}
@@ -59,46 +66,68 @@ export default function LuckyDrawBanner({ draw }: LuckyDrawBannerProps) {
                   {prize}
                 </span>
               </h3>
-              <div className="mt-2 space-y-1">
-                <p className="text-white text-xs font-semibold">
-                  {creditsPerPurchase} AI Credits
-                  <span className="text-purple-200/50 font-normal"> — ${(draw.stripePriceCents / 100).toFixed(0)}</span>
-                </p>
-                <p className="text-emerald-400 text-[11px] font-medium">
-                  + FREE Draw Entry
-                </p>
-              </div>
+              {isCompleted ? (
+                <div className="mt-2 space-y-1">
+                  <p className="text-emerald-400 text-xs font-semibold">
+                    Winner Announced!
+                  </p>
+                  <p className="text-purple-200/60 text-[11px]">
+                    Tap to view results
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-2 space-y-1">
+                  <p className="text-white text-xs font-semibold">
+                    {creditsPerPurchase} AI Credits
+                    <span className="text-purple-200/50 font-normal"> — ${(draw.stripePriceCents / 100).toFixed(0)}</span>
+                  </p>
+                  <p className="text-emerald-400 text-[11px] font-medium">
+                    + FREE Draw Entry
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* === Bottom: Progress + CTA === */}
-          <div className="space-y-2">
-            {/* Progress */}
-            <div>
-              <div className="flex items-center justify-between text-[11px] mb-1">
-                <span className="text-purple-200/80">
-                  <span className="text-white font-bold">{soldSlots.toLocaleString()}</span> / {totalSlots.toLocaleString()}
-                </span>
-                <span className="text-amber-400/90 font-semibold text-[10px]">
-                  {Math.round(progressPct)}%
-                </span>
-              </div>
-              <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 shadow-[0_0_14px_rgba(245,158,11,0.5)] transition-all"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-            </div>
-
-            {/* CTA Button */}
+          {/* === Bottom === */}
+          {isCompleted ? (
+            /* Completed: View Results CTA */
             <button className="w-full relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-green-500 rounded-xl blur-lg opacity-50 group-hover:opacity-70 animate-pulse" />
-              <div className="relative bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-400 text-white font-extrabold text-[15px] py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 tracking-wide">
-                <span>TRY MY LUCK — Free</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-500 to-purple-500 rounded-xl blur-lg opacity-40 group-hover:opacity-60" />
+              <div className="relative bg-gradient-to-r from-fuchsia-500 via-purple-500 to-violet-500 text-white font-extrabold text-[15px] py-3.5 rounded-xl shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2 tracking-wide">
+                <span>VIEW RESULTS</span>
               </div>
             </button>
-          </div>
+          ) : (
+            /* Selling: Progress + CTA */
+            <div className="space-y-2">
+              {/* Progress */}
+              <div>
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <span className="text-purple-200/80">
+                    <span className="text-white font-bold">{soldSlots.toLocaleString()}</span> / {totalSlots.toLocaleString()}
+                  </span>
+                  <span className="text-amber-400/90 font-semibold text-[10px]">
+                    {Math.round(progressPct)}%
+                  </span>
+                </div>
+                <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 shadow-[0_0_14px_rgba(245,158,11,0.5)] transition-all"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* CTA Button */}
+              <button className="w-full relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-green-500 rounded-xl blur-lg opacity-50 group-hover:opacity-70 animate-pulse" />
+                <div className="relative bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-400 text-white font-extrabold text-[15px] py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 tracking-wide">
+                  <span>TRY MY LUCK — Free</span>
+                </div>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </Link>

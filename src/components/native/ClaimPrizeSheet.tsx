@@ -154,7 +154,7 @@ export default function ClaimPrizeSheet({ prize, claimData, onClose, onSubmit }:
         </div>
 
         {/* Content — scrollable */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
           {/* === 未提交：显示表单 === */}
           {claimData.status === 'unclaimed' && (
             <div className="space-y-4">

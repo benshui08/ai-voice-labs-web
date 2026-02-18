@@ -160,7 +160,8 @@ function mergeProductInfo(draw: DrawInstance) {
 // ─── getActiveDraw — 获取当前活跃的抽奖 ───
 
 export async function getActiveDraw(): Promise<ActiveDrawInfo | null> {
-  const [draw] = await db
+  // 1) 优先：selling + enabled
+  const [selling] = await db
     .select()
     .from(luckyDrawInstances)
     .where(and(
@@ -169,6 +170,18 @@ export async function getActiveDraw(): Promise<ActiveDrawInfo | null> {
     ))
     .orderBy(desc(luckyDrawInstances.createdAt))
     .limit(1);
+
+  // 2) 没有 selling，退而求其次：最近一期 completed + enabled
+  const draw = selling ?? (await db
+    .select()
+    .from(luckyDrawInstances)
+    .where(and(
+      eq(luckyDrawInstances.enabled, true),
+      eq(luckyDrawInstances.status, 'completed'),
+    ))
+    .orderBy(desc(luckyDrawInstances.completedAt))
+    .limit(1)
+  )[0];
 
   if (!draw) return null;
 
