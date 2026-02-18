@@ -163,7 +163,9 @@
       "privacyPolicy": "Kebijakan Privasi",
       "subscribeNow": "Berlangganan Sekarang",
       "buyNow": "Beli Sekarang",
-      "processing": "Memproses..."
+      "processing": "Memproses...",
+      "currentPlan": "Paket saat ini",
+      "manageSubscription": "Kelola langganan"
     },
     "insufficientCredits": {
       "title": "Kredit Tidak Cukup",

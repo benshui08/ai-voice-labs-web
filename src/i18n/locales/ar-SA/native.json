@@ -163,7 +163,9 @@
       "privacyPolicy": "سياسة الخصوصية",
       "subscribeNow": "اشترك الآن",
       "buyNow": "اشترِ الآن",
-      "processing": "جارٍ المعالجة..."
+      "processing": "جارٍ المعالجة...",
+      "currentPlan": "الخطة الحالية",
+      "manageSubscription": "إدارة الاشتراك"
     },
     "insufficientCredits": {
       "title": "رصيد غير كافٍ",

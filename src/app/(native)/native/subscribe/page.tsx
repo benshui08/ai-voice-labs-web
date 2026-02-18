@@ -72,6 +72,15 @@ export default function NativeSubscribePage() {
         if (user) {
           const subscription = await getMyActiveSubscription();
           setActiveSubscription(subscription);
+          // Auto-select the user's current plan
+          if (subscription) {
+            const matched = subscriptionPlans.find(
+              (plan) =>
+                plan.stripeProductId === subscription.product_id ||
+                plan.googlePlayProductId === subscription.product_id
+            );
+            if (matched) setSelectedPlan(matched);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch subscription data:', error);
@@ -195,6 +204,16 @@ export default function NativeSubscribePage() {
 
   const isProcessing = processingId !== null || gpLoading;
 
+  // Match active subscription to a plan config
+  const currentPlan = activeSubscription
+    ? subscriptionPlans.find(
+        (plan) =>
+          plan.stripeProductId === activeSubscription.product_id ||
+          plan.googlePlayProductId === activeSubscription.product_id
+      )
+    : null;
+  const isCurrentPlan = selectedPlan != null && currentPlan?.id === selectedPlan.id;
+
   return (
     <div className="fixed inset-0 z-[9999] bg-[#0a0a1a] flex flex-col overflow-auto">
       {/* Background gradient */}
@@ -258,19 +277,28 @@ export default function NativeSubscribePage() {
             <div className="space-y-3">
               {subscriptionPlans.map((plan) => {
                 const isSelected = selectedPlan?.id === plan.id;
+                const isCurrent = currentPlan?.id === plan.id;
 
                 return (
                   <button
                     key={plan.id}
                     onClick={() => setSelectedPlan(plan)}
                     className={`relative w-full p-4 rounded-2xl text-left transition-all ${
-                      isSelected
-                        ? 'bg-gradient-to-r from-purple-600/30 to-pink-600/30 border-2 border-purple-500'
-                        : 'bg-gray-800/60 border-2 border-transparent'
+                      isCurrent
+                        ? 'bg-gradient-to-r from-green-600/20 to-emerald-600/20 border-2 border-green-500'
+                        : isSelected
+                          ? 'bg-gradient-to-r from-purple-600/30 to-pink-600/30 border-2 border-purple-500'
+                          : 'bg-gray-800/60 border-2 border-transparent'
                     }`}
                   >
+                    {/* Current plan badge */}
+                    {isCurrent && (
+                      <span className="absolute -top-2 left-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                        {t('native.subscribe.currentPlan')}
+                      </span>
+                    )}
                     {/* Popular badge */}
-                    {plan.isPopular && (
+                    {plan.isPopular && !isCurrent && (
                       <span className="absolute -top-2 right-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
                         {t('native.subscribe.mostPopular')}
                       </span>
@@ -378,7 +406,7 @@ export default function NativeSubscribePage() {
         {activeTab === 'subscription' && selectedPlan && (
           <GradientButton
             onClick={() => handleSubscribe(selectedPlan)}
-            disabled={isProcessing}
+            disabled={isProcessing || isCurrentPlan}
           >
             {isProcessing ? (
               <>
@@ -388,6 +416,8 @@ export default function NativeSubscribePage() {
                 </svg>
                 {t('native.subscribe.processing')}
               </>
+            ) : isCurrentPlan ? (
+              <>{t('native.subscribe.currentPlan')}</>
             ) : (
               <>{t('native.subscribe.subscribeNow')} - ${selectedPlan.price.toFixed(2)}/{getBillingPeriodText(selectedPlan.billingPeriod)}</>
             )}

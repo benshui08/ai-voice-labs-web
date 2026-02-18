@@ -163,7 +163,9 @@
       "privacyPolicy": "นโยบายความเป็นส่วนตัว",
       "subscribeNow": "สมัครสมาชิกเลย",
       "buyNow": "ซื้อเลย",
-      "processing": "กำลังดำเนินการ..."
+      "processing": "กำลังดำเนินการ...",
+      "currentPlan": "แพ็กเกจปัจจุบัน",
+      "manageSubscription": "จัดการการสมัครสมาชิก"
     },
     "insufficientCredits": {
       "title": "เครดิตไม่เพียงพอ",

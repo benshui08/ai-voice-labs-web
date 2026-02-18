@@ -163,7 +163,9 @@
       "privacyPolicy": "Política de Privacidade",
       "subscribeNow": "Assinar Agora",
       "buyNow": "Comprar Agora",
-      "processing": "Processando..."
+      "processing": "Processando...",
+      "currentPlan": "Plano atual",
+      "manageSubscription": "Gerenciar assinatura"
     },
     "insufficientCredits": {
       "title": "Créditos Insuficientes",

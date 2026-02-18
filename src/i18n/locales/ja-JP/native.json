@@ -163,7 +163,9 @@
       "privacyPolicy": "プライバシーポリシー",
       "subscribeNow": "今すぐ登録",
       "buyNow": "今すぐ購入",
-      "processing": "処理中..."
+      "processing": "処理中...",
+      "currentPlan": "現在のプラン",
+      "manageSubscription": "サブスクリプション管理"
     },
     "insufficientCredits": {
       "title": "クレジット不足",

@@ -163,7 +163,9 @@
       "privacyPolicy": "गोपनीयता नीति",
       "subscribeNow": "अभी सब्सक्राइब करें",
       "buyNow": "अभी खरीदें",
-      "processing": "प्रोसेसिंग..."
+      "processing": "प्रोसेसिंग...",
+      "currentPlan": "वर्तमान योजना",
+      "manageSubscription": "सदस्यता प्रबंधित करें"
     },
     "insufficientCredits": {
       "title": "अपर्याप्त क्रेडिट",

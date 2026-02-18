@@ -163,7 +163,9 @@
       "privacyPolicy": "Privacy Policy",
       "subscribeNow": "Subscribe Now",
       "buyNow": "Buy Now",
-      "processing": "Processing..."
+      "processing": "Processing...",
+      "currentPlan": "Current Plan",
+      "manageSubscription": "Manage Subscription"
     },
     "insufficientCredits": {
       "title": "Insufficient Credits",

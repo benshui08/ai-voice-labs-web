@@ -163,7 +163,9 @@
       "privacyPolicy": "Chính sách bảo mật",
       "subscribeNow": "Đăng ký ngay",
       "buyNow": "Mua ngay",
-      "processing": "Đang xử lý..."
+      "processing": "Đang xử lý...",
+      "currentPlan": "Gói hiện tại",
+      "manageSubscription": "Quản lý đăng ký"
     },
     "insufficientCredits": {
       "title": "Không đủ credit",

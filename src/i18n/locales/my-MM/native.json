@@ -163,7 +163,9 @@
       "privacyPolicy": "ကိုယ်ရေးလုံခြုံမှု မူဝါဒ",
       "subscribeNow": "ယခုစာရင်းသွင်းပါ",
       "buyNow": "ယခုဝယ်ပါ",
-      "processing": "လုပ်ဆောင်နေသည်..."
+      "processing": "လုပ်ဆောင်နေသည်...",
+      "currentPlan": "လက်ရှိအစီအစဉ်",
+      "manageSubscription": "စာရင်းသွင်းမှုကိုစီမံပါ"
     },
     "insufficientCredits": {
       "title": "ခရက်ဒစ် မလုံလောက်ပါ",

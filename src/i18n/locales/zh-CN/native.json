@@ -163,7 +163,9 @@
       "privacyPolicy": "隐私政策",
       "subscribeNow": "立即订阅",
       "buyNow": "立即购买",
-      "processing": "处理中..."
+      "processing": "处理中...",
+      "currentPlan": "当前套餐",
+      "manageSubscription": "管理订阅"
     },
     "insufficientCredits": {
       "title": "积分不足",
