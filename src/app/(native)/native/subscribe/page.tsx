@@ -274,7 +274,7 @@ export default function NativeSubscribePage() {
           /* Subscription Tab */
           <div className="space-y-6">
             {/* Subscription plans list */}
-            <div className="space-y-3">
+            <div className="space-y-3 pt-2">
               {subscriptionPlans.map((plan) => {
                 const isSelected = selectedPlan?.id === plan.id;
                 const isCurrent = currentPlan?.id === plan.id;
