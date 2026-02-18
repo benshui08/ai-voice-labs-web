@@ -276,11 +276,12 @@ export default function LuckyDrawDetailPage() {
             ...(claim?.fullName && {
               shippingInfo: {
                 fullName: claim.fullName,
-                phone: '',
-                email: '',
-                country: '',
-                address: '',
-                zipCode: '',
+                phone: claim.phone ?? '',
+                email: claim.email ?? '',
+                country: claim.country ?? '',
+                address: claim.address ?? '',
+                zipCode: claim.zipCode ?? '',
+                telegram: claim.telegram ?? '',
               },
             }),
             ...(claim?.carrier && {

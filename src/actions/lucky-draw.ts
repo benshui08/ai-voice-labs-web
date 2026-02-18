@@ -91,6 +91,12 @@ export interface LuckyDrawStatusResult {
   claim?: {
     status: string;
     fullName?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    country?: string | null;
+    address?: string | null;
+    zipCode?: string | null;
+    telegram?: string | null;
     carrier?: string | null;
     trackingNumber?: string | null;
     trackingUrl?: string | null;
@@ -323,6 +329,12 @@ export async function getLuckyDrawStatus(drawId: string): Promise<LuckyDrawStatu
           claim = {
             status: claimRecord.status,
             fullName: claimRecord.fullName,
+            phone: claimRecord.phone,
+            email: claimRecord.email,
+            country: claimRecord.country,
+            address: claimRecord.address,
+            zipCode: claimRecord.zipCode,
+            telegram: claimRecord.telegram,
             carrier: claimRecord.carrier,
             trackingNumber: claimRecord.trackingNumber,
             trackingUrl: claimRecord.trackingUrl,
