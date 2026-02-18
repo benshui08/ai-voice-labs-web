@@ -32,7 +32,7 @@ export const subscriptionPlans: SubscriptionPlansConfig = {
         {
           credits: 1000,
           price: { USD: 4.99 },
-          product_id: 'prod_starter_1k_test',
+          product_id: 'prod_starter_1k',
           default: true,
           features: [
             {
@@ -70,7 +70,7 @@ export const subscriptionPlans: SubscriptionPlansConfig = {
         {
           credits: 3000,
           price: { USD: 12.99 },
-          product_id: 'prod_creator_3k_test',
+          product_id: 'prod_creator_3k',
           default: true,
           features: [
             {
@@ -108,7 +108,7 @@ export const subscriptionPlans: SubscriptionPlansConfig = {
         {
           credits: 5000,
           price: { USD: 19.99 },
-          product_id: 'prod_pro_5k_test',
+          product_id: 'prod_pro_5k',
           default: true,
           features: [
             {

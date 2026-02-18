@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useNativeBack } from '@/hooks/useNativeBack';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useCredits } from '@/contexts/CreditsContext';
 import { getMyActiveSubscription } from '@/actions/subscription';
@@ -54,15 +53,13 @@ const CrownIcon = () => (
  */
 export default function NativeSubscribePage() {
   const router = useRouter();
-  const goBack = useNativeBack();
   const { user, loading: authLoading } = useFirebaseAuth();
-  const { credits } = useCredits();
+  const { credits, loading: creditsLoading } = useCredits();
   const { purchase: googlePlayPurchase, shouldUseGooglePlay, isLoading: gpLoading } = useGooglePlayBilling();
   const { t } = useLanguage();
 
   const [activeTab, setActiveTab] = useState<TabType>('subscription');
   const [activeSubscription, setActiveSubscription] = useState<UserSubscription | null>(null);
-  const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanConfig | null>(subscriptionPlans[0]);
@@ -72,15 +69,12 @@ export default function NativeSubscribePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
         if (user) {
           const subscription = await getMyActiveSubscription();
           setActiveSubscription(subscription);
         }
       } catch (error) {
         console.error('Failed to fetch subscription data:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -208,7 +202,7 @@ export default function NativeSubscribePage() {
 
       {/* 关闭按钮 - 直接放在容器里，和 LoginModal 一样 */}
       <button
-        onClick={goBack}
+        onClick={() => router.push('/native')}
         className="absolute left-4 z-20 w-10 h-10 flex items-center justify-center bg-gray-800/50 rounded-full text-gray-300 hover:text-white transition-colors"
         style={{ top: 'calc(var(--safe-area-inset-top, 0px) + 8px)' }}
       >
@@ -222,7 +216,7 @@ export default function NativeSubscribePage() {
       >
         <div className="flex items-center justify-center gap-2 text-purple-400 mb-1">
           <CreditsIcon className="w-6 h-6" />
-          <span className="text-4xl font-bold text-white">{credits}</span>
+          <span className="text-4xl font-bold text-white">{creditsLoading ? '—' : credits}</span>
         </div>
         <p className="text-gray-500 text-sm">
           {activeSubscription ? t('native.subscribe.vipBonus') : t('native.subscribe.notSubscribed')}
@@ -261,53 +255,47 @@ export default function NativeSubscribePage() {
           /* Subscription Tab */
           <div className="space-y-6">
             {/* Subscription plans list */}
-            {loading ? (
-              <div className="flex justify-center py-8">
-                <div className="w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {subscriptionPlans.map((plan) => {
-                  const isSelected = selectedPlan?.id === plan.id;
+            <div className="space-y-3">
+              {subscriptionPlans.map((plan) => {
+                const isSelected = selectedPlan?.id === plan.id;
 
-                  return (
-                    <button
-                      key={plan.id}
-                      onClick={() => setSelectedPlan(plan)}
-                      className={`relative w-full p-4 rounded-2xl text-left transition-all ${
-                        isSelected
-                          ? 'bg-gradient-to-r from-purple-600/30 to-pink-600/30 border-2 border-purple-500'
-                          : 'bg-gray-800/60 border-2 border-transparent'
-                      }`}
-                    >
-                      {/* Popular badge */}
-                      {plan.isPopular && (
-                        <span className="absolute -top-2 right-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
-                          {t('native.subscribe.mostPopular')}
-                        </span>
-                      )}
+                return (
+                  <button
+                    key={plan.id}
+                    onClick={() => setSelectedPlan(plan)}
+                    className={`relative w-full p-4 rounded-2xl text-left transition-all ${
+                      isSelected
+                        ? 'bg-gradient-to-r from-purple-600/30 to-pink-600/30 border-2 border-purple-500'
+                        : 'bg-gray-800/60 border-2 border-transparent'
+                    }`}
+                  >
+                    {/* Popular badge */}
+                    {plan.isPopular && (
+                      <span className="absolute -top-2 right-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                        {t('native.subscribe.mostPopular')}
+                      </span>
+                    )}
 
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h3 className="text-white font-semibold">{plan.name}</h3>
-                          <p className="text-gray-400 text-sm">
-                            {formatCredits(plan.credits)} credits / {getBillingPeriodText(plan.billingPeriod)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-white text-xl font-bold">
-                            ${plan.price.toFixed(2)}
-                          </span>
-                          <span className="text-gray-500 text-sm ml-1">
-                            /{getBillingPeriodText(plan.billingPeriod)}
-                          </span>
-                        </div>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="text-white font-semibold">{plan.name}</h3>
+                        <p className="text-gray-400 text-sm">
+                          {formatCredits(plan.credits)} credits / {getBillingPeriodText(plan.billingPeriod)}
+                        </p>
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                      <div className="text-right">
+                        <span className="text-white text-xl font-bold">
+                          ${plan.price.toFixed(2)}
+                        </span>
+                        <span className="text-gray-500 text-sm ml-1">
+                          /{getBillingPeriodText(plan.billingPeriod)}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
 
             {/* Membership benefits */}
             <div className="bg-gray-800/40 rounded-2xl p-4">
