@@ -142,9 +142,9 @@ const iconMap: Record<CreateMenuIcon, React.FC> = {
 const colorMap: Record<string, { icon: string; bg: string }> = {
   purple: { icon: 'text-purple-400', bg: 'bg-purple-500/20' },
   pink: { icon: 'text-pink-400', bg: 'bg-pink-500/20' },
-  cyan: { icon: 'text-cyan-400', bg: 'bg-cyan-500/20' },
-  blue: { icon: 'text-blue-400', bg: 'bg-blue-500/20' },
-  emerald: { icon: 'text-emerald-400', bg: 'bg-emerald-500/20' },
+  cyan: { icon: 'text-emerald-400', bg: 'bg-emerald-500/20' },
+  blue: { icon: 'text-red-400', bg: 'bg-red-500/20' },
+  emerald: { icon: 'text-orange-400', bg: 'bg-orange-500/20' },
 };
 
 // Lucky Draw 图标映射
