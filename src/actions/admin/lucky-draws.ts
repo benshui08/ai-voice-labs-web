@@ -66,6 +66,7 @@ export interface AdminLuckyDrawDetail {
     winnerUserId: string;
     blockNumber: number | null;
     blockHash: string | null;
+    txHash: string | null;
     totalSlots: number;
     createdAt: string;
   } | null;
@@ -301,6 +302,7 @@ export async function getAdminLuckyDrawDetail(drawId: string): Promise<AdminLuck
         winnerUserId: luckyDrawResults.winnerUserId,
         blockNumber: luckyDrawResults.blockNumber,
         blockHash: luckyDrawResults.blockHash,
+        txHash: luckyDrawResults.txHash,
         totalSlots: luckyDrawResults.totalSlots,
         createdAt: luckyDrawResults.createdAt,
       })

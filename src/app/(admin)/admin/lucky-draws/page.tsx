@@ -157,6 +157,15 @@ export default function LuckyDrawsPage() {
     return uid.slice(0, 4) + '...' + uid.slice(-4);
   };
 
+  const getExplorerBase = (chainName: string | null): string | null => {
+    switch (chainName?.toLowerCase()) {
+      case 'polygon': return 'https://polygonscan.com';
+      case 'ethereum': return 'https://etherscan.io';
+      case 'bsc': return 'https://bscscan.com';
+      default: return null;
+    }
+  };
+
   const getProductPrize = (productId: string): string => {
     const product = luckyDrawProducts.find((p) => p.productId === productId);
     return product?.prize ?? productId;
@@ -609,18 +618,78 @@ export default function LuckyDrawsPage() {
                             <span className="text-gray-500">开奖时间：</span>
                             <span>{new Date(detailData.result.createdAt).toLocaleString()}</span>
                           </div>
-                          {detailData.result.blockNumber != null && (
-                            <div>
-                              <span className="text-gray-500">Block#：</span>
-                              <span className="font-mono text-xs">{detailData.result.blockNumber}</span>
-                            </div>
-                          )}
-                          {detailData.result.blockHash && (
-                            <div className="col-span-2">
-                              <span className="text-gray-500">Block Hash：</span>
-                              <span className="font-mono text-xs break-all">{detailData.result.blockHash}</span>
-                            </div>
-                          )}
+                          {(() => {
+                            const explorer = detailDraw.blockExplorerUrl
+                              ? detailDraw.blockExplorerUrl.replace(/\/$/, '')
+                              : getExplorerBase(detailDraw.chainName);
+                            return (
+                              <>
+                                {detailData.result.blockNumber != null && (
+                                  <div>
+                                    <span className="text-gray-500">Block#：</span>
+                                    {explorer ? (
+                                      <a
+                                        href={`${explorer}/block/${detailData.result.blockNumber}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="font-mono text-xs text-blue-600 hover:text-blue-700 underline"
+                                      >
+                                        {detailData.result.blockNumber}
+                                      </a>
+                                    ) : (
+                                      <span className="font-mono text-xs">{detailData.result.blockNumber}</span>
+                                    )}
+                                  </div>
+                                )}
+                                {detailData.result.blockHash && (
+                                  <div className="col-span-2">
+                                    <span className="text-gray-500">Block Hash：</span>
+                                    <span className="font-mono text-xs break-all">{detailData.result.blockHash}</span>
+                                  </div>
+                                )}
+                                {detailData.result.txHash && (
+                                  <div className="col-span-2">
+                                    <span className="text-gray-500">Tx Hash：</span>
+                                    {explorer ? (
+                                      <a
+                                        href={`${explorer}/tx/${detailData.result.txHash}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="font-mono text-xs text-blue-600 hover:text-blue-700 underline break-all"
+                                      >
+                                        {detailData.result.txHash}
+                                      </a>
+                                    ) : (
+                                      <span className="font-mono text-xs break-all">{detailData.result.txHash}</span>
+                                    )}
+                                  </div>
+                                )}
+                                {detailDraw.chainName && (
+                                  <div>
+                                    <span className="text-gray-500">Chain：</span>
+                                    <span className="font-medium">{detailDraw.chainName}</span>
+                                  </div>
+                                )}
+                                {detailDraw.contractAddress && (
+                                  <div className="col-span-2">
+                                    <span className="text-gray-500">合约地址：</span>
+                                    {explorer ? (
+                                      <a
+                                        href={`${explorer}/address/${detailDraw.contractAddress}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="font-mono text-xs text-blue-600 hover:text-blue-700 underline break-all"
+                                      >
+                                        {detailDraw.contractAddress}
+                                      </a>
+                                    ) : (
+                                      <span className="font-mono text-xs break-all">{detailDraw.contractAddress}</span>
+                                    )}
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
 
                         {/* Claim info */}
