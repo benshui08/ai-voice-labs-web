@@ -592,17 +592,43 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
 
       {/* 庆祝效果 */}
       {showCelebration && lastClaimedCredits !== null && (
-        <div className="fixed inset-0 z-[10002] flex items-center justify-center pointer-events-none">
-          <div className="bg-gray-900/95 backdrop-blur-sm rounded-2xl p-8 text-center border border-purple-500/30 pointer-events-auto animate-bounce-in">
-            <div className="text-5xl mb-4">🎉</div>
-            <p className="text-white text-lg font-bold mb-2">+{lastClaimedCredits} Credits!</p>
-            <p className="text-gray-400 text-sm">{t('dailyTasks.creditsClaimed') || 'Credits added to your account'}</p>
-            <button
-              onClick={handleCelebrationComplete}
-              className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium"
-            >
-              {t('common.ok') || 'OK'}
-            </button>
+        <div className="fixed inset-0 z-[10002] pointer-events-none">
+          {/* 喷射撒花 */}
+          {Array.from({ length: 30 }, (_, i) => {
+            const angle = (Math.PI * 2 * i) / 30 + (Math.random() - 0.5) * 0.5;
+            const dist = 80 + Math.random() * 120;
+            return (
+              <div
+                key={i}
+                className="absolute animate-confetti-burst"
+                style={{
+                  left: '50%',
+                  top: '45%',
+                  width: Math.random() * 6 + 4,
+                  height: Math.random() * 6 + 4,
+                  backgroundColor: ['#8B5CF6', '#EC4899', '#10B981', '#F59E0B', '#3B82F6', '#EF4444'][i % 6],
+                  borderRadius: i % 2 === 0 ? '50%' : '2px',
+                  '--tx': `${Math.cos(angle) * dist}px`,
+                  '--ty': `${Math.sin(angle) * dist - 40}px`,
+                  '--rot': `${Math.random() * 720 - 360}deg`,
+                  animationDelay: `${Math.random() * 0.15}s`,
+                } as React.CSSProperties}
+              />
+            );
+          })}
+          {/* 弹窗 */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="bg-gray-900/95 backdrop-blur-sm rounded-2xl p-8 text-center border border-purple-500/30 pointer-events-auto animate-bounce-in">
+              <div className="text-5xl mb-4">🎉</div>
+              <p className="text-white text-lg font-bold mb-2">+{lastClaimedCredits} Credits!</p>
+              <p className="text-gray-400 text-sm">{t('dailyTasks.creditsClaimed') || 'Credits added to your account'}</p>
+              <button
+                onClick={handleCelebrationComplete}
+                className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium"
+              >
+                {t('common.ok') || 'OK'}
+              </button>
+            </div>
           </div>
         </div>
       )}
