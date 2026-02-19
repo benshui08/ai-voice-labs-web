@@ -80,7 +80,7 @@
         },
         "imageTools": {
           "title": "बैकग्राउंड हटाएं & HD अपस्केल",
-          "shortName": "इमेज टूल्स",
+          "shortName": "BG Remover & HD Upscaler",
           "description": "बैकग्राउंड हटाएं या HD में बढ़ाएं"
         }
       }

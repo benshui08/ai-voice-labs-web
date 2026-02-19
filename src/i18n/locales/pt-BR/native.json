@@ -80,7 +80,7 @@
         },
         "imageTools": {
           "title": "Remover Fundo & HD Upscale",
-          "shortName": "Ferram. Imagem",
+          "shortName": "BG Remover & HD Upscaler",
           "description": "Remover fundo ou melhorar imagens em HD"
         }
       }

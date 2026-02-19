@@ -80,7 +80,7 @@
         },
         "imageTools": {
           "title": "ลบพื้นหลัง & อัปสเกลภาพ",
-          "shortName": "เครื่องมือภาพ",
+          "shortName": "BG Remover & HD Upscaler",
           "description": "ลบพื้นหลังหรืออัปสเกลภาพให้คมชัด"
         }
       }

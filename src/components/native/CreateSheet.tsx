@@ -76,6 +76,13 @@ const ImageIcon = () => (
   </svg>
 );
 
+const ImageToolsIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8L19 13M17.8 6.2L19 5M12.2 11.8L11 13M12.2 6.2L11 5" />
+    <path d="M3 21l9-9" strokeLinecap="round" />
+  </svg>
+);
+
 const ArrowIcon = () => (
   <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M9 18l6-6-6-6" />
@@ -99,6 +106,7 @@ const iconMap: Record<CreateMenuIcon, React.FC> = {
   clone: CloneIcon,
   'video-download': DownloadIcon,
   image: ImageIcon,
+  'image-tools': ImageToolsIcon,
 };
 
 /**

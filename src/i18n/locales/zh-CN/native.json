@@ -80,7 +80,7 @@
         },
         "imageTools": {
           "title": "去背景 & 高清放大",
-          "shortName": "图片工具",
+          "shortName": "BG Remover & HD Upscaler",
           "description": "去除背景或高清放大图片"
         }
       }

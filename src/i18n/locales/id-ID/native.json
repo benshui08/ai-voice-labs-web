@@ -80,7 +80,7 @@
         },
         "imageTools": {
           "title": "Hapus Latar & Upscale HD",
-          "shortName": "Alat Gambar",
+          "shortName": "BG Remover & HD Upscaler",
           "description": "Hapus latar belakang atau upscale gambar HD"
         }
       }

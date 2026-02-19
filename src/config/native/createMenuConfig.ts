@@ -7,7 +7,7 @@
 export type CreateMenuCategory = 'voiceover' | 'music' | 'image' | 'video' | 'tools';
 
 /** 图标类型 */
-export type CreateMenuIcon = 'music' | 'cover' | 'voice' | 'dialogue' | 'video' | 'clone' | 'video-download' | 'image';
+export type CreateMenuIcon = 'music' | 'cover' | 'voice' | 'dialogue' | 'video' | 'clone' | 'video-download' | 'image' | 'image-tools';
 
 /** 类别配置 */
 export interface CategoryConfig {
@@ -121,10 +121,10 @@ export const createMenuItems: CreateMenuItem[] = [
 
   {
     id: 'image-tools',
-    icon: 'image',
+    icon: 'image-tools',
     category: 'image',
     title: 'BG Remover & HD Upscaler',
-    shortName: 'Image Tools',
+    shortName: 'BG Remover & HD Upscaler',
     description: 'Remove background or upscale images',
     href: '/native/create/image-tools',
     enabled: { development: true, production: true },

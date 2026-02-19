@@ -80,7 +80,7 @@
         },
         "imageTools": {
           "title": "背景除去 & HD拡大",
-          "shortName": "画像ツール",
+          "shortName": "BG Remover & HD Upscaler",
           "description": "背景の除去や画像のHD拡大"
         }
       }

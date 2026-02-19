@@ -80,7 +80,7 @@
         },
         "imageTools": {
           "title": "Quitar Fondo & Mejorar HD",
-          "shortName": "Herramientas",
+          "shortName": "BG Remover & HD Upscaler",
           "description": "Quitar fondo o mejorar imágenes en HD"
         }
       }

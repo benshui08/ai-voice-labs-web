@@ -126,6 +126,19 @@ const ImageIcon = () => (
   </svg>
 );
 
+const ImageToolsIcon = () => (
+  <svg
+    className="w-6 h-6"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+  >
+    <path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8L19 13M17.8 6.2L19 5M12.2 11.8L11 13M12.2 6.2L11 5" />
+    <path d="M3 21l9-9" strokeLinecap="round" />
+  </svg>
+);
+
 // 图标映射
 const iconMap: Record<CreateMenuIcon, React.FC> = {
   music: MusicIcon,
@@ -136,6 +149,7 @@ const iconMap: Record<CreateMenuIcon, React.FC> = {
   clone: CloneIcon,
   'video-download': DownloadIcon,
   image: ImageIcon,
+  'image-tools': ImageToolsIcon,
 };
 
 // 颜色映射 - 图标颜色和背景渐变（按类别）

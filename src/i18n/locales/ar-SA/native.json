@@ -80,7 +80,7 @@
         },
         "imageTools": {
           "title": "إزالة الخلفية & تحسين الدقة",
-          "shortName": "أدوات الصور",
+          "shortName": "BG Remover & HD Upscaler",
           "description": "إزالة الخلفية أو تحسين دقة الصور"
         }
       }

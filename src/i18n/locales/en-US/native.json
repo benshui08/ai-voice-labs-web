@@ -80,7 +80,7 @@
         },
         "imageTools": {
           "title": "BG Remover & HD Upscaler",
-          "shortName": "Image Tools",
+          "shortName": "BG Remover & HD Upscaler",
           "description": "Remove background or upscale images"
         }
       }
