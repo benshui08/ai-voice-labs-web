@@ -77,6 +77,11 @@
           "title": "Pengunduh Video",
           "shortName": "Unduh Video",
           "description": "Unduh video YouTube"
+        },
+        "imageTools": {
+          "title": "Hapus Latar & Upscale HD",
+          "shortName": "Alat Gambar",
+          "description": "Hapus latar belakang atau upscale gambar HD"
         }
       }
     },

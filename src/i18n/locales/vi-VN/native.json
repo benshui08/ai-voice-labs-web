@@ -77,6 +77,11 @@
           "title": "Tải Video",
           "shortName": "Tải Video",
           "description": "Tải video YouTube"
+        },
+        "imageTools": {
+          "title": "Xóa Nền & Nâng Cấp HD",
+          "shortName": "Công Cụ Ảnh",
+          "description": "Xóa nền hoặc nâng cấp ảnh HD"
         }
       }
     },

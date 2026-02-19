@@ -77,6 +77,11 @@
           "title": "動画ダウンローダー",
           "shortName": "動画ダウンロード",
           "description": "YouTubeの動画をダウンロード"
+        },
+        "imageTools": {
+          "title": "背景除去 & HD拡大",
+          "shortName": "画像ツール",
+          "description": "背景の除去や画像のHD拡大"
         }
       }
     },

@@ -196,6 +196,7 @@ export default function FeatureGrid() {
       'image': 'image',
       'video': 'video',
       'video-downloader': 'videoDownloader',
+      'image-tools': 'imageTools',
     };
     const translationKey = keyMap[id] || id;
     return t(`native.menu.items.${translationKey}.shortName`) || fallback;

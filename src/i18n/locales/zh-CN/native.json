@@ -77,6 +77,11 @@
           "title": "视频下载",
           "shortName": "视频下载",
           "description": "下载 YouTube 视频"
+        },
+        "imageTools": {
+          "title": "去背景 & 高清放大",
+          "shortName": "图片工具",
+          "description": "去除背景或高清放大图片"
         }
       }
     },

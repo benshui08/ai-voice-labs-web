@@ -77,6 +77,11 @@
           "title": "Descargador de Vídeos",
           "shortName": "Descargar Vídeo",
           "description": "Descarga vídeos de YouTube"
+        },
+        "imageTools": {
+          "title": "Quitar Fondo & Mejorar HD",
+          "shortName": "Herramientas",
+          "description": "Quitar fondo o mejorar imágenes en HD"
         }
       }
     },

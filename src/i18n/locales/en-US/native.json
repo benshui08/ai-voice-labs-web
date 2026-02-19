@@ -77,6 +77,11 @@
           "title": "Video Downloader",
           "shortName": "Video Download",
           "description": "Download YouTube videos"
+        },
+        "imageTools": {
+          "title": "BG Remover & HD Upscaler",
+          "shortName": "Image Tools",
+          "description": "Remove background or upscale images"
         }
       }
     },
