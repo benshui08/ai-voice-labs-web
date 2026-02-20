@@ -49,6 +49,14 @@ export const SEO_LOCALES: SeoLocale[] = [
     nativeName: 'ภาษาไทย',
     hreflang: 'th',
   },
+  {
+    slug: 'es',
+    localeCode: 'es',
+    htmlLang: 'es',
+    ogLocale: 'es_ES',
+    nativeName: 'Español',
+    hreflang: 'es',
+  },
 ];
 
 export const ALL_SEO_LOCALES: SeoLocale[] = [ENGLISH_LOCALE, ...SEO_LOCALES];

@@ -321,4 +321,64 @@ export const VIDEO_DOWNLOADER_CONTENT: Record<
       ],
     },
   },
+  es: {
+    hero: {
+      title: 'Descargador de Videos Gratis — YouTube, TikTok y Más',
+      subtitle:
+        'Descarga videos de YouTube, TikTok, Instagram, X y Facebook en un clic. Múltiples opciones de calidad, extracción de audio, sin marcas de agua.',
+    },
+    features: [
+      {
+        title: '5 Plataformas Soportadas',
+        description:
+          'Descarga de YouTube, TikTok, Instagram, X (Twitter) y Facebook — todo en una herramienta. Soporta videos estándar, Shorts, Reels y Stories.',
+      },
+      {
+        title: 'Múltiples Opciones de Calidad',
+        description:
+          'Elige tu resolución y códec preferido — desde 360p hasta 4K. Ve el tamaño del archivo antes de descargar para saber exactamente lo que obtienes.',
+      },
+      {
+        title: 'Sin Marcas de Agua',
+        description:
+          'Descarga videos de TikTok e Instagram sin marcas de agua de la plataforma. Obtén archivos limpios de calidad original listos para usar.',
+      },
+      {
+        title: 'Extracción de Audio',
+        description:
+          'Extrae audio de cualquier video — perfecto para guardar música, podcasts o locuciones. Descarga como archivos de audio de alta calidad.',
+      },
+      {
+        title: 'Modo Solo Video',
+        description:
+          'Descarga video sin audio para proyectos de edición. Añade tu propia locución, música o efectos de sonido en postproducción.',
+      },
+      {
+        title: 'Rápido y Confiable',
+        description:
+          'Pega un enlace, elige calidad y descarga. Sin registro, sin configuraciones complejas — descargas de video rápidas y confiables.',
+      },
+    ],
+    cta: {
+      title: 'Empieza a Descargar Videos Ahora',
+      buttonText: 'Prueba el Descargador de Videos Gratis',
+    },
+    seoText:
+      'Voicica Descargador de Videos te permite guardar videos de YouTube, TikTok, Instagram, X (Twitter) y Facebook en segundos. Simplemente pega la URL del video, elige tu calidad y formato preferidos, y descarga — sin registro. Soporte para video con audio, solo video y extracción solo de audio. Descarga videos de TikTok sin marcas de agua, guarda videos de YouTube en resolución hasta 4K y extrae audio de cualquier plataforma. Créditos gratis cada día para descargas instantáneas.',
+    metadata: {
+      title: 'Descargador de Videos Gratis — YouTube, TikTok, Instagram | Voicica AI',
+      description:
+        'Descarga videos de YouTube, TikTok, Instagram, X y Facebook gratis. Sin marcas de agua, múltiples calidades, extracción de audio. Descargador de video online rápido y fácil.',
+      keywords: [
+        'descargador de videos',
+        'descargar YouTube',
+        'descargar TikTok',
+        'descargar video Instagram',
+        'descargador de videos gratis',
+        'descargar sin marca de agua',
+        'descargador de video online',
+        'guardar video',
+      ],
+    },
+  },
 };

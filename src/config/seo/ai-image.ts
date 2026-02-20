@@ -317,4 +317,64 @@ export const AI_IMAGE_CONTENT: Record<string, AiImageLocaleContent> = {
       ],
     },
   },
+  es: {
+    hero: {
+      title: 'Generador de Imágenes IA — Crea Visuales Impresionantes desde Texto',
+      subtitle:
+        'Describe cualquier escena, personaje o concepto — la IA genera imágenes hermosas en segundos. Elige entre 4 modelos potentes, múltiples estilos y resolución hasta 4K. 100% libre de regalías.',
+    },
+    features: [
+      {
+        title: '4 Modelos IA Potentes',
+        description:
+          'Elige el modelo perfecto — Z-Image para resultados ultrarrápidos, Flux.2 para calidad equilibrada, Seedream 4.5 para estilos diversos, o Nano Banana Pro para obras maestras fotorrealistas en 4K.',
+      },
+      {
+        title: 'Texto a Imagen e Imagen a Imagen',
+        description:
+          'Genera imágenes desde prompts de texto, o sube una imagen de referencia para generación guiada. Refina, remezcla e itera hasta que tu visión sea perfecta.',
+      },
+      {
+        title: 'Generador de Prompts IA',
+        description:
+          '¿No sabes cómo describir tu idea? Escribe una frase simple y nuestro Generador de Prompts IA la expande en un prompt detallado y optimizado para los mejores resultados.',
+      },
+      {
+        title: 'Relaciones de Aspecto y Calidad Flexibles',
+        description:
+          'Crea imágenes en cualquier formato — paisajes 16:9, historias 9:16, cuadrados 1:1 y más. Salida en resolución 1K, 2K o 4K según el modelo.',
+      },
+      {
+        title: 'Todos los Estilos Imaginables',
+        description:
+          'Retratos fotorrealistas, ilustraciones anime, acuarelas, arte conceptual, mockups de productos, renders 3D — la IA se adapta a cualquier estilo artístico que describas.',
+      },
+      {
+        title: '100% Libre de Regalías',
+        description:
+          'Todas las imágenes generadas son tuyas — redes sociales, sitios web, impresión, publicidad o proyectos comerciales. Sin tarifas de licencia, sin marcas de agua, propiedad total.',
+      },
+    ],
+    cta: {
+      title: 'Empieza a Crear Imágenes IA Ahora',
+      buttonText: 'Prueba el Generador de Imágenes IA Gratis',
+    },
+    seoText:
+      'Voicica Generador de Imágenes IA transforma tus ideas en visuales impresionantes en segundos. Ya sea que necesites gráficos para redes sociales, miniaturas de YouTube, arte conceptual, imágenes de productos o ilustraciones creativas — simplemente describe lo que quieres y la IA lo genera. Impulsado por 4 modelos de última generación incluyendo Nano Banana Pro con capacidades de razonamiento, Voicica soporta generación texto a imagen e imagen a imagen en resoluciones hasta 4K. El Generador de Prompts IA integrado te ayuda a crear prompts perfectos desde descripciones simples. Créditos gratis cada día — no se requiere experiencia en diseño.',
+    metadata: {
+      title: 'Generador de Imágenes IA — Crea Imágenes desde Texto | Voicica AI',
+      description:
+        'Genera impresionantes imágenes IA desde prompts de texto. 4 modelos potentes, texto a imagen e imagen a imagen, resolución hasta 4K. Creador de imágenes gratis y libre de regalías.',
+      keywords: [
+        'generador de imágenes IA',
+        'texto a imagen',
+        'generador de arte IA',
+        'creador de imágenes IA',
+        'generador de imágenes gratis',
+        'creador de arte IA',
+        'texto a imagen IA',
+        'ilustración IA',
+      ],
+    },
+  },
 };

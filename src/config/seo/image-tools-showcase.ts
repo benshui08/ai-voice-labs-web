@@ -47,4 +47,8 @@ export const IMAGE_TOOLS_SHOWCASE_LABELS: Record<
     title: 'เครื่องมือที่ใช้ได้',
     supported: 'ความสามารถของเครื่องมือ',
   },
+  es: {
+    title: 'Herramientas Disponibles',
+    supported: 'Capacidades de Herramientas',
+  },
 };

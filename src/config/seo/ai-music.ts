@@ -317,4 +317,64 @@ export const AI_MUSIC_CONTENT: Record<string, AiMusicLocaleContent> = {
       ],
     },
   },
+  es: {
+    hero: {
+      title: 'Generador de Música IA — Crea Canciones Originales en Segundos',
+      subtitle:
+        'Describe tu idea o pega letras, y la IA compone una canción completa con voces, instrumentos y producción de calidad de estudio. 100% libre de regalías.',
+    },
+    features: [
+      {
+        title: 'Dos Modos de Creación',
+        description:
+          'Prompt a Música: describe un ambiente o escena y obtén una pista completa. Letra a Música: pega tus propias letras y elige un estilo — la IA se encarga del resto.',
+      },
+      {
+        title: 'Voces IA e Instrumentales',
+        description:
+          'Genera canciones con voces cantantes IA naturales — masculina, femenina o detección automática. O activa el modo instrumental para música de fondo sin voces.',
+      },
+      {
+        title: 'Múltiples Modelos IA',
+        description:
+          'Elige entre Music 5.0, 4.5 Plus y 4.5 — cada uno ofrece diferentes calidades de sonido. El modelo más reciente ofrece voces humanas delicadas y producción superior.',
+      },
+      {
+        title: 'Asistente de Letras y Estilo IA',
+        description:
+          '¿Bloqueado con las palabras? La IA genera letras creativas a partir de una breve descripción. El Asistente de Estilo sugiere etiquetas de género como pop, jazz, electrónica o cinematográfica.',
+      },
+      {
+        title: 'Salida de Doble Pista',
+        description:
+          'Cada generación produce dos versiones únicas de tu canción. Compara y elige la que más te guste, o usa ambas para diferentes proyectos.',
+      },
+      {
+        title: '100% Libre de Regalías',
+        description:
+          'Toda la música generada es tuya — videos de YouTube, podcasts, juegos, anuncios o proyectos comerciales. Sin tarifas de licencia, sin problemas de derechos de autor.',
+      },
+    ],
+    cta: {
+      title: 'Empieza a Crear Música IA Ahora',
+      buttonText: 'Prueba el Generador de Música IA Gratis',
+    },
+    seoText:
+      'Voicica Generador de Música IA convierte tus ideas en canciones completas en segundos. Ya sea que necesites música de fondo para videos de YouTube, pistas originales para podcasts, bandas sonoras cinematográficas para películas o melodías pegadizas para redes sociales — nuestra IA compone, canta y produce música de calidad de estudio a partir de un simple texto o tus propias letras. Impulsado por redes neuronales de última generación, Voicica soporta canciones de hasta 8 minutos con voces IA naturales en múltiples idiomas. Créditos gratis cada día — no se requiere experiencia musical.',
+    metadata: {
+      title: 'Generador de Música IA — Crea Canciones desde Texto | Voicica AI',
+      description:
+        'Genera música IA original a partir de textos o letras. Canciones completas con voces IA, instrumentales y producción de estudio. Creador de música gratis y libre de regalías.',
+      keywords: [
+        'generador de música IA',
+        'creador de canciones IA',
+        'texto a música',
+        'compositor IA',
+        'música libre de regalías',
+        'voces IA',
+        'generador de música gratis',
+        'generador de letras IA',
+      ],
+    },
+  },
 };

@@ -300,4 +300,62 @@ export const HOMEPAGE_CONTENT: Record<string, HomepageLocaleContent> = {
       'ลบพื้นหลัง',
     ],
   },
+  es: {
+    h1: 'Generador de Voz IA Gratis, Creador de Música y Herramientas de Imagen',
+    features: [
+      {
+        title: 'IA Texto a Voz',
+        description:
+          'Convierte cualquier texto en voz natural con más de 3,200 voces IA en más de 190 idiomas. Nuestro generador gratuito de texto a voz produce locuciones de calidad de estudio en segundos — perfecto para videos, podcasts y e-learning.',
+      },
+      {
+        title: 'Generador de Música IA',
+        description:
+          'Crea pistas musicales originales con IA. Describe el ambiente, género o estilo que deseas y obtén una composición libre de regalías al instante. Ideal para creadores de contenido, cineastas y desarrolladores de juegos.',
+      },
+      {
+        title: 'Creador de Imágenes IA',
+        description:
+          'Genera impresionantes imágenes IA a partir de textos. Desde arte conceptual hasta gráficos para redes sociales, nuestro generador de imágenes IA convierte tus ideas en visuales de alta calidad en segundos.',
+      },
+      {
+        title: 'Descargador de Videos Gratis',
+        description:
+          'Descarga videos de TikTok, YouTube y más. Guarda tu contenido favorito en alta calidad — sin marca de agua, sin registro. Rápido, gratis y fácil de usar.',
+      },
+      {
+        title: 'Escalador de Imágenes HD',
+        description:
+          'Mejora y escala imágenes a calidad HD usando IA. Restaura fotos borrosas, aumenta la resolución y mejora los detalles con un solo clic — completamente gratis.',
+      },
+      {
+        title: 'Eliminador de Fondos',
+        description:
+          'Elimina fondos de imágenes al instante con IA. Obtén recortes limpios y transparentes para fotos de productos, retratos y proyectos de diseño — sin edición manual.',
+      },
+    ],
+    metadata: {
+      title: 'Voicica AI - Generador de Voz IA Gratis, Música e Imagen',
+      description:
+        'Plataforma IA gratuita: Texto a voz con 3200+ voces, generador de música IA, creador de imágenes IA, descargador de videos, escalador HD, eliminador de fondos.',
+      keywords: [
+        'voz IA',
+        'texto a voz',
+        'generador de música IA',
+        'generador de imágenes IA',
+        'descargador de videos',
+        'escalador de imágenes',
+        'eliminador de fondos',
+        'herramientas IA gratis',
+      ],
+    },
+    jsonLdFeatureList: [
+      'IA Texto a Voz con 3200+ voces',
+      'Generador de Música IA',
+      'Creador de Imágenes IA',
+      'Descargador de Videos Gratis',
+      'Escalador de Imágenes HD',
+      'Eliminador de Fondos',
+    ],
+  },
 };

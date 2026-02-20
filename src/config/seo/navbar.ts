@@ -19,6 +19,7 @@ export const SEO_NAV_LABELS: Record<string, Record<string, string>> = {
     'zh-Hant': 'AI語音',
     ko: 'AI 보이스',
     th: 'AI เสียง',
+    es: 'AI Voz',
   },
   'ai-music': {
     en: 'AI Music',
@@ -26,6 +27,7 @@ export const SEO_NAV_LABELS: Record<string, Record<string, string>> = {
     'zh-Hant': 'AI音樂',
     ko: 'AI 음악',
     th: 'AI เพลง',
+    es: 'AI Música',
   },
   'ai-image': {
     en: 'AI Image',
@@ -33,6 +35,7 @@ export const SEO_NAV_LABELS: Record<string, Record<string, string>> = {
     'zh-Hant': 'AI圖片',
     ko: 'AI 이미지',
     th: 'AI รูปภาพ',
+    es: 'AI Imagen',
   },
   'ai-video': {
     en: 'AI Video',
@@ -40,6 +43,7 @@ export const SEO_NAV_LABELS: Record<string, Record<string, string>> = {
     'zh-Hant': 'AI影片',
     ko: 'AI 비디오',
     th: 'AI วิดีโอ',
+    es: 'AI Video',
   },
   'image-tools': {
     en: 'Image Tools',
@@ -47,6 +51,7 @@ export const SEO_NAV_LABELS: Record<string, Record<string, string>> = {
     'zh-Hant': '圖片工具',
     ko: '이미지 도구',
     th: 'เครื่องมือรูปภาพ',
+    es: 'Herramientas',
   },
   'video-downloader': {
     en: 'Video Downloader',
@@ -54,6 +59,7 @@ export const SEO_NAV_LABELS: Record<string, Record<string, string>> = {
     'zh-Hant': '影片下載',
     ko: '동영상 다운로드',
     th: 'ดาวน์โหลดวิดีโอ',
+    es: 'Descargar Video',
   },
 };
 
@@ -63,4 +69,5 @@ export const SEO_LANGUAGE_LABEL: Record<string, string> = {
   'zh-Hant': '語言',
   ko: '언어',
   th: 'ภาษา',
+  es: 'Idioma',
 };

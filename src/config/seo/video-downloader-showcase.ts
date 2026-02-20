@@ -83,4 +83,10 @@ export const SHOWCASE_LABELS: Record<
     button: 'วิเคราะห์วิดีโอ',
     supported: 'แพลตฟอร์มที่รองรับ',
   },
+  es: {
+    title: 'Pega una URL de Video para Descargar',
+    placeholder: 'https://www.youtube.com/watch?v=...',
+    button: 'Analizar Video',
+    supported: 'Plataformas Soportadas',
+  },
 };

@@ -75,4 +75,8 @@ export const VIDEO_SHOWCASE_LABELS: Record<
     title: 'สเปคการสร้างวิดีโอ',
     supported: 'ความสามารถที่รองรับ',
   },
+  es: {
+    title: 'Especificaciones de Generación de Video',
+    supported: 'Capacidades Soportadas',
+  },
 };

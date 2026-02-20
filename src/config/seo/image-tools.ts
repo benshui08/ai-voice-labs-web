@@ -317,4 +317,64 @@ export const IMAGE_TOOLS_CONTENT: Record<string, ImageToolsLocaleContent> = {
       ],
     },
   },
+  es: {
+    hero: {
+      title: 'Herramientas de Imagen IA — Eliminador de Fondos y Escalador HD',
+      subtitle:
+        'Elimina fondos en un clic o escala imágenes de baja resolución a HD con IA. Rápido, preciso y asequible — soporta formatos JPG, PNG y WebP.',
+    },
+    features: [
+      {
+        title: 'Eliminador de Fondos IA',
+        description:
+          'Elimina fondos de imágenes al instante con precisión IA. Perfecto para fotos de productos, retratos, fotos de identificación y contenido para redes sociales. Recortes limpios con bordes suaves en segundos.',
+      },
+      {
+        title: 'Escalador de Imágenes HD',
+        description:
+          'Mejora imágenes de baja resolución a calidad HD cristalina usando IA. Recupera detalles, mejora texturas y escala fotos sin perder calidad — ideal para impresión y pantallas grandes.',
+      },
+      {
+        title: 'Listo para Fotografía de Producto',
+        description:
+          'Crea imágenes de productos profesionales para e-commerce, elimina fondos para listados en marketplaces o prepara fotos de identificación con fondo blanco limpio. Calidad profesional en segundos.',
+      },
+      {
+        title: 'Soporta Múltiples Formatos',
+        description:
+          'Sube y procesa imágenes en formatos JPG, PNG y WebP. Descarga resultados en tu formato preferido con soporte completo de transparencia para imágenes sin fondo.',
+      },
+      {
+        title: 'Procesamiento Rápido',
+        description:
+          'Obtén resultados en 10-30 segundos. Sin espera, sin cola — la IA procesa tus imágenes al instante para que puedas enfocarte en lo importante. Procesa múltiples imágenes por lotes.',
+      },
+      {
+        title: 'Precio por Créditos',
+        description:
+          'Cada operación cuesta solo 1 crédito. Sin suscripciones — usa créditos según necesites. Créditos diarios gratis incluidos para empezar a usar las herramientas de inmediato.',
+      },
+    ],
+    cta: {
+      title: 'Empieza a Usar Herramientas de Imagen IA',
+      buttonText: 'Prueba Herramientas de Imagen Gratis',
+    },
+    seoText:
+      'Voicica Herramientas de Imagen IA incluye un potente Eliminador de Fondos y Escalador de Imágenes HD. Elimina fondos de fotos de productos, retratos y fotos de identificación con un clic — la IA ofrece recortes limpios con bordes suaves en segundos. El Escalador HD mejora imágenes de baja resolución a calidad cristalina, recuperando detalles y mejorando texturas usando modelos IA avanzados. Soporta formatos JPG, PNG y WebP con transparencia completa. El procesamiento toma solo 10-30 segundos por imagen, y cada operación cuesta solo 1 crédito. Créditos diarios gratis incluidos — no se requieren habilidades de diseño.',
+    metadata: {
+      title: 'Herramientas de Imagen IA — Eliminador de Fondos y Escalador HD | Voicica AI',
+      description:
+        'Elimina fondos y escala imágenes con IA. Eliminación de fondo en un clic, escalado HD, soporta JPG/PNG/WebP. Procesamiento rápido, 1 crédito por uso.',
+      keywords: [
+        'eliminador de fondos',
+        'eliminar fondo',
+        'escalador de imágenes',
+        'escalado HD',
+        'herramientas de imagen IA',
+        'quitar fondo',
+        'mejorar fotos',
+        'eliminar fondo de imagen',
+      ],
+    },
+  },
 };

@@ -48,4 +48,5 @@ export const MUSIC_SHOWCASE_LABELS: Record<string, string> = {
   'zh-Hant': '音樂樣本',
   ko: '음악 샘플',
   th: 'ตัวอย่างเพลง',
+  es: 'Muestras de Música',
 };

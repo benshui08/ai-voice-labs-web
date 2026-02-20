@@ -317,4 +317,64 @@ export const AI_VOICE_CONTENT: Record<string, AiVoiceLocaleContent> = {
       ],
     },
   },
+  es: {
+    hero: {
+      title: 'Generador de Voz IA — Texto a Voz Natural Online',
+      subtitle:
+        'Transforma texto en voz realista con más de 3,200 voces IA en más de 190 idiomas. Gratis, rápido y calidad de estudio.',
+    },
+    features: [
+      {
+        title: '3,200+ Voces IA',
+        description:
+          'Elige entre miles de voces únicas — masculinas, femeninas, infantiles, de personas mayores y voces de personajes en todos los idiomas principales.',
+      },
+      {
+        title: '190+ Idiomas y Acentos',
+        description:
+          'Genera voz en inglés, japonés, chino, coreano, tailandés, español, francés, alemán, árabe y muchos más.',
+      },
+      {
+        title: 'Calidad de Estudio',
+        description:
+          'Audio cristalino de hasta 48 kHz. Perfecto para videos de YouTube, podcasts, audiolibros y presentaciones profesionales.',
+      },
+      {
+        title: 'Clonación de Voz',
+        description:
+          'Clona cualquier voz con una breve muestra de audio. Crea un gemelo digital de tu propia voz o genera voces de personajes personalizados.',
+      },
+      {
+        title: 'Control de Emoción y Estilo',
+        description:
+          'Ajusta tono, velocidad, tono y emoción. Haz que tu voz IA suene feliz, triste, emocionada, tranquila o profesional.',
+      },
+      {
+        title: '100% Gratis para Empezar',
+        description:
+          'Sin tarjeta de crédito. Obtén créditos gratis cada día para generar voz IA — actualiza en cualquier momento para más límites.',
+      },
+    ],
+    cta: {
+      title: 'Comienza a Generar Voces IA Ahora',
+      buttonText: 'Prueba el Generador de Voz IA Gratis',
+    },
+    seoText:
+      'Voicica AI es el principal generador de voz IA gratuito y plataforma de texto a voz. Ya sea que necesites locuciones para YouTube, TikTok, podcasts, cursos e-learning o presentaciones empresariales, nuestro motor TTS IA ofrece resultados naturales en segundos. Impulsado por redes neuronales de última generación, Voicica soporta más de 3,200 voces y 190 idiomas — convirtiéndolo en la herramienta de voz IA más completa disponible en línea.',
+    metadata: {
+      title: 'Generador de Voz IA — Texto a Voz Gratis | Voicica AI',
+      description:
+        'Genera voces IA naturales a partir de texto con 3200+ voces en 190+ idiomas. Herramienta TTS online gratuita para videos, podcasts y más.',
+      keywords: [
+        'generador de voz IA',
+        'texto a voz',
+        'TTS',
+        'voz IA',
+        'texto a voz online',
+        'generador de voz gratis',
+        'narración IA',
+        'clonación de voz',
+      ],
+    },
+  },
 };

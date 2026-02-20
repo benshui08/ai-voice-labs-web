@@ -317,4 +317,64 @@ export const AI_VIDEO_CONTENT: Record<string, AiVideoLocaleContent> = {
       ],
     },
   },
+  es: {
+    hero: {
+      title: 'Generador de Video IA — Crea Videos Cinematográficos desde Texto',
+      subtitle:
+        'Describe cualquier escena y la IA genera videos impresionantes en segundos. Impulsado por Seedance 1.5 Pro — calidad cinematográfica, múltiples resoluciones, relaciones de aspecto flexibles y generación de audio IA.',
+    },
+    features: [
+      {
+        title: 'Generación de Texto a Video',
+        description:
+          'Simplemente describe una escena, acción o historia — la IA transforma tu texto en un clip de video de alta calidad. Sin filmación, sin edición, sin experiencia necesaria.',
+      },
+      {
+        title: 'Múltiples Calidades y Duración',
+        description:
+          'Elige la resolución (480p o 720p) y duración (4s, 8s o 12s) que se ajuste a tu proyecto. Previsualizaciones rápidas o clips cinematográficos más largos — tú decides.',
+      },
+      {
+        title: 'Relaciones de Aspecto Flexibles',
+        description:
+          'Crea videos en cualquier formato — 16:9 paisaje para YouTube, 9:16 vertical para TikTok/Reels, 1:1 cuadrado, 4:3 clásico, 3:4 retrato o ultra ancho 21:9 cinematográfico.',
+      },
+      {
+        title: 'Generación Guiada por Imagen',
+        description:
+          'Sube una imagen de referencia para guiar el estilo, composición o sujeto del video. Combina prompts de texto con referencias visuales para un control creativo preciso.',
+      },
+      {
+        title: 'Generación de Audio IA',
+        description:
+          'Genera automáticamente audio y efectos de sonido que coincidan con tus videos. Crea contenido de video completo con locución sincronizada y música de fondo.',
+      },
+      {
+        title: 'Modelo IA Cinematográfico',
+        description:
+          'Impulsado por Seedance 1.5 Pro — un modelo de generación de video de última generación que ofrece visuales de calidad cinematográfica con movimiento suave, iluminación realista y detalles impresionantes.',
+      },
+    ],
+    cta: {
+      title: 'Empieza a Crear Videos IA Ahora',
+      buttonText: 'Prueba el Generador de Video IA Gratis',
+    },
+    seoText:
+      'Voicica Generador de Video IA transforma tus ideas en videos cinematográficos en segundos. Impulsado por el modelo de última generación Seedance 1.5 Pro, ofrece una calidad visual impresionante con movimiento suave e iluminación realista. Crea videos desde descripciones de texto o usa imágenes de referencia para generación guiada. Elige entre 6 relaciones de aspecto incluyendo 16:9, 9:16, 1:1 y ultra ancho 21:9. Selecciona resolución 480p o 720p y duración de 4s a 12s. La generación de audio IA añade sonido sincronizado a tus videos automáticamente. Perfecto para contenido de redes sociales, videos de marketing, proyectos creativos y narrativa. Créditos gratis cada día — no se requiere experiencia en edición de video.',
+    metadata: {
+      title: 'Generador de Video IA — Crea Videos desde Texto | Voicica AI',
+      description:
+        'Genera videos IA cinematográficos desde prompts de texto. Modelo Seedance 1.5 Pro, 6 relaciones de aspecto, 480p-720p, 4-12s, audio IA. Creador de video gratis.',
+      keywords: [
+        'generador de video IA',
+        'texto a video',
+        'creador de video IA',
+        'hacer video IA',
+        'generador de video gratis',
+        'texto a video IA',
+        'creador de películas IA',
+        'edición de video IA',
+      ],
+    },
+  },
 };

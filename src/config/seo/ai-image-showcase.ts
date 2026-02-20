@@ -71,4 +71,5 @@ export const IMAGE_SHOWCASE_LABELS: Record<string, string> = {
   'zh-Hant': 'AI生成樣本',
   ko: 'AI 생성 샘플',
   th: 'ตัวอย่างที่สร้างด้วย AI',
+  es: 'Muestras Generadas por IA',
 };

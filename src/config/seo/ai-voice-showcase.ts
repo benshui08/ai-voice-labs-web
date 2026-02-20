@@ -93,4 +93,5 @@ export const SHOWCASE_LABELS: Record<string, { voices: string; dialogues: string
   'zh-Hant': { voices: '語音樣本', dialogues: '對話樣本' },
   ko: { voices: '음성 샘플', dialogues: '대화 샘플' },
   th: { voices: 'ตัวอย่างเสียง', dialogues: 'ตัวอย่างบทสนทนา' },
+  es: { voices: 'Muestras de Voz', dialogues: 'Muestras de Diálogo' },
 };
