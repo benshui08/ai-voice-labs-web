@@ -7,6 +7,8 @@ export const SEO_NAV_LINKS: SeoNavLink[] = [
   { id: 'ai-voice', path: 'ai-voice' },
   { id: 'ai-music', path: 'ai-music' },
   { id: 'ai-image', path: 'ai-image' },
+  { id: 'ai-video', path: 'ai-video' },
+  { id: 'image-tools', path: 'image-tools' },
   { id: 'video-downloader', path: 'video-downloader' },
 ];
 
@@ -31,6 +33,20 @@ export const SEO_NAV_LABELS: Record<string, Record<string, string>> = {
     'zh-Hant': 'AI圖片',
     ko: 'AI 이미지',
     th: 'AI รูปภาพ',
+  },
+  'ai-video': {
+    en: 'AI Video',
+    ja: 'AI動画',
+    'zh-Hant': 'AI影片',
+    ko: 'AI 비디오',
+    th: 'AI วิดีโอ',
+  },
+  'image-tools': {
+    en: 'Image Tools',
+    ja: '画像ツール',
+    'zh-Hant': '圖片工具',
+    ko: '이미지 도구',
+    th: 'เครื่องมือรูปภาพ',
   },
   'video-downloader': {
     en: 'Video Downloader',
