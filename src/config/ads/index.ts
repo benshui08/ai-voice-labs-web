@@ -21,6 +21,7 @@ export {
 export {
   exoclickConfig,
   getExoClickVastUrl,
+  getExoClickVastUrls,
   isExoClickEnabled,
   type ExoClickConfig,
 } from './exoclick';

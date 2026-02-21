@@ -3,31 +3,31 @@
 /**
  * ExoClick VAST 激励广告 Hook
  *
- * 使用 Fluid Player 加载 ExoClick VAST In-Stream 广告。
- * 广告作为 preRoll 播放，主视频使用占位视频。
+ * 使用 Fluid Player 加载 ExoClick VAST In-Stream 广告（多 zone ad pod）。
+ * 多个广告作为 preRoll 背靠背播放，全部播完才判定成功。
  *
  * 广告播放流程（通过日志验证）：
  * 1. Fluid Player 加载自己的 blank.mp4（0.04s）并立即结束
- * 2. VAST 广告视频（如 aucdn.net）加载并播放
- * 3. 广告播放结束 → video 'ended' 事件触发
- * 4. Fluid Player 尝试切回主内容，但 src 变成 null → error
+ * 2. 第 1 个 VAST 广告视频加载并播放 → ended
+ * 3. 第 2 个 VAST 广告视频加载并播放 → ended
+ * 4. Fluid Player 切回主内容，src 变 null → error
  *
  * 注意：Fluid Player v3 的 vastVideoEndedCallback 实测不触发，
- * 所以通过 video 原生 ended 事件 + currentTime 判断广告是否看完。
+ * 通过 video 原生 ended 事件 + currentTime + 计数判断所有广告是否看完。
  */
 
 import { useRef, useCallback } from 'react';
 import type { RewardedAdResult } from './useRewardedAd';
-import { getExoClickVastUrl } from '@/config/ads/exoclick';
+import { getExoClickVastUrls } from '@/config/ads/exoclick';
 
 // Fluid Player SDK CDN
 const FLUID_PLAYER_JS = 'https://cdn.fluidplayer.com/v3/current/fluidplayer.min.js';
 const FLUID_PLAYER_CSS = 'https://cdn.fluidplayer.com/v3/current/fluidplayer.min.css';
 
-// 占位视频：Fluid Player 官方 demo
+// 占位视频
 const PLACEHOLDER_VIDEO = 'https://cdn.fluidplayer.com/static/demo.mp4';
 
-// 判定"广告看完"的最小播放时长（秒）
+// 判定单个广告"看完"的最小播放时长（秒）
 const MIN_AD_WATCH_SECONDS = 5;
 
 // Fluid Player 类型声明
@@ -76,7 +76,6 @@ function loadFluidPlayerSDK(): Promise<void> {
       return;
     }
 
-    // 加载 CSS
     if (!document.getElementById('fluid-player-css')) {
       const link = document.createElement('link');
       link.id = 'fluid-player-css';
@@ -85,7 +84,6 @@ function loadFluidPlayerSDK(): Promise<void> {
       document.head.appendChild(link);
     }
 
-    // 加载 JS
     const existingScript = document.getElementById('fluid-player-js');
     if (existingScript) {
       existingScript.addEventListener('load', () => resolve());
@@ -151,13 +149,18 @@ export function useExoClickAd() {
         return { success: false, reason: 'error', message: 'Fluid Player not available' };
       }
 
+      const vastUrls = getExoClickVastUrls();
+      const totalAdsExpected = vastUrls.length;
+
       return await new Promise<RewardedAdResult>((resolve) => {
         let settled = false;
         let playerInstance: FluidPlayerInstance | null = null;
 
         // 广告播放追踪
-        let adDetected = false;    // 是否检测到广告视频 URL
-        let adMaxTime = 0;         // 广告视频播放的最大 currentTime
+        let adsCompleted = 0;         // 已完整播放的广告数
+        let adTotalWatchTime = 0;     // 所有广告的累计播放时长
+        let currentAdSrc = '';        // 当前正在播放的广告 src
+        let currentAdStartTime = 0;   // 当前广告开始时的 currentTime
 
         const cleanup = () => {
           isShowingRef.current = false;
@@ -173,7 +176,7 @@ export function useExoClickAd() {
         const settleResult = (result: RewardedAdResult) => {
           if (settled) return;
           settled = true;
-          console.log('[ExoClick] Settle:', result.reason, `(adDetected=${adDetected}, adMaxTime=${adMaxTime.toFixed(1)}s)`);
+          console.log(`[ExoClick] Settle: ${result.reason} (ads=${adsCompleted}/${totalAdsExpected}, totalTime=${adTotalWatchTime.toFixed(1)}s)`);
           cleanup();
           resolve(result);
         };
@@ -200,9 +203,9 @@ export function useExoClickAd() {
           'display:flex', 'align-items:center', 'justify-content:center',
         ].join(';');
         closeBtn.onclick = () => {
-          console.log('[ExoClick] User closed overlay, adMaxTime:', adMaxTime.toFixed(1));
-          if (adDetected && adMaxTime >= MIN_AD_WATCH_SECONDS) {
-            // 广告已经播放了足够长，视为看完
+          console.log(`[ExoClick] User closed overlay, ads=${adsCompleted}/${totalAdsExpected}`);
+          // 所有广告都看完了才给奖励
+          if (adsCompleted >= totalAdsExpected) {
             settleResult({ success: true, reason: 'rewarded' });
           } else {
             settleResult({ success: false, reason: 'skipped' });
@@ -225,40 +228,51 @@ export function useExoClickAd() {
 
         // === 视频事件监听（核心检测逻辑）===
 
-        // 检测广告视频 URL
+        // 检测新广告视频加载
         video.addEventListener('loadstart', () => {
           const src = video.currentSrc || '';
-          if (isAdVideoSrc(src)) {
-            adDetected = true;
-            console.log('[ExoClick] Ad video detected:', src.substring(0, 60));
+          if (isAdVideoSrc(src) && src !== currentAdSrc) {
+            currentAdSrc = src;
+            currentAdStartTime = 0;
+            console.log(`[ExoClick] Ad ${adsCompleted + 1}/${totalAdsExpected} loading:`, src.substring(0, 60));
           }
         });
 
-        // 追踪广告播放进度
+        // 追踪播放进度
         video.addEventListener('timeupdate', () => {
-          if (adDetected && isAdVideoSrc(video.currentSrc || '')) {
-            adMaxTime = Math.max(adMaxTime, video.currentTime);
+          if (currentAdSrc && isAdVideoSrc(video.currentSrc || '')) {
+            currentAdStartTime = Math.max(currentAdStartTime, video.currentTime);
           }
         });
 
-        // 广告视频播放结束 → 自动判定
+        // 广告视频播放结束
         video.addEventListener('ended', () => {
           const src = video.currentSrc || '';
-          console.log('[ExoClick] Video ended: currentTime=', video.currentTime.toFixed(1), 'src=', src.substring(0, 60));
+          const time = video.currentTime;
+          console.log(`[ExoClick] Video ended: time=${time.toFixed(1)}s src=${src.substring(0, 60)}`);
 
-          if (adDetected && isAdVideoSrc(src) && video.currentTime >= MIN_AD_WATCH_SECONDS) {
-            console.log('[ExoClick] Ad video completed naturally');
-            settleResult({ success: true, reason: 'rewarded' });
+          if (isAdVideoSrc(src) && time >= MIN_AD_WATCH_SECONDS) {
+            adsCompleted++;
+            adTotalWatchTime += time;
+            console.log(`[ExoClick] Ad completed: ${adsCompleted}/${totalAdsExpected} (totalTime=${adTotalWatchTime.toFixed(1)}s)`);
+
+            // 所有广告都播完了 → 成功
+            if (adsCompleted >= totalAdsExpected) {
+              console.log('[ExoClick] All ads completed!');
+              settleResult({ success: true, reason: 'rewarded' });
+            }
+            // 否则等下一个广告继续播
           }
         });
 
-        // 广告结束后 Fluid Player 把 src 设为 null → error
-        // 如果广告已经播放够了，视为完成
+        // Fluid Player 播完所有广告后 src → null → error
         video.addEventListener('error', () => {
-          console.log('[ExoClick] Video error, adDetected=', adDetected, 'adMaxTime=', adMaxTime.toFixed(1));
-          if (adDetected && adMaxTime >= MIN_AD_WATCH_SECONDS) {
+          console.log(`[ExoClick] Video error, ads=${adsCompleted}/${totalAdsExpected}`);
+          if (adsCompleted >= totalAdsExpected) {
             settleResult({ success: true, reason: 'rewarded' });
           }
+          // 如果至少看了 1 个完整广告但没看完全部，也算 error fallback
+          // 不给奖励，让用户知道需要看完所有广告
         });
 
         container.appendChild(video);
@@ -267,15 +281,17 @@ export function useExoClickAd() {
         document.body.appendChild(overlay);
         document.body.style.overflow = 'hidden';
 
-        // 超时保护（90 秒）
+        console.log(`[ExoClick] Starting ad session: ${totalAdsExpected} ads to play`);
+
+        // 超时保护（每个广告最多 60 秒 + 缓冲）
         const timeout = setTimeout(() => {
-          console.warn('[ExoClick] Timeout, adMaxTime:', adMaxTime.toFixed(1));
-          if (adDetected && adMaxTime >= MIN_AD_WATCH_SECONDS) {
+          console.warn(`[ExoClick] Timeout, ads=${adsCompleted}/${totalAdsExpected}`);
+          if (adsCompleted >= totalAdsExpected) {
             settleResult({ success: true, reason: 'rewarded' });
           } else {
             settleResult({ success: false, reason: 'error', message: 'Ad timed out' });
           }
-        }, 90000);
+        }, totalAdsExpected * 60000 + 30000);
 
         const clearTimeoutAndSettle = (result: RewardedAdResult) => {
           clearTimeout(timeout);
@@ -293,13 +309,13 @@ export function useExoClickAd() {
               controlBar: { autoHide: true, autoHideTimeout: 1 },
             },
             vastOptions: {
-              adList: [
-                { roll: 'preRoll', vastTag: getExoClickVastUrl() },
-              ],
-              // 保留 VAST 回调（虽然 v3 实测不触发，但作为保险）
+              adList: vastUrls.map((url) => ({
+                roll: 'preRoll' as const,
+                vastTag: url,
+              })),
               vastVideoEndedCallback: () => {
                 console.log('[ExoClick] VAST callback: ad completed');
-                clearTimeoutAndSettle({ success: true, reason: 'rewarded' });
+                // 不在这里 settle，让 ended 事件计数处理
               },
               vastVideoSkippedCallback: () => {
                 console.log('[ExoClick] VAST callback: ad skipped');
