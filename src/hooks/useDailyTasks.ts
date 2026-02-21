@@ -135,33 +135,8 @@ export function useDailyTasks(): UseDailyTasksReturn {
     refresh();
   }, [refresh]);
 
-  // 计算弹窗显示逻辑
-  useEffect(() => {
-    if (loading || !config || popupDismissed || !config.enabled) {
-      setShouldShowPopup(false);
-      return;
-    }
-
-    // 检查是否已过间隔时间
-    if (!hasIntervalPassed(config.popup_interval_minutes)) {
-      setShouldShowPopup(false);
-      return;
-    }
-
-    // 如果还有任务未完成，显示弹窗
-    if (status) {
-      const hasUnclaimedTasks =
-        !status.checkinDone ||
-        status.remainingAdViews > 0;
-
-      if (hasUnclaimedTasks) {
-        setShouldShowPopup(true);
-        return;
-      }
-    }
-
-    setShouldShowPopup(false);
-  }, [loading, status, config, user, popupDismissed]);
+  // 自动弹窗已禁用，用户可通过入口手动打开
+  // 如需恢复自动弹出，还原此处的条件判断逻辑
 
   // 标记弹窗已显示
   const markPopupShown = useCallback(() => {
