@@ -94,6 +94,7 @@ export const appConfig: AppConfig = {
       NG: 2, KE: 2, EG: 3, ZA: 5,
     },
     default_ecpm_usd: 5,
+    show_wallet_card: false, // 生产环境暂不显示
   },
 
   /**

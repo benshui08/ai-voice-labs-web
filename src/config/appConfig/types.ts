@@ -87,6 +87,8 @@ export interface MiningEconomyConfig {
   estimated_ecpm_by_country: Record<string, number>;
   /** 未知国家的默认 eCPM（USD） */
   default_ecpm_usd: number;
+  /** 是否显示资产钱包卡片（Total Assets） */
+  show_wallet_card: boolean;
 }
 
 /**

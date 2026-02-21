@@ -86,6 +86,7 @@ export const appConfig: AppConfig = {
       IN: 2, VN: 3,
     },
     default_ecpm_usd: 5,
+    show_wallet_card: true, // 开发环境显示，方便测试
   },
 
   /**

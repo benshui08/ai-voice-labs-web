@@ -9,6 +9,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCredits } from '@/contexts/CreditsContext';
+import { getMiningEconomyConfig } from '@/config/appConfig';
 import NativeDailyTasksModal from './NativeDailyTasksModal';
 import ConvertModal from './ConvertModal';
 import WithdrawSheet from './WithdrawSheet';
@@ -28,6 +29,9 @@ const MiningIcon = () => (
 export default function TotalAssetsCard() {
   const { t } = useLanguage();
   const { credits, loading, refreshCredits } = useCredits();
+  const miningConfig = getMiningEconomyConfig();
+
+  if (!miningConfig.show_wallet_card) return null;
   const [showDailyTasks, setShowDailyTasks] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [showWithdrawSheet, setShowWithdrawSheet] = useState(false);
