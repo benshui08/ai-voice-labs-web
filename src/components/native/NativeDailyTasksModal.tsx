@@ -529,10 +529,9 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
 
       {/* 庆祝效果 */}
       {showCelebration && lastClaimedCredits !== null && (
-        <div className="fixed inset-0 z-[10002] pointer-events-none">
-          <ConfettiBurst />
+        <>
           {/* 弹窗 */}
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="fixed inset-0 z-[10002] flex items-center justify-center pointer-events-none">
             <div className="bg-gray-900/95 backdrop-blur-sm rounded-2xl p-8 text-center border border-purple-500/30 pointer-events-auto animate-bounce-in">
               <div className="text-5xl mb-4">🎉</div>
               <p className="text-white text-lg font-bold mb-2">+{lastClaimedCredits} $VOICICA</p>
@@ -545,7 +544,11 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
               </button>
             </div>
           </div>
-        </div>
+          {/* 撒花效果 — 独立 fixed 层，z-index 高于弹窗 */}
+          <div className="fixed inset-0 z-[10003] pointer-events-none">
+            <ConfettiBurst />
+          </div>
+        </>
       )}
     </>
   );
