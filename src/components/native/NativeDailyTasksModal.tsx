@@ -11,8 +11,6 @@ import { createPortal } from 'react-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useDailyTasks } from '@/hooks/useDailyTasks';
-import { useRouter } from 'next/navigation';
-import { Capacitor } from '@capacitor/core';
 import Image from 'next/image';
 import EnergyOrb from '@/components/common/EnergyOrb';
 import { getMiningEconomyConfig } from '@/config/appConfig';
@@ -63,7 +61,6 @@ const RefreshIcon = () => (
 export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdated }: NativeDailyTasksModalProps) {
   const { t } = useLanguage();
   const { user } = useFirebaseAuth();
-  const router = useRouter();
   const {
     status,
     config,
@@ -76,8 +73,6 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
   } = useDailyTasks();
 
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [showAppOnlyPrompt, setShowAppOnlyPrompt] = useState(false);
-  const isRealNativeApp = Capacitor.isNativePlatform();
   const [lastClaimedCredits, setLastClaimedCredits] = useState<number | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [adLoading, setAdLoading] = useState(false);
@@ -130,18 +125,8 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
     }, 5000);
   }, [t, clearAdTimeout, cancelClaiming]);
 
-  // Web 端拦截：免费积分只在 App 可用（开发环境跳过，方便测试）
-  const guardNativeOnly = useCallback((): boolean => {
-    if (!isRealNativeApp && process.env.NODE_ENV !== 'development') {
-      setShowAppOnlyPrompt(true);
-      return false;
-    }
-    return true;
-  }, [isRealNativeApp]);
-
   // 处理签到
   const handleCheckin = useCallback(async () => {
-    if (!guardNativeOnly()) return;
     if (checkinLoading || claiming) return;
 
     cancelledRef.current = false;
@@ -182,11 +167,10 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
     } finally {
       if (!cancelledRef.current) setCheckinLoading(false);
     }
-  }, [checkinLoading, claiming, doCheckin, onCreditsUpdated, t, clearAdTimeout, guardNativeOnly]);
+  }, [checkinLoading, claiming, doCheckin, onCreditsUpdated, t, clearAdTimeout]);
 
   // 处理看广告
   const handleWatchAd = useCallback(async () => {
-    if (!guardNativeOnly()) return;
     if (adLoading || claiming) return;
 
     cancelledRef.current = false;
@@ -227,7 +211,7 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
     } finally {
       if (!cancelledRef.current) setAdLoading(false);
     }
-  }, [adLoading, claiming, doClaimAdReward, onCreditsUpdated, t, clearAdTimeout, guardNativeOnly]);
+  }, [adLoading, claiming, doClaimAdReward, onCreditsUpdated, t, clearAdTimeout]);
 
   // 重试
   const handleRetry = useCallback(() => {
@@ -474,49 +458,6 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
 
         </div>
       </div>
-
-      {/* App Only 提示弹窗 */}
-      {showAppOnlyPrompt && (
-        <div
-          className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-[10001]"
-          onClick={() => setShowAppOnlyPrompt(false)}
-        >
-          <div
-            className="bg-gray-900 rounded-2xl p-8 flex flex-col items-center shadow-2xl max-w-[320px] mx-4 border border-white/10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-14 h-14 rounded-full bg-amber-500/20 flex items-center justify-center mb-4 text-amber-400">
-              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <p className="text-white font-semibold text-base mb-2 text-center">
-              {t('dailyTasks.appOnlyTitle') || 'App Exclusive Feature'}
-            </p>
-            <p className="text-gray-400 text-sm text-center mb-6">
-              {t('dailyTasks.appOnlyDesc') || 'Free credits are only available in the app. Subscribe to get unlimited credits on web!'}
-            </p>
-            <div className="flex gap-3 w-full">
-              <button
-                onClick={() => setShowAppOnlyPrompt(false)}
-                className="flex-1 px-4 py-2.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors text-sm"
-              >
-                {t('dailyTasks.close') || 'Close'}
-              </button>
-              <button
-                onClick={() => {
-                  setShowAppOnlyPrompt(false);
-                  handleClose();
-                  router.push('/native/subscribe');
-                }}
-                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl text-sm font-medium"
-              >
-                {t('dailyTasks.goSubscribe') || 'View Plans'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 登录弹窗 */}
       <LoginModal
