@@ -1,4 +1,4 @@
-import { pgTable, index, uniqueIndex, varchar, text, integer, timestamp, boolean, serial, json, foreignKey, jsonb, doublePrecision, bigint } from "drizzle-orm/pg-core"
+import { pgTable, index, uniqueIndex, varchar, text, integer, timestamp, boolean, serial, json, foreignKey, jsonb, doublePrecision, bigint, real } from "drizzle-orm/pg-core"
 import { relations, sql } from "drizzle-orm"
 
 // ============================================================
@@ -152,6 +152,9 @@ export const creditHistory = pgTable("credit_history", {
 	createdAt: timestamp("created_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { precision: 6, withTimezone: true, mode: 'string' }).$onUpdate(() => new Date().toISOString()),
 	productType: varchar("product_type", { length: 50 }),
+	adRevenueMicros: bigint("ad_revenue_micros", { mode: "number" }),
+	adRevenueCurrency: varchar("ad_revenue_currency", { length: 3 }),
+	randomMultiplier: real("random_multiplier"),
 }, (table) => [
 	index("idx_credit_history_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
 	index("idx_credit_history_product_type").using("btree", table.productType.asc().nullsLast().op("text_ops")),

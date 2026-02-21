@@ -12,6 +12,13 @@ import { Capacitor } from '@capacitor/core';
 import { admobConfig } from '@/config/ads/admob';
 import { shouldUseAdMob } from '@/config/ads';
 
+/** OnPaidEvent 广告收益数据 */
+export interface AdRevenueData {
+  valueMicros: number;
+  currencyCode: string;
+  precision: number;
+}
+
 interface AdMobContextValue {
   /** AdMob 模块 */
   adMob: typeof import('@capacitor-community/admob').AdMob | null;
@@ -23,8 +30,12 @@ interface AdMobContextValue {
   isLoading: boolean;
   /** 用户是否获得了奖励 */
   rewarded: boolean;
+  /** 最近一次广告收益数据（来自 OnPaidEvent） */
+  lastAdRevenue: AdRevenueData | null;
   /** 重置奖励状态 */
   resetRewarded: () => void;
+  /** 清除广告收益数据 */
+  clearLastAdRevenue: () => void;
   /** 预加载下一个激励广告 */
   prepareAd: () => Promise<void>;
   /** 预加载下一个插页式激励广告 */
@@ -47,7 +58,9 @@ export function useAdMob() {
       isInterstitialRewardedReady: false,
       isLoading: false,
       rewarded: false,
+      lastAdRevenue: null,
       resetRewarded: () => {},
+      clearLastAdRevenue: () => {},
       prepareAd: async () => {},
       prepareInterstitialRewardedAd: async () => {},
       showAd: async () => false,
@@ -67,6 +80,7 @@ export function AdMobProvider({ children }: AdMobProviderProps) {
   const [isInterstitialRewardedReady, setIsInterstitialRewardedReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [rewarded, setRewarded] = useState(false);
+  const [lastAdRevenue, setLastAdRevenue] = useState<AdRevenueData | null>(null);
 
   const isNative = Capacitor.isNativePlatform();
   const useAdMobEnabled = shouldUseAdMob(isNative);
@@ -163,6 +177,13 @@ export function AdMobProvider({ children }: AdMobProviderProps) {
       setTimeout(() => prepareAd(), 3000);
     });
 
+    // OnPaidEvent — 捕获广告收益数据（自定义事件，需要 type assertion）
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (adMobInstance as any).addListener('onRewardedAdRevenuePaid', (data: AdRevenueData) => {
+      console.log('[AdMob] OnPaidEvent revenue:', data);
+      setLastAdRevenue(data);
+    });
+
     listenersAddedRef.current = true;
     console.log('[AdMob] Rewarded ad listeners setup complete');
   }, [prepareAd]);
@@ -213,6 +234,7 @@ export function AdMobProvider({ children }: AdMobProviderProps) {
 
     try {
       setRewarded(false);
+      setLastAdRevenue(null); // 清空旧的收益数据
 
       // 如果广告未准备好，等待加载
       if (!isAdReady) {
@@ -251,6 +273,7 @@ export function AdMobProvider({ children }: AdMobProviderProps) {
 
     try {
       setRewarded(false);
+      setLastAdRevenue(null); // 清空旧的收益数据
 
       // 如果广告未准备好，等待加载
       if (!isInterstitialRewardedReady) {
@@ -281,6 +304,11 @@ export function AdMobProvider({ children }: AdMobProviderProps) {
   // 重置奖励状态
   const resetRewarded = useCallback(() => {
     setRewarded(false);
+  }, []);
+
+  // 清除广告收益数据
+  const clearLastAdRevenue = useCallback(() => {
+    setLastAdRevenue(null);
   }, []);
 
   // 初始化 AdMob
@@ -326,7 +354,9 @@ export function AdMobProvider({ children }: AdMobProviderProps) {
     isInterstitialRewardedReady,
     isLoading,
     rewarded,
+    lastAdRevenue,
     resetRewarded,
+    clearLastAdRevenue,
     prepareAd,
     prepareInterstitialRewardedAd,
     showAd,

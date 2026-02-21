@@ -4,7 +4,7 @@ import db from '@/lib/db';
 import { dailyTasks, users, anonymousUsers, creditHistory } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
-import { getDailyTasksConfig } from '@/config/appConfig';
+import { getDailyTasksConfig, getMiningEconomyConfig } from '@/config/appConfig';
 
 /**
  * 增加用户积分（根据是否匿名用户选择正确的表）
@@ -28,6 +28,34 @@ async function addUserCredits(userId: string, isAnonymous: boolean, amount: numb
       .set({ monthlyCredits: sql`${users.monthlyCredits} + ${amount}` })
       .where(eq(users.userId, userId));
   }
+}
+
+/**
+ * 基于广告收益动态计算 $VOICICA 奖励
+ * 公式: revenueUsd × revenue_share_ratio × randomFactor ÷ token_value_usd
+ *
+ * 新 APK 传真实 adRevenueMicros → 用真实收益
+ * 旧 APK 不传 → 用 estimated_ecpm_usd 估算
+ */
+function calculateVoicicaReward(adRevenueMicros?: number): {
+  voicicaAmount: number;
+  randomMultiplier: number;
+  revenueUsd: number;
+} {
+  const miningConfig = getMiningEconomyConfig();
+  const [minMul, maxMul] = miningConfig.random_multiplier;
+  const randomMultiplier = minMul + Math.random() * (maxMul - minMul);
+
+  // 真实收益 vs 估算回退
+  const revenueUsd = (adRevenueMicros && adRevenueMicros > 0)
+    ? adRevenueMicros / 1_000_000
+    : miningConfig.estimated_ecpm_usd / 1000;
+
+  const voicicaAmount = Math.max(1, Math.round(
+    revenueUsd * miningConfig.revenue_share_ratio * randomMultiplier / miningConfig.token_value_usd
+  ));
+
+  return { voicicaAmount, randomMultiplier, revenueUsd };
 }
 
 /**
@@ -144,7 +172,7 @@ export async function getDailyTasksStatus(isNative: boolean = false): Promise<Da
  * @param addToPermanent 是否添加到永久积分（默认添加到当月积分）
  * @param isNative 是否为原生应用（用于获取对应的配置）
  */
-export async function checkin(addToPermanent: boolean = false, isNative: boolean = false): Promise<TaskResult> {
+export async function checkin(addToPermanent: boolean = false, isNative: boolean = false, adRevenueMicros?: number, adRevenueCurrency?: string): Promise<TaskResult> {
   try {
     const { user_id, is_anonymous } = await getUserOrAnonymous();
     if (!user_id) {
@@ -222,7 +250,7 @@ export async function checkin(addToPermanent: boolean = false, isNative: boolean
  * @param bonusMode 是否为奖励模式（所有档位领取完后，继续看广告获得固定1积分）
  * @param isNative 是否为原生应用（用于获取对应的配置）
  */
-export async function claimAdReward(adWatched: boolean = true, addToPermanent: boolean = false, bonusMode: boolean = false, isNative: boolean = false): Promise<TaskResult> {
+export async function claimAdReward(adWatched: boolean = true, addToPermanent: boolean = false, bonusMode: boolean = false, isNative: boolean = false, adRevenueMicros?: number, adRevenueCurrency?: string): Promise<TaskResult> {
   try {
     if (!adWatched) {
       return { success: false, message: 'Please watch the ad first' };
@@ -240,7 +268,9 @@ export async function claimAdReward(adWatched: boolean = true, addToPermanent: b
 
     const today = getTodayDate();
     const tiers = config.ad_reward_tiers;
-    const bonusCredits = 1; // 奖励模式固定1积分
+
+    // 动态计算奖励（基于广告收益）
+    const { voicicaAmount, randomMultiplier } = calculateVoicicaReward(adRevenueMicros);
 
     // 先尝试创建记录（如果不存在）
     await db
@@ -255,20 +285,15 @@ export async function claimAdReward(adWatched: boolean = true, addToPermanent: b
       })
       .onConflictDoNothing();
 
-    // 尝试每个档位，从 0 开始
+    // 尝试每个档位，从 0 开始（保留 tier 循环作为防刷计数机制）
     for (let tierIndex = 0; tierIndex < tiers.length; tierIndex++) {
-      // 使用原子更新：只有当 ad_rewards_claimed 等于当前 tierIndex 时才更新
-      const tierCredits = tiers[tierIndex];
       const newClaimed = tierIndex + 1;
-
-      // 计算新的累计积分（基于档位）
-      const newTotalAdCredits = tiers.slice(0, newClaimed).reduce((sum: number, v: number) => sum + v, 0);
 
       const updateResult = await db
         .update(dailyTasks)
         .set({
           adRewardsClaimed: newClaimed,
-          adRewardsCredits: newTotalAdCredits,
+          adRewardsCredits: sql`${dailyTasks.adRewardsCredits} + ${voicicaAmount}`,
         })
         .where(
           and(
@@ -281,33 +306,36 @@ export async function claimAdReward(adWatched: boolean = true, addToPermanent: b
 
       // 如果更新成功，说明成功领取了这个档位
       if (updateResult.length > 0) {
-        console.log(`[claimAdReward] Successfully claimed tier ${newClaimed}, credits: ${tierCredits}, addToPermanent: ${addToPermanent}`);
+        console.log(`[claimAdReward] Successfully claimed tier ${newClaimed}, voicicaAmount: ${voicicaAmount}, addToPermanent: ${addToPermanent}`);
 
         // 增加用户积分（根据是否匿名用户选择正确的表）
-        await addUserCredits(user_id, is_anonymous, tierCredits, addToPermanent);
+        await addUserCredits(user_id, is_anonymous, voicicaAmount, addToPermanent);
 
-        // 记录积分历史
+        // 记录积分历史（含广告收益数据）
         await db.insert(creditHistory).values({
           userId: user_id,
-          amount: tierCredits,
+          amount: voicicaAmount,
           description: addToPermanent ? `Ad reward tier ${newClaimed} (permanent)` : `Ad reward tier ${newClaimed}`,
           productType: 'ad_reward',
+          adRevenueMicros: adRevenueMicros ?? null,
+          adRevenueCurrency: adRevenueCurrency ?? null,
+          randomMultiplier,
         });
 
-        return { success: true, credits: tierCredits };
+        return { success: true, credits: voicicaAmount };
       }
     }
 
     // 所有档位都已领取
     if (bonusMode) {
-      // 奖励模式：继续给予固定积分
-      console.log(`[claimAdReward] Bonus mode: giving ${bonusCredits} credits, addToPermanent: ${addToPermanent}`);
+      // 奖励模式：动态计算（不再固定 1 积分）
+      console.log(`[claimAdReward] Bonus mode: giving ${voicicaAmount} credits, addToPermanent: ${addToPermanent}`);
 
       // 更新累计积分
       await db
         .update(dailyTasks)
         .set({
-          adRewardsCredits: sql`${dailyTasks.adRewardsCredits} + ${bonusCredits}`,
+          adRewardsCredits: sql`${dailyTasks.adRewardsCredits} + ${voicicaAmount}`,
         })
         .where(
           and(
@@ -317,17 +345,20 @@ export async function claimAdReward(adWatched: boolean = true, addToPermanent: b
         );
 
       // 增加用户积分（根据是否匿名用户选择正确的表）
-      await addUserCredits(user_id, is_anonymous, bonusCredits, addToPermanent);
+      await addUserCredits(user_id, is_anonymous, voicicaAmount, addToPermanent);
 
-      // 记录积分历史
+      // 记录积分历史（含广告收益数据）
       await db.insert(creditHistory).values({
         userId: user_id,
-        amount: bonusCredits,
+        amount: voicicaAmount,
         description: addToPermanent ? 'Bonus ad reward (permanent)' : 'Bonus ad reward',
         productType: 'ad_reward_bonus',
+        adRevenueMicros: adRevenueMicros ?? null,
+        adRevenueCurrency: adRevenueCurrency ?? null,
+        randomMultiplier,
       });
 
-      return { success: true, credits: bonusCredits };
+      return { success: true, credits: voicicaAmount };
     }
 
     console.log('[claimAdReward] All ad rewards claimed today');

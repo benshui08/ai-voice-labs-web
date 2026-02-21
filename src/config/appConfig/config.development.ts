@@ -67,6 +67,16 @@ export const appConfig: AppConfig = {
   },
 
   /**
+   * 挖矿经济配置（开发环境分成比例更高）
+   */
+  mining_economy: {
+    token_value_usd: 0.0001,
+    revenue_share_ratio: 0.8,
+    random_multiplier: [0.8, 1.2],
+    estimated_ecpm_usd: 15,
+  },
+
+  /**
    * Google Play 应用更新配置
    */
   app_update: {

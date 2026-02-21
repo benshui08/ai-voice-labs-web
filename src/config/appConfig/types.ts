@@ -70,6 +70,20 @@ export interface DailyTasksConfig extends DailyTasksBaseConfig {
 }
 
 /**
+ * 挖矿经济配置（基于广告收益动态计算 $VOICICA 奖励）
+ */
+export interface MiningEconomyConfig {
+  /** 1 $VOICICA = 多少 USD */
+  token_value_usd: number;
+  /** 分成比例（0.7 = 70% 给用户） */
+  revenue_share_ratio: number;
+  /** 随机浮动范围 [min, max] */
+  random_multiplier: [number, number];
+  /** 估算 eCPM（USD），旧 APK 无 OnPaidEvent 时回退用 */
+  estimated_ecpm_usd: number;
+}
+
+/**
  * Google Play 应用更新配置
  */
 export interface AppUpdateConfig {
@@ -90,5 +104,6 @@ export interface AppConfig {
   anonymous_user: AnonymousUserConfig;
   version_check: VersionCheckConfig;
   daily_tasks: DailyTasksConfig;
+  mining_economy: MiningEconomyConfig;
   app_update: AppUpdateConfig;
 }

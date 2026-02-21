@@ -12,6 +12,7 @@ import {
 } from '@/actions/daily-tasks';
 import { getDailyTasksConfig, type DailyTasksBaseConfig } from '@/config/appConfig';
 import { useRewardedAd } from './useRewardedAd';
+import { useAdMob } from '@/contexts/AdMobContext';
 import { Capacitor } from '@capacitor/core';
 
 /**
@@ -93,6 +94,8 @@ export function useDailyTasks(): UseDailyTasksReturn {
   const { user, loading: authLoading } = useFirebaseAuth();
   // 签到和观看视频都使用同一个激励视频广告，共享缓存，加载更快
   const { showRewardedAd, isReady: isAdReady } = useRewardedAd();
+  // 获取最近一次广告收益数据（来自 AdMob OnPaidEvent）
+  const { lastAdRevenue, clearLastAdRevenue } = useAdMob();
   // 使用增强的 Native 检测（包括 Capacitor 和 /native 路由）
   const isNative = useIsNativeApp();
   const [status, setStatus] = useState<DailyTasksStatus | null>(null);
@@ -227,8 +230,8 @@ export function useDailyTasks(): UseDailyTasksReturn {
         return { success: false, message: '已取消' };
       }
 
-      // 调用签到接口（积分加到永久积分，并使用对应平台配置）
-      const result = await checkin(true, isNative);
+      // 调用签到接口（积分加到永久积分，并传递广告收益数据）
+      const result = await checkin(true, isNative, lastAdRevenue?.valueMicros, lastAdRevenue?.currencyCode);
       if (result.success && !cancelledRef.current) {
         refresh(); // 后台刷新状态，不阻塞返回
       }
@@ -246,11 +249,7 @@ export function useDailyTasks(): UseDailyTasksReturn {
       }
       checkinInProgressRef.current = false;
     }
-  }, [refresh, showRewardedAd, isNative]);
-
-  // 用于跟踪奖励是否已领取
-  const rewardClaimedRef = useRef(false);
-  const claimResultRef = useRef<TaskResult | null>(null);
+  }, [refresh, showRewardedAd, isNative, lastAdRevenue]);
 
   // 领取广告奖励
   const doClaimAdReward = useCallback(async (bonusMode: boolean = false): Promise<TaskResult> => {
@@ -258,51 +257,13 @@ export function useDailyTasks(): UseDailyTasksReturn {
       cancelledRef.current = false;
       setClaiming(true);
       setError(null);
-      rewardClaimedRef.current = false;
-      claimResultRef.current = null;
 
-      // 如果是原生平台且使用 Appodeal，监听 claimRewardNow 事件
-      const isNative = Capacitor.isNativePlatform();
-      let listenerRemove: (() => void) | null = null;
-
-      if (isNative) {
-        try {
-          const { Appodeal } = await import('@/plugins/appodeal');
-          const listener = await Appodeal.addListener('claimRewardNow', async (data) => {
-            console.log('[DailyTasks] 收到 claimRewardNow 事件, adIndex:', data.adIndex);
-
-            // 如果已取消，不领取奖励
-            if (cancelledRef.current) {
-              console.log('[DailyTasks] 已取消，跳过奖励领取');
-              return;
-            }
-
-            // 只在第一次收到事件时领取奖励
-            if (!rewardClaimedRef.current) {
-              rewardClaimedRef.current = true;
-              console.log('[DailyTasks] 第1个广告完成，立即领取奖励...');
-              const result = await claimAdReward(true, true, bonusMode, isNative); // 积分加到永久积分，并使用对应平台配置
-              claimResultRef.current = result;
-              console.log('[DailyTasks] 奖励领取结果:', result);
-              if (result.success) {
-                refresh(); // 刷新状态（不等待）
-              }
-            }
-          });
-          listenerRemove = () => listener.remove();
-        } catch (err) {
-          console.warn('[DailyTasks] 无法监听 Appodeal 事件:', err);
-        }
-      }
+      // 清空旧的广告收益数据，等待新广告的 OnPaidEvent
+      clearLastAdRevenue();
 
       // 显示激励广告
       console.log('[DailyTasks] 开始显示激励广告...');
       const adResult = await showRewardedAd();
-
-      // 移除监听器
-      if (listenerRemove) {
-        listenerRemove();
-      }
 
       // 检查是否已取消
       if (cancelledRef.current) {
@@ -312,7 +273,6 @@ export function useDailyTasks(): UseDailyTasksReturn {
 
       if (!adResult.success) {
         console.log('[DailyTasks] 广告未完成，原因:', adResult.reason);
-        // 根据原因返回不同的错误消息
         if (adResult.reason === 'unavailable') {
           return { success: false, message: '暂无可用广告，请稍后再试' };
         } else if (adResult.reason === 'skipped') {
@@ -322,21 +282,16 @@ export function useDailyTasks(): UseDailyTasksReturn {
         }
       }
 
-      // 如果奖励已经在广告播放过程中领取了，返回那个结果
-      if (rewardClaimedRef.current && claimResultRef.current) {
-        console.log('[DailyTasks] 奖励已在广告过程中领取');
-        return claimResultRef.current;
-      }
-
       // 检查是否已取消
       if (cancelledRef.current) {
         console.log('[DailyTasks] 广告奖励已被用户取消');
         return { success: false, message: '已取消' };
       }
 
-      // 兜底：如果事件没有触发，在广告结束后领取
-      console.log('[DailyTasks] 广告观看成功，领取奖励（兜底）...');
-      const result = await claimAdReward(true, true, bonusMode, isNative); // 积分加到永久积分，并使用对应平台配置
+      // 广告观看成功，领取奖励（传递广告收益数据）
+      console.log('[DailyTasks] 广告观看成功，领取奖励...', lastAdRevenue ? `revenue: ${lastAdRevenue.valueMicros}` : 'no revenue data');
+      const result = await claimAdReward(true, true, bonusMode, isNative,
+        lastAdRevenue?.valueMicros, lastAdRevenue?.currencyCode);
       if (result.success && !cancelledRef.current) {
         refresh(); // 后台刷新状态，不阻塞返回
       }
@@ -353,7 +308,7 @@ export function useDailyTasks(): UseDailyTasksReturn {
         setClaiming(false);
       }
     }
-  }, [refresh, showRewardedAd]);
+  }, [refresh, showRewardedAd, isNative, lastAdRevenue, clearLastAdRevenue]);
 
   return {
     status,

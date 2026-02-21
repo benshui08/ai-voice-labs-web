@@ -6,7 +6,7 @@
 
 import { appConfig as devConfig } from './config.development';
 import { appConfig as prodConfig } from './config.production';
-import type { AppConfig, TtsSamplesConfig, DailyTasksConfig, DailyTasksBaseConfig, AppUpdateConfig, AnonymousUserConfig } from './types';
+import type { AppConfig, TtsSamplesConfig, DailyTasksConfig, DailyTasksBaseConfig, MiningEconomyConfig, AppUpdateConfig, AnonymousUserConfig } from './types';
 
 // 导出语音成本相关功能（从 creditsCost 重新导出以保持向后兼容）
 export {
@@ -23,7 +23,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 export const appConfig: AppConfig = isProduction ? prodConfig : devConfig;
 
 // 导出类型
-export type { AppConfig, TtsSamplesConfig, DailyTasksConfig, DailyTasksBaseConfig, AppUpdateConfig, AnonymousUserConfig };
+export type { AppConfig, TtsSamplesConfig, DailyTasksConfig, DailyTasksBaseConfig, MiningEconomyConfig, AppUpdateConfig, AnonymousUserConfig };
 
 /**
  * 获取 TTS 试听配置
@@ -60,6 +60,13 @@ export function getDailyTasksConfig(isNative: boolean = false): DailyTasksBaseCo
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { native: _native, ...baseConfig } = config;
   return baseConfig;
+}
+
+/**
+ * 获取挖矿经济配置
+ */
+export function getMiningEconomyConfig(): MiningEconomyConfig {
+  return appConfig.mining_economy;
 }
 
 /**

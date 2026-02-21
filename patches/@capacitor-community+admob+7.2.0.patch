@@ -1,0 +1,19 @@
+diff --git a/node_modules/@capacitor-community/admob/android/src/main/java/com/getcapacitor/community/admob/rewarded/RewardedAdCallbackAndListeners.kt b/node_modules/@capacitor-community/admob/android/src/main/java/com/getcapacitor/community/admob/rewarded/RewardedAdCallbackAndListeners.kt
+index c465077..ccb030f 100644
+--- a/node_modules/@capacitor-community/admob/android/src/main/java/com/getcapacitor/community/admob/rewarded/RewardedAdCallbackAndListeners.kt
++++ b/node_modules/@capacitor-community/admob/android/src/main/java/com/getcapacitor/community/admob/rewarded/RewardedAdCallbackAndListeners.kt
+@@ -35,6 +35,14 @@ object RewardedAdCallbackAndListeners {
+                 AdRewardExecutor.mRewardedAd.fullScreenContentCallback = FullscreenPluginCallback(
+                         RewardAdPluginEvents, notifyListenersFunction)
+
++                ad.onPaidEventListener = com.google.android.gms.ads.OnPaidEventListener { adValue ->
++                    val paidData = JSObject()
++                    paidData.put("valueMicros", adValue.valueMicros)
++                    paidData.put("currencyCode", adValue.currencyCode)
++                    paidData.put("precision", adValue.precisionType)
++                    notifyListenersFunction.accept("onRewardedAdRevenuePaid", paidData)
++                }
++
+                 if(adOptions.ssvInfo.hasInfo){
+                     val ssvOptions = ServerSideVerificationOptions.Builder()
+                     adOptions.ssvInfo.customData?.let {
