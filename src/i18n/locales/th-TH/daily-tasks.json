@@ -20,6 +20,11 @@
     "watchMultiple": "ดู {{count}} วิดีโอ",
     "watchAdGet": "ดู +{{credits}}",
     "allAdsClaimed": "รับครบแล้ววันนี้",
+    "viewsToday": "ดูวันนี้",
+    "startMining": "เริ่มขุด",
+    "dailyLimitReached": "ถึงขีดจำกัดวันนี้แล้ว",
+    "maxViews": "สูงสุด",
+    "viewsPerDay": "ครั้งต่อวัน",
 
     "loadingAd": "กำลังโหลดโฆษณา...",
     "pleaseWait": "กรุณารอสักครู่",

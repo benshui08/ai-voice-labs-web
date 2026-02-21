@@ -21,6 +21,11 @@
     "watchMultiple": "Earn up to 500 $VOICICA per block",
     "watchAdGet": "Start Mining",
     "allAdsClaimed": "All Claimed Today",
+    "viewsToday": "views today",
+    "startMining": "Start Mining",
+    "dailyLimitReached": "Daily limit reached",
+    "maxViews": "Up to",
+    "viewsPerDay": "views per day",
 
     "loadingAd": "Loading ad...",
     "pleaseWait": "Please wait",

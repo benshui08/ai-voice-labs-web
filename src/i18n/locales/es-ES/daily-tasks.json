@@ -20,6 +20,11 @@
     "watchMultiple": "Ver {{count}} vídeos",
     "watchAdGet": "Ver +{{credits}}",
     "allAdsClaimed": "Todo reclamado hoy",
+    "viewsToday": "vistas hoy",
+    "startMining": "Empezar a Minar",
+    "dailyLimitReached": "Límite diario alcanzado",
+    "maxViews": "Hasta",
+    "viewsPerDay": "veces/día",
 
     "loadingAd": "Cargando anuncio...",
     "pleaseWait": "Por favor, espera",

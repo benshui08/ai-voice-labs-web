@@ -20,6 +20,11 @@
     "watchMultiple": "Tonton {{count}} video",
     "watchAdGet": "Tonton +{{credits}}",
     "allAdsClaimed": "Semua Diklaim Hari Ini",
+    "viewsToday": "tontonan hari ini",
+    "startMining": "Mulai Menambang",
+    "dailyLimitReached": "Batas harian tercapai",
+    "maxViews": "Hingga",
+    "viewsPerDay": "kali/hari",
 
     "loadingAd": "Memuat iklan...",
     "pleaseWait": "Harap tunggu",

@@ -20,6 +20,11 @@
     "watchMultiple": "{{count}} वीडियो देखें",
     "watchAdGet": "देखें +{{credits}}",
     "allAdsClaimed": "आज सभी प्राप्त हो गए",
+    "viewsToday": "आज के व्यू",
+    "startMining": "माइनिंग शुरू करें",
+    "dailyLimitReached": "आज की सीमा पूरी हो गई",
+    "maxViews": "अधिकतम",
+    "viewsPerDay": "बार/दिन",
 
     "loadingAd": "विज्ञापन लोड हो रहा है...",
     "pleaseWait": "कृपया प्रतीक्षा करें",

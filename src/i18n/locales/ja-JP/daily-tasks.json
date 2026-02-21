@@ -20,6 +20,11 @@
     "watchMultiple": "{{count}}本の動画を見る",
     "watchAdGet": "視聴 +{{credits}}",
     "allAdsClaimed": "本日分は全て受取済み",
+    "viewsToday": "本日の視聴",
+    "startMining": "マイニング開始",
+    "dailyLimitReached": "本日の上限に達しました",
+    "maxViews": "最大",
+    "viewsPerDay": "回/日",
 
     "loadingAd": "広告を読み込み中...",
     "pleaseWait": "お待ちください",

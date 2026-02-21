@@ -20,6 +20,11 @@
     "watchMultiple": "观看 {{count}} 个视频",
     "watchAdGet": "观看 +{{credits}}",
     "allAdsClaimed": "今日已全部领取",
+    "viewsToday": "今日观看",
+    "startMining": "开始挖矿",
+    "dailyLimitReached": "今日已达上限",
+    "maxViews": "每日最多",
+    "viewsPerDay": "次观看",
 
     "loadingAd": "加载广告中...",
     "pleaseWait": "请稍候",

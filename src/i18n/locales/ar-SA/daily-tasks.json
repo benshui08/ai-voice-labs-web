@@ -20,6 +20,11 @@
     "watchMultiple": "شاهد {{count}} فيديوهات",
     "watchAdGet": "شاهد +{{credits}}",
     "allAdsClaimed": "تم استلام الكل اليوم",
+    "viewsToday": "المشاهدات اليوم",
+    "startMining": "ابدأ التعدين",
+    "dailyLimitReached": "تم الوصول للحد اليومي",
+    "maxViews": "حتى",
+    "viewsPerDay": "مشاهدة/يوم",
 
     "loadingAd": "جاري تحميل الإعلان...",
     "pleaseWait": "يرجى الانتظار",

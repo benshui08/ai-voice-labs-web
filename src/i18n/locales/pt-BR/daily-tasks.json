@@ -20,6 +20,11 @@
     "watchMultiple": "Assistir {{count}} vídeos",
     "watchAdGet": "Assistir +{{credits}}",
     "allAdsClaimed": "Tudo resgatado hoje",
+    "viewsToday": "visualizações hoje",
+    "startMining": "Começar a Minerar",
+    "dailyLimitReached": "Limite diário atingido",
+    "maxViews": "Até",
+    "viewsPerDay": "vezes/dia",
 
     "loadingAd": "Carregando anúncio...",
     "pleaseWait": "Por favor, aguarde",

@@ -9,7 +9,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
-import ConfettiBurst from '@/components/common/ConfettiBurst';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useDailyTasks } from '@/hooks/useDailyTasks';
 import { useRouter } from 'next/navigation';
@@ -525,26 +524,26 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
 
       {/* 庆祝效果 */}
       {showCelebration && lastClaimedCredits !== null && (
-        <>
-          {/* 卡片层 */}
-          <div className="fixed inset-0 z-[10002] flex items-center justify-center pointer-events-none">
-            <div className="bg-gray-900/95 backdrop-blur-sm rounded-2xl p-8 text-center border border-purple-500/30 pointer-events-auto animate-bounce-in">
-              <div className="text-5xl mb-4">🎉</div>
-              <p className="text-white text-lg font-bold mb-2">+{lastClaimedCredits} $VOICICA</p>
-              <p className="text-gray-400 text-sm">{t('dailyTasks.creditsClaimed') || '$VOICICA mined successfully!'}</p>
-              <button
-                onClick={handleCelebrationComplete}
-                className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium"
-              >
-                {t('common.ok') || 'OK'}
-              </button>
+        <div className="fixed inset-0 z-[10002] flex items-center justify-center pointer-events-none">
+          <div className="bg-gray-900/95 backdrop-blur-sm rounded-2xl p-8 text-center border border-purple-500/30 pointer-events-auto animate-bounce-in">
+            {/* sparkles 围绕 emoji */}
+            <div className="relative inline-block mb-4">
+              <div className="text-5xl">🎉</div>
+              <span className="absolute -top-2 -left-3 text-lg animate-ping">✨</span>
+              <span className="absolute -top-1 -right-3 text-sm animate-ping" style={{ animationDelay: '0.2s' }}>⭐</span>
+              <span className="absolute -bottom-1 -left-2 text-sm animate-ping" style={{ animationDelay: '0.4s' }}>🌟</span>
+              <span className="absolute -bottom-2 -right-2 text-lg animate-ping" style={{ animationDelay: '0.6s' }}>✨</span>
             </div>
+            <p className="text-white text-lg font-bold mb-2">+{lastClaimedCredits} $VOICICA</p>
+            <p className="text-gray-400 text-sm">{t('dailyTasks.creditsClaimed') || '$VOICICA mined successfully!'}</p>
+            <button
+              onClick={handleCelebrationComplete}
+              className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium"
+            >
+              {t('common.ok') || 'OK'}
+            </button>
           </div>
-          {/* 撒花层 — 独立于卡片之上，避免被卡片背景遮挡 */}
-          <div className="fixed inset-0 z-[10003] pointer-events-none">
-            <ConfettiBurst cx="50%" cy="40%" />
-          </div>
-        </>
+        </div>
       )}
     </>
   );

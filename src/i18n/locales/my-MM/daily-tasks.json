@@ -20,6 +20,11 @@
     "watchMultiple": "ဗီဒီယို {{count}} ခုကြည့်",
     "watchAdGet": "ကြည့် +{{credits}}",
     "allAdsClaimed": "ယနေ့အားလုံးရယူပြီး",
+    "viewsToday": "ယနေ့ ကြည့်ရှုမှု",
+    "startMining": "တူးဖော်ရန် စတင်ပါ",
+    "dailyLimitReached": "ယနေ့ ကန့်သတ်ချက် ပြည့်ပြီ",
+    "maxViews": "အများဆုံး",
+    "viewsPerDay": "ကြိမ်/နေ့",
 
     "loadingAd": "ကြော်ငြာဖွင့်နေသည်...",
     "pleaseWait": "ခဏစောင့်ပါ",
