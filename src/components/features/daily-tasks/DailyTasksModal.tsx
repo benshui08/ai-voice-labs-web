@@ -6,14 +6,10 @@ import { X, Play, Crown, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useDailyTasks } from '@/hooks/useDailyTasks';
-import { useAdsterraSmartLink } from '@/hooks/useAdsterraSmartLink';
-import { claimAdReward, checkin } from '@/actions/daily-tasks';
 import LoginModal from '@/components/features/auth/LoginModal';
 import CelebrationEffect from './CelebrationEffect';
-import { Capacitor } from '@capacitor/core';
 import { formatCredits } from './utils';
 import {
-  AdOverlay,
   LoadingOverlay,
   RetryOverlay,
   CheckinTaskCard,
@@ -56,8 +52,6 @@ export default function DailyTasksModal({
     cancelClaiming,
   } = useDailyTasks();
 
-  const adsterra = useAdsterraSmartLink();
-  const isNative = Capacitor.isNativePlatform();
 
   // UI 状态
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -153,59 +147,16 @@ export default function DailyTasksModal({
     showError(type, t('dailyTasks.cancelled') || '已取消');
   }, [t, clearAdTimeout, cancelClaiming, showError]);
 
-  // Adsterra 广告完成后的处理
-  const handleAdsterraComplete = useCallback(async (type: TaskType) => {
-    if (cancelledRef.current) return;
-
-    try {
-      if (type === 'checkin') {
-        const result = await checkin(false);
-        if (result.success && result.credits) {
-          await refresh();
-          showSuccess(result.credits);
-        } else {
-          showError('checkin', result.message || '签到失败');
-        }
-      } else {
-        const result = await claimAdReward(true, false);
-        if (result.success && result.credits) {
-          await refresh();
-          showSuccess(result.credits);
-        } else {
-          showError('ad', result.message || '领取失败');
-        }
-      }
-    } catch (err) {
-      console.error('❌ [DailyTasks] Error:', err);
-      showError(type, type === 'checkin' ? '签到失败，请稍后再试' : '领取失败，请稍后再试');
-    }
-  }, [refresh, showSuccess, showError]);
-
   // 处理签到
   const handleCheckin = useCallback(async () => {
-    if (checkinLoading || claiming || adsterra.isShowing) return;
+    if (checkinLoading || claiming) return;
 
     cancelledRef.current = false;
     setCheckinError(null);
     setCheckinLoading(true);
     setPendingRetry(null);
 
-    // Web 端使用 Adsterra
-    if (!isNative && adsterra.isEnabled) {
-      setCheckinLoading(false);
-      const adResult = await adsterra.showAd();
-
-      if (cancelledRef.current) return;
-
-      if (adResult.success) {
-        await handleAdsterraComplete('checkin');
-      } else if (adResult.reason !== 'cancelled') {
-        showError('checkin', adResult.message || '广告未完成');
-      }
-      return;
-    }
-
-    // 原生 App
+    // 广告加载超时
     clearAdTimeout();
     timeoutRef.current = setTimeout(() => {
       if (checkinLoading && !cancelledRef.current) {
@@ -238,41 +189,23 @@ export default function DailyTasksModal({
   }, [
     checkinLoading,
     claiming,
-    adsterra,
-    isNative,
     doCheckin,
     t,
     clearAdTimeout,
     showSuccess,
     showError,
-    handleAdsterraComplete,
   ]);
 
   // 处理看广告
   const handleWatchAd = useCallback(async () => {
-    if (adLoading || claiming || adsterra.isShowing) return;
+    if (adLoading || claiming) return;
 
     cancelledRef.current = false;
     setAdError(null);
     setAdLoading(true);
     setPendingRetry(null);
 
-    // Web 端使用 Adsterra
-    if (!isNative && adsterra.isEnabled) {
-      setAdLoading(false);
-      const adResult = await adsterra.showAd();
-
-      if (cancelledRef.current) return;
-
-      if (adResult.success) {
-        await handleAdsterraComplete('ad');
-      } else if (adResult.reason !== 'cancelled') {
-        showError('ad', adResult.message || '广告未完成');
-      }
-      return;
-    }
-
-    // 原生 App
+    // 广告加载超时
     clearAdTimeout();
     timeoutRef.current = setTimeout(() => {
       if (adLoading && !cancelledRef.current) {
@@ -309,14 +242,11 @@ export default function DailyTasksModal({
   }, [
     adLoading,
     claiming,
-    adsterra,
-    isNative,
     doClaimAdReward,
     t,
     clearAdTimeout,
     onCreditsUpdated,
     showError,
-    handleAdsterraComplete,
   ]);
 
   // 重试
@@ -445,20 +375,9 @@ export default function DailyTasksModal({
 
   const modalContent = (
     <>
-      {/* Adsterra 广告覆盖层 */}
-      <AdOverlay
-        isShowing={adsterra.isShowing}
-        remainingSeconds={adsterra.remainingSeconds}
-        totalSeconds={adsterra.totalSeconds}
-        isCompleted={adsterra.isCompleted}
-        isWindowClosed={adsterra.isWindowClosed}
-        onCancel={adsterra.cancel}
-        onConfirm={adsterra.confirmComplete}
-      />
-
       {/* 加载中覆盖层 */}
       <LoadingOverlay
-        isLoading={isLoading && !adsterra.isShowing}
+        isLoading={isLoading}
         onCancel={() => handleCancelLoading(checkinLoading ? 'checkin' : 'ad')}
       />
 
@@ -473,7 +392,7 @@ export default function DailyTasksModal({
       {/* 主弹窗 */}
       <div
         className={`fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-all z-[9998] ${
-          isLoading || pendingRetry || adsterra.isShowing ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          isLoading || pendingRetry ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
         onClick={handleClose}
       >
