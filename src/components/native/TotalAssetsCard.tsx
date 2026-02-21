@@ -53,59 +53,61 @@ export default function TotalAssetsCard() {
 
         {/* Token rows with inline actions */}
         <div className="px-5 py-3 space-y-2.5">
-          {/* VOICICA row + Convert */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-purple-500/25 flex items-center justify-center overflow-hidden">
-                <Image src="/logo/voicica-token.png" alt="VOICICA" width={32} height={32} className="w-full h-full object-cover" />
-              </div>
-              <div>
+          {/* VOICICA */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-purple-500/25 flex items-center justify-center overflow-hidden">
+                  <Image src="/logo/voicica-token.png" alt="VOICICA" width={32} height={32} className="w-full h-full object-cover" />
+                </div>
                 <span className="text-gray-300 text-sm font-medium">$VOICICA</span>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-white text-sm font-semibold mr-1">
+              <span className="text-white text-sm font-semibold">
                 {loading ? '...' : credits.toLocaleString()}
               </span>
+            </div>
+            <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowConvertModal(true)}
-                className="px-2.5 py-1 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs font-medium hover:bg-purple-500/30 transition-colors active:scale-[0.95]"
+                className="px-2.5 py-0.5 rounded-md bg-purple-500/15 text-purple-400 text-[11px] font-medium hover:bg-purple-500/25 transition-colors active:scale-[0.95]"
               >
                 {t('native.totalAssets.convert')}
               </button>
               <button
                 onClick={() => setShowWithdrawSheet(true)}
-                className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-400 text-xs font-medium hover:bg-white/10 transition-colors active:scale-[0.95]"
+                className="px-2.5 py-0.5 rounded-md bg-white/5 text-gray-400 text-[11px] font-medium hover:bg-white/10 transition-colors active:scale-[0.95]"
               >
                 {t('native.totalAssets.withdraw')}
               </button>
             </div>
           </div>
 
-          {/* USDT row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center">
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                  <circle cx="16" cy="16" r="16" fill="#26A17B" />
-                  <path d="M17.9 17.05v-.02c-.1.01-.6.04-1.8.04-1 0-1.5-.03-1.7-.04v.02c-3.4-.15-5.9-.8-5.9-1.57 0-.77 2.5-1.42 5.9-1.58v2.5c.2.02.7.05 1.7.05 1.2 0 1.7-.04 1.8-.05v-2.5c3.4.16 5.9.81 5.9 1.58 0 .77-2.5 1.42-5.9 1.57zm0-3.4v-2.24h5V8.4H9.2v3.01h5v2.23c-3.8.18-6.7 1.05-6.7 2.08 0 1.03 2.9 1.9 6.7 2.08v7.45h3.7V17.8c3.8-.18 6.6-1.05 6.6-2.08 0-1.03-2.8-1.9-6.6-2.08z" fill="white" />
-                </svg>
+          {/* USDT */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center">
+                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <circle cx="16" cy="16" r="16" fill="#26A17B" />
+                    <path d="M17.9 17.05v-.02c-.1.01-.6.04-1.8.04-1 0-1.5-.03-1.7-.04v.02c-3.4-.15-5.9-.8-5.9-1.57 0-.77 2.5-1.42 5.9-1.58v2.5c.2.02.7.05 1.7.05 1.2 0 1.7-.04 1.8-.05v-2.5c3.4.16 5.9.81 5.9 1.58 0 .77-2.5 1.42-5.9 1.57zm0-3.4v-2.24h5V8.4H9.2v3.01h5v2.23c-3.8.18-6.7 1.05-6.7 2.08 0 1.03 2.9 1.9 6.7 2.08v7.45h3.7V17.8c3.8-.18 6.6-1.05 6.6-2.08 0-1.03-2.8-1.9-6.6-2.08z" fill="white" />
+                  </svg>
+                </div>
+                <span className="text-gray-300 text-sm font-medium">USDT</span>
               </div>
-              <span className="text-gray-300 text-sm font-medium">USDT</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-white text-sm font-semibold mr-1">
+              <span className="text-white text-sm font-semibold">
                 {usdtBalance.toFixed(2)}
               </span>
+            </div>
+            <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowConvertModal(true)}
-                className="px-2.5 py-1 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs font-medium hover:bg-purple-500/30 transition-colors active:scale-[0.95]"
+                className="px-2.5 py-0.5 rounded-md bg-purple-500/15 text-purple-400 text-[11px] font-medium hover:bg-purple-500/25 transition-colors active:scale-[0.95]"
               >
                 {t('native.totalAssets.convert')}
               </button>
               <button
                 onClick={() => setShowWithdrawSheet(true)}
-                className="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-medium hover:bg-emerald-500/30 transition-colors active:scale-[0.95]"
+                className="px-2.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 text-[11px] font-medium hover:bg-emerald-500/25 transition-colors active:scale-[0.95]"
               >
                 {t('native.totalAssets.withdraw')}
               </button>
