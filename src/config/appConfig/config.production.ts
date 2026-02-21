@@ -59,7 +59,7 @@ export const appConfig: AppConfig = {
     enabled: false,
     // Native App 独立配置
     native: {
-      checkin_credits: 1,
+      checkin_credits: 50,
       ad_reward_tiers: [1, 1, 2, 2, 3, 3],
       popup_interval_minutes: 30,
       enabled: true,

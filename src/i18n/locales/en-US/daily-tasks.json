@@ -1,24 +1,25 @@
 {
   "dailyTasks": {
-    "title": "Daily Tasks",
-    "subtitle": "Complete tasks to earn free credits!",
-    "credits": "Credits",
+    "title": "Mining Center",
+    "subtitle": "Increase your hash rate to mine more $VOICICA",
+    "credits": "$VOICICA",
 
     "loginToEarn": "Login to start earning credits daily!",
     "dailyMax": "Daily Maximum",
     "loginNow": "Login Now",
 
-    "todayEarned": "Today's Progress",
+    "miningPower": "Mining Power",
+    "active": "Active",
 
-    "checkin": "Daily Check-in",
+    "checkin": "Daily Activation",
     "oneClickClaim": "One-click claim",
     "claim": "Claim",
-    "claimed": "Claimed",
-    "watchCheckinGet": "Watch +{{credits}}",
+    "claimed": "Activated \u2713",
+    "watchCheckinGet": "Activate +{{credits}} $V",
 
-    "watchAds": "Watch Videos",
-    "watchMultiple": "Watch {{count}} videos",
-    "watchAdGet": "Watch +{{credits}}",
+    "watchAds": "Video Mining",
+    "watchMultiple": "Earn up to 500 $VOICICA per block",
+    "watchAdGet": "Start Mining",
     "allAdsClaimed": "All Claimed Today",
 
     "loadingAd": "Loading ad...",
@@ -43,12 +44,12 @@
     "adFailed": "Failed",
     "windowClosedTip": "Please watch the ad again",
 
-    "resetTip": "Tasks reset daily at midnight",
+    "resetTip": "",
     "noAdsPromo": "Don't want to watch ads? Become a member!",
-    "watchMore": "Watch More +1",
-    "noAdsTitle": "Skip the ads, get unlimited!",
-    "noAdsSubtitle": "Become a VIP member today",
-    "creditsClaimed": "Credits added to your account",
+    "watchMore": "Continue Mining +1",
+    "noAdsTitle": "Mining Booster",
+    "noAdsSubtitle": "2x hash rate with Pro membership",
+    "creditsClaimed": "$VOICICA mined successfully!",
     "appOnlyTitle": "App Exclusive Feature",
     "appOnlyDesc": "Free credits are only available in the app. Subscribe to get unlimited credits on web!",
     "goSubscribe": "View Plans"
