@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { useFirebaseAuth } from './FirebaseAuthContext';
 import { getCurrentUserProfile } from '@/actions/user';
-import { detectPlatform } from '@/lib/platform';
+import { detectPlatformDetail } from '@/lib/platform';
 import type { UserProfile } from '@/types/user';
 
 interface UserContextType {
@@ -46,7 +46,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
       // 检测平台（仅首次检测）
       if (platformRef.current === null) {
-        platformRef.current = detectPlatform();
+        platformRef.current = detectPlatformDetail();
         console.log('📱 UserContext: 检测到平台:', platformRef.current);
       }
 

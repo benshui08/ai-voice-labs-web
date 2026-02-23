@@ -35,6 +35,7 @@ const PLATFORM_CONFIG: Record<string, { label: string; icon: string; bg: string;
   'mobile-web': { label: 'Mobile', icon: '📱', bg: 'bg-orange-100', text: 'text-orange-700' },
   android: { label: 'Android', icon: '🤖', bg: 'bg-green-100', text: 'text-green-700' },
   ios: { label: 'iOS', icon: '🍎', bg: 'bg-blue-100', text: 'text-blue-700' },
+  'android-apk': { label: 'APK', icon: '📦', bg: 'bg-emerald-100', text: 'text-emerald-700' },
 };
 
 interface AnonymousUser {
@@ -343,6 +344,7 @@ export default function UsersManagementPage() {
                 <option value="web">🖥️ Web</option>
                 <option value="mobile-web">📱 Mobile Web</option>
                 <option value="android">🤖 Android</option>
+                <option value="android-apk">📦 Android APK</option>
                 <option value="ios">🍎 iOS</option>
               </select>
             </div>
@@ -563,6 +565,7 @@ export default function UsersManagementPage() {
                 <option value="web">🖥️ Web</option>
                 <option value="mobile-web">📱 Mobile Web</option>
                 <option value="android">🤖 Android</option>
+                <option value="android-apk">📦 Android APK</option>
                 <option value="ios">🍎 iOS</option>
               </select>
               <button

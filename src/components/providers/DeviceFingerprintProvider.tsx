@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getDeviceFingerprint } from '@/lib/utils/fingerprint';
-import { detectPlatform } from '@/lib/platform';
+import { detectPlatformDetail } from '@/lib/platform';
 
 interface DeviceFingerprintContextType {
   deviceFingerprint: string | null;
@@ -49,8 +49,8 @@ export default function DeviceFingerprintProvider({ children }: { children?: Rea
 
         document.cookie = cookieOptions;
 
-        // 同时设置平台 cookie
-        const platform = detectPlatform();
+        // 同时设置平台 cookie（使用详细平台区分 APK 和 Play Store）
+        const platform = detectPlatformDetail();
         const platformCookieOptions = [
           `platform=${platform}`,
           'path=/',

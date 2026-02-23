@@ -80,3 +80,17 @@ export const PLATFORM_ICONS: Record<Platform, string> = {
   android: '🤖',
   ios: '🍎',
 };
+
+/**
+ * 检测详细平台（区分 APK 和 Play Store）
+ *
+ * 返回值：
+ * - 'android-apk': standalone APK 安装
+ * - 其余走 detectPlatform() 原逻辑
+ */
+export function detectPlatformDetail(): string {
+  if (typeof window === 'undefined') return 'web';
+  const ua = navigator.userAgent.toLowerCase();
+  if (ua.includes('voicicaapp/android-apk')) return 'android-apk';
+  return detectPlatform();
+}

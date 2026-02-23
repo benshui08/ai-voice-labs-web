@@ -35,10 +35,12 @@ public class MainActivity extends BridgeActivity {
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.parseColor("#0a0a1a")));
 
         // 设置自定义 User-Agent 用于平台识别
+        // standalone flavor → "android-apk"，playStore flavor → "android"
         WebView webView = getBridge().getWebView();
         WebSettings settings = webView.getSettings();
         String ua = settings.getUserAgentString();
-        settings.setUserAgentString(ua + " VoicicaApp/android");
+        String suffix = "standalone".equals(BuildConfig.FLAVOR) ? "android-apk" : "android";
+        settings.setUserAgentString(ua + " VoicicaApp/" + suffix);
 
         // 开启 WebView 调试（Chrome DevTools 远程调试）
         WebView.setWebContentsDebuggingEnabled(true);
