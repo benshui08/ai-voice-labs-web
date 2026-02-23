@@ -11,7 +11,8 @@ export default function MiningBanner() {
     <section className="bg-gray-950 px-4 py-8 md:py-12">
       <div className="mx-auto max-w-4xl">
         <Link href="/mining" className="group block">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0c0c20] via-[#10102a] to-[#0a1628] border border-white/[0.06] p-6 md:p-8">
+          <div className="relative rounded-2xl bg-gradient-to-r from-purple-600/40 via-cyan-500/30 to-purple-600/40 p-[1px]">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0c0c20] via-[#10102a] to-[#0a1628] p-6 md:p-8">
             {/* 背景效果 */}
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
               <div className="absolute -bottom-10 right-0 h-40 w-60 rounded-full bg-cyan-500/8 blur-[80px]" />
@@ -136,6 +137,7 @@ export default function MiningBanner() {
               </div>
             </div>
 
+          </div>
           </div>
         </Link>
       </div>

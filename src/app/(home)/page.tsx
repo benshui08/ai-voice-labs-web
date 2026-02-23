@@ -69,8 +69,8 @@ export default function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <NewHero />
-      <HomepageContent locale="en" />
       <MiningBanner />
+      <HomepageContent locale="en" />
     </div>
   );
 }
