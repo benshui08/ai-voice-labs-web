@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { NewHero } from '@/components/sections/new-home';
 import HomepageContent from '@/components/sections/seo/HomepageContent';
+import MiningBanner from '@/components/sections/new-home/MiningBanner';
 import { buildAlternates, buildSeoUrl } from '@/config/seo/locales';
 import { HOMEPAGE_CONTENT } from '@/config/seo/homepage';
 
@@ -69,6 +70,7 @@ export default function Home() {
       />
       <NewHero />
       <HomepageContent locale="en" />
+      <MiningBanner />
     </div>
   );
 }
