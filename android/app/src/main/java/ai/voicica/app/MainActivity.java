@@ -9,7 +9,6 @@ import androidx.activity.EdgeToEdge;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
-import ai.voicica.app.BuildConfig;
 import ai.voicica.app.plugins.AppOpenAdPlugin;
 import ai.voicica.app.plugins.GooglePlayBillingPlugin;
 import ai.voicica.app.plugins.NativeAdPlugin;

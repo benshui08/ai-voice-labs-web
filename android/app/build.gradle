@@ -57,6 +57,10 @@ android {
         }
     }
 
+    buildFeatures {
+        buildConfig true
+    }
+
     buildTypes {
         debug {
             // Debug 版本使用默认签名（不需要配置）
