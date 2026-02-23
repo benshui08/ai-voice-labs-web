@@ -52,22 +52,32 @@ export default function MiningBanner() {
                   Turn Your Phone into an AI Power Node
                 </span>
               </h3>
+
               <p className="mt-3 text-[13px] text-gray-400/90 leading-relaxed">
                 Join the Voicica ecosystem. Earn $VOICICA rewards while powering the future of AI Voice.
               </p>
-              <div className="mt-5 flex items-center justify-between">
+
+              <div className="mt-5 flex flex-col items-center gap-3">
+                {/* 迷你能量球 */}
+                <div className="relative h-12 w-12 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full bg-purple-500/15 blur-lg animate-pulse" />
+                  <div className="absolute inset-0 rounded-full animate-spin" style={{ animationDuration: '8s' }}>
+                    <div className="absolute inset-0 rounded-full border border-purple-500/30" />
+                    <div className="absolute -top-px left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-purple-400 shadow-[0_0_4px_rgba(168,85,247,0.6)]" />
+                  </div>
+                  <div className="relative w-6 h-6 rounded-full overflow-hidden shadow-[0_0_12px_2px_rgba(139,92,246,0.35)]">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-violet-500 to-cyan-500" />
+                    <div className="absolute top-0.5 left-1 w-2.5 h-2 rounded-full bg-white/25 blur-[2px] rotate-[-20deg]" />
+                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/15 to-transparent animate-spin" style={{ animationDuration: '3s' }} />
+                  </div>
+                </div>
+                {/* 按钮 */}
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-600 via-violet-500 to-cyan-400 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_4px_20px_rgba(139,92,246,0.3)]">
                   Learn More & Join
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <path d="M9 5l7 7-7 7" />
                   </svg>
                 </span>
-                {/* 右下角迷你装饰粒子 */}
-                <div className="flex gap-1 opacity-40">
-                  <div className="w-1 h-1 rounded-full bg-purple-400 animate-pulse" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" style={{ animationDelay: '0.5s' }} />
-                  <div className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" style={{ animationDelay: '1s' }} />
-                </div>
               </div>
             </div>
 
