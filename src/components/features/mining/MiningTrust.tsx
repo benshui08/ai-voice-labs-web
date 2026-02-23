@@ -40,13 +40,13 @@ export default function MiningTrust() {
 
   return (
     <section className="bg-[#06060f] px-4 pt-4 pb-8">
-      <div className="mx-auto max-w-md">
-        <p className="mb-3 text-center text-[10px] uppercase tracking-widest text-gray-600">
+      <div className="mx-auto max-w-md rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3">
+        <p className="mb-2.5 text-[10px] uppercase tracking-widest text-gray-500">
           {t('mining.poweredBy')}
         </p>
-        <div className="flex items-center justify-center gap-6">
+        <div className="flex items-center justify-between">
           {badges.map((badge, i) => (
-            <div key={i} className="flex items-center gap-1.5 text-gray-500">
+            <div key={i} className="flex items-center gap-1.5 text-gray-400">
               {badge.icon}
               <span className="text-[11px] font-medium">{badge.label}</span>
             </div>
