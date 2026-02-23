@@ -23,10 +23,10 @@ const GooglePlayIcon = () => (
   </svg>
 );
 
-// 下载箭头图标
-const DownloadIcon = () => (
-  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+// Android 机器人图标 (明亮绿色)
+const AndroidIcon = () => (
+  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="#3DDC84">
+    <path d="M17.523 15.341c-.5 0-.908.406-.908.905s.408.906.908.906c.5 0 .906-.407.906-.906s-.406-.905-.906-.905zm-11.046 0c-.5 0-.908.406-.908.905s.408.906.908.906c.5 0 .908-.407.908-.906s-.408-.905-.908-.905zm11.4-6.029l1.96-3.395a.407.407 0 00-.704-.407l-1.984 3.438c-1.47-.67-3.12-1.043-4.896-1.043s-3.426.373-4.896 1.043L5.373 5.51a.407.407 0 00-.704.407l1.96 3.395C3.571 11.018 1.6 14.018 1.6 17.497h20.8c0-3.479-1.971-6.479-5.023-8.185z" />
   </svg>
 );
 
@@ -149,8 +149,8 @@ export default function AppDownloadModal({ isOpen, onClose }: AppDownloadModalPr
               <div className="relative rounded-[15px] bg-gradient-to-br from-[#1a1030] to-[#0f0f1a] p-4">
                 <div className="flex items-center gap-3.5">
                   {/* 图标 */}
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/30 to-pink-500/20 ring-1 ring-white/10">
-                    <DownloadIcon />
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#3DDC84]/15 ring-1 ring-[#3DDC84]/30">
+                    <AndroidIcon />
                   </div>
 
                   {/* 文字内容 */}
