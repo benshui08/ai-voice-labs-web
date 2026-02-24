@@ -99,7 +99,7 @@ export default function TotalAssetsCard() {
             </div>
           </div>
 
-          <div className="border-t border-white/5" />
+          <div className="border-t border-white/10" />
 
           {/* USDT */}
           <div className="space-y-1.5">
