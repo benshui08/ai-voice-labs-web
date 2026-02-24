@@ -99,6 +99,8 @@ export default function TotalAssetsCard() {
             </div>
           </div>
 
+          <div className="border-t border-white/5" />
+
           {/* USDT */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
