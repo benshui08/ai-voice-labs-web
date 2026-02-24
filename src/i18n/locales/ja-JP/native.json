@@ -177,6 +177,7 @@
       "wallet": "ウォレット",
       "status": {
         "pending": "処理中",
+        "transferring": "送金中",
         "completed": "完了",
         "rejected": "拒否"
       }

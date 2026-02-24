@@ -215,6 +215,7 @@
       "wallet": "錢包",
       "status": {
         "pending": "處理中",
+        "transferring": "轉帳中",
         "completed": "已完成",
         "rejected": "已拒絕"
       }

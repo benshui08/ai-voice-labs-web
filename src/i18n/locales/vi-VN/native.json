@@ -177,6 +177,7 @@
       "wallet": "Ví",
       "status": {
         "pending": "Đang xử lý",
+        "transferring": "Đang chuyển",
         "completed": "Hoàn thành",
         "rejected": "Bị từ chối"
       }

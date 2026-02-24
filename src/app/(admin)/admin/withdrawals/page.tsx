@@ -4,19 +4,22 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   getAdminWithdrawals,
   getWithdrawalStats,
-  approveWithdrawal,
+  startTransfer,
+  completeTransfer,
   rejectWithdrawal,
   type AdminWithdrawalItem,
 } from '@/actions/admin/withdrawals';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   pending: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
+  transferring: { bg: 'bg-blue-100', text: 'text-blue-800' },
   completed: { bg: 'bg-green-100', text: 'text-green-800' },
   rejected: { bg: 'bg-red-100', text: 'text-red-800' },
 };
 
 const STATUS_LABELS: Record<string, string> = {
   pending: '待处理',
+  transferring: '转账中',
   completed: '已完成',
   rejected: '已拒绝',
 };
@@ -26,6 +29,7 @@ export default function WithdrawalsPage() {
   const [stats, setStats] = useState<{
     total: number;
     pending: number;
+    transferring: number;
     completed: number;
     rejected: number;
     totalAmount: string;
@@ -42,7 +46,7 @@ export default function WithdrawalsPage() {
   const [endDate, setEndDate] = useState('');
 
   // Modal state
-  const [approveTarget, setApproveTarget] = useState<AdminWithdrawalItem | null>(null);
+  const [completeTarget, setCompleteTarget] = useState<AdminWithdrawalItem | null>(null);
   const [rejectTarget, setRejectTarget] = useState<AdminWithdrawalItem | null>(null);
   const [txHash, setTxHash] = useState('');
   const [adminNote, setAdminNote] = useState('');
@@ -81,13 +85,25 @@ export default function WithdrawalsPage() {
     loadData();
   }, [loadData]);
 
-  const handleApprove = async () => {
-    if (!approveTarget) return;
+  const handleStartTransfer = async (item: AdminWithdrawalItem) => {
+    if (!confirm(`确认开始转账 #${item.id}（${Number(item.netAmount).toFixed(4)} USDT）？`)) return;
     setActionLoading(true);
-    const result = await approveWithdrawal(approveTarget.id, txHash);
+    const result = await startTransfer(item.id);
     setActionLoading(false);
     if (result.success) {
-      setApproveTarget(null);
+      loadData();
+    } else {
+      alert(result.message);
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!completeTarget) return;
+    setActionLoading(true);
+    const result = await completeTransfer(completeTarget.id, txHash);
+    setActionLoading(false);
+    if (result.success) {
+      setCompleteTarget(null);
       setTxHash('');
       loadData();
     } else {
@@ -140,7 +156,7 @@ export default function WithdrawalsPage() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
             <div className="text-sm text-gray-500">总提现</div>
@@ -148,6 +164,10 @@ export default function WithdrawalsPage() {
           <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-4">
             <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
             <div className="text-sm text-gray-500">待处理</div>
+          </div>
+          <div className="bg-blue-50 rounded-xl border border-blue-200 p-4">
+            <div className="text-2xl font-bold text-blue-600">{stats.transferring}</div>
+            <div className="text-sm text-gray-500">转账中</div>
           </div>
           <div className="bg-green-50 rounded-xl border border-green-200 p-4">
             <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
@@ -176,6 +196,7 @@ export default function WithdrawalsPage() {
             >
               <option value="">全部状态</option>
               <option value="pending">待处理</option>
+              <option value="transferring">转账中</option>
               <option value="completed">已完成</option>
               <option value="rejected">已拒绝</option>
             </select>
@@ -295,10 +316,27 @@ export default function WithdrawalsPage() {
                         {r.status === 'pending' && (
                           <>
                             <button
-                              onClick={() => { setApproveTarget(r); setTxHash(''); }}
+                              onClick={() => handleStartTransfer(r)}
+                              disabled={actionLoading}
+                              className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors disabled:opacity-50"
+                            >
+                              转账
+                            </button>
+                            <button
+                              onClick={() => { setRejectTarget(r); setAdminNote(''); }}
+                              className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                            >
+                              拒绝
+                            </button>
+                          </>
+                        )}
+                        {r.status === 'transferring' && (
+                          <>
+                            <button
+                              onClick={() => { setCompleteTarget(r); setTxHash(''); }}
                               className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
                             >
-                              通过
+                              完成
                             </button>
                             <button
                               onClick={() => { setRejectTarget(r); setAdminNote(''); }}
@@ -341,24 +379,26 @@ export default function WithdrawalsPage() {
         )}
       </div>
 
-      {/* Approve Modal */}
-      {approveTarget && (
+      {/* Complete Transfer Modal */}
+      {completeTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setApproveTarget(null)} />
+          <div className="absolute inset-0 bg-black/50" onClick={() => setCompleteTarget(null)} />
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">通过提现 #{approveTarget.id}</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">完成转账 #{completeTarget.id}</h3>
             <div className="space-y-3 mb-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-500">到账金额</span>
-                <span className="font-medium">{Number(approveTarget.netAmount).toFixed(4)} USDT</span>
+                <span className="font-medium">{Number(completeTarget.netAmount).toFixed(4)} USDT</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">网络</span>
-                <span>{approveTarget.network}</span>
+                <span>{completeTarget.network}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">钱包</span>
-                <span className="font-mono text-xs">{truncateAddress(approveTarget.walletAddress)}</span>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm text-gray-600 mb-1">转账地址</label>
+              <div className="w-full px-3 py-2.5 bg-amber-50 border border-amber-300 rounded-lg text-sm font-mono break-all text-gray-900 select-all">
+                {completeTarget.walletAddress}
               </div>
             </div>
             <div className="mb-4">
@@ -373,17 +413,17 @@ export default function WithdrawalsPage() {
             </div>
             <div className="flex gap-3 justify-end">
               <button
-                onClick={() => setApproveTarget(null)}
+                onClick={() => setCompleteTarget(null)}
                 className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
               >
                 取消
               </button>
               <button
-                onClick={handleApprove}
+                onClick={handleComplete}
                 disabled={actionLoading}
                 className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
               >
-                {actionLoading ? '处理中...' : '确认通过'}
+                {actionLoading ? '处理中...' : '确认完成'}
               </button>
             </div>
           </div>
@@ -516,10 +556,26 @@ export default function WithdrawalsPage() {
               {detailRecord.status === 'pending' && (
                 <>
                   <button
-                    onClick={() => { setDetailRecord(null); setApproveTarget(detailRecord); setTxHash(''); }}
+                    onClick={() => { setDetailRecord(null); handleStartTransfer(detailRecord); }}
+                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    转账
+                  </button>
+                  <button
+                    onClick={() => { setDetailRecord(null); setRejectTarget(detailRecord); setAdminNote(''); }}
+                    className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    拒绝
+                  </button>
+                </>
+              )}
+              {detailRecord.status === 'transferring' && (
+                <>
+                  <button
+                    onClick={() => { setDetailRecord(null); setCompleteTarget(detailRecord); setTxHash(''); }}
                     className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
                   >
-                    通过
+                    完成
                   </button>
                   <button
                     onClick={() => { setDetailRecord(null); setRejectTarget(detailRecord); setAdminNote(''); }}

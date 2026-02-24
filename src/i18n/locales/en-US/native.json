@@ -215,6 +215,7 @@
       "wallet": "Wallet",
       "status": {
         "pending": "Pending",
+        "transferring": "Transferring",
         "completed": "Completed",
         "rejected": "Rejected"
       }

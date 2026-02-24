@@ -177,6 +177,7 @@
       "wallet": "กระเป๋า",
       "status": {
         "pending": "กำลังดำเนินการ",
+        "transferring": "กำลังโอน",
         "completed": "สำเร็จ",
         "rejected": "ถูกปฏิเสธ"
       }

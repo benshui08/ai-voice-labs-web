@@ -115,9 +115,10 @@ export async function getAdminWithdrawals(query: WithdrawalsQuery = {}) {
 export async function getWithdrawalStats() {
   await verifyAdminWithoutDb();
 
-  const [[{ total }], [{ pending }], [{ completed }], [{ rejected }], [{ totalAmount }]] = await Promise.all([
+  const [[{ total }], [{ pending }], [{ transferring }], [{ completed }], [{ rejected }], [{ totalAmount }]] = await Promise.all([
     db.select({ total: count() }).from(withdrawals),
     db.select({ pending: count() }).from(withdrawals).where(eq(withdrawals.status, 'pending')),
+    db.select({ transferring: count() }).from(withdrawals).where(eq(withdrawals.status, 'transferring')),
     db.select({ completed: count() }).from(withdrawals).where(eq(withdrawals.status, 'completed')),
     db.select({ rejected: count() }).from(withdrawals).where(eq(withdrawals.status, 'rejected')),
     db.select({ totalAmount: sql<string>`COALESCE(SUM(${withdrawals.netAmount}), 0)` }).from(withdrawals).where(eq(withdrawals.status, 'completed')),
@@ -126,6 +127,7 @@ export async function getWithdrawalStats() {
   return {
     total: Number(total),
     pending: Number(pending),
+    transferring: Number(transferring),
     completed: Number(completed),
     rejected: Number(rejected),
     totalAmount: totalAmount,
@@ -133,36 +135,63 @@ export async function getWithdrawalStats() {
 }
 
 /**
- * 通过提现（标记为 completed）
+ * 开始转账（pending → transferring）
  */
-export async function approveWithdrawal(id: number, txHash: string) {
+export async function startTransfer(id: number) {
   await verifyAdminWithoutDb();
 
   try {
+    const [record] = await db.select().from(withdrawals).where(eq(withdrawals.id, id)).limit(1);
+    if (!record) return { success: false, message: '记录不存在' };
+    if (record.status !== 'pending') return { success: false, message: '只能对待处理的提现执行此操作' };
+
+    await db.update(withdrawals).set({
+      status: 'transferring',
+    }).where(eq(withdrawals.id, id));
+
+    return { success: true, message: '已标记为转账中' };
+  } catch (error) {
+    console.error('标记转账中失败:', error);
+    return { success: false, message: error instanceof Error ? error.message : '操作失败' };
+  }
+}
+
+/**
+ * 完成转账（transferring → completed）
+ */
+export async function completeTransfer(id: number, txHash: string) {
+  await verifyAdminWithoutDb();
+
+  try {
+    const [record] = await db.select().from(withdrawals).where(eq(withdrawals.id, id)).limit(1);
+    if (!record) return { success: false, message: '记录不存在' };
+    if (record.status !== 'transferring') return { success: false, message: '只能对转账中的提现执行此操作' };
+
     await db.update(withdrawals).set({
       status: 'completed',
       txHash: txHash.trim() || null,
       completedAt: new Date().toISOString(),
     }).where(eq(withdrawals.id, id));
 
-    return { success: true, message: '已通过' };
+    return { success: true, message: '已完成' };
   } catch (error) {
-    console.error('通过提现失败:', error);
+    console.error('完成转账失败:', error);
     return { success: false, message: error instanceof Error ? error.message : '操作失败' };
   }
 }
 
 /**
- * 拒绝提现 + 退款到 USDT 余额
+ * 拒绝提现 + 退款到 USDT 余额（pending / transferring 均可拒绝）
  */
 export async function rejectWithdrawal(id: number, adminNote: string) {
   await verifyAdminWithoutDb();
 
   try {
-    // 先获取提现记录
     const [record] = await db.select().from(withdrawals).where(eq(withdrawals.id, id)).limit(1);
     if (!record) return { success: false, message: '记录不存在' };
-    if (record.status !== 'pending') return { success: false, message: '只能拒绝待处理的提现' };
+    if (record.status !== 'pending' && record.status !== 'transferring') {
+      return { success: false, message: '只能拒绝待处理或转账中的提现' };
+    }
 
     // 退还 USDT 到用户余额（退还原始 amount，不是 netAmount）
     await db.update(users).set({

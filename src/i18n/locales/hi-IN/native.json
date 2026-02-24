@@ -177,6 +177,7 @@
       "wallet": "वॉलेट",
       "status": {
         "pending": "प्रक्रिया में",
+        "transferring": "स्थानांतरित हो रहा है",
         "completed": "पूर्ण",
         "rejected": "अस्वीकृत"
       }

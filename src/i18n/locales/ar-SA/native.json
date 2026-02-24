@@ -177,6 +177,7 @@
       "wallet": "المحفظة",
       "status": {
         "pending": "قيد المعالجة",
+        "transferring": "جاري التحويل",
         "completed": "مكتمل",
         "rejected": "مرفوض"
       }

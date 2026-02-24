@@ -177,6 +177,7 @@
       "wallet": "Billetera",
       "status": {
         "pending": "Pendiente",
+        "transferring": "Transfiriendo",
         "completed": "Completado",
         "rejected": "Rechazado"
       }

@@ -177,6 +177,7 @@
       "wallet": "Carteira",
       "status": {
         "pending": "Pendente",
+        "transferring": "Transferindo",
         "completed": "Concluído",
         "rejected": "Rejeitado"
       }

@@ -177,6 +177,7 @@
       "wallet": "ပိုက်ဆံအိတ်",
       "status": {
         "pending": "ဆောင်ရွက်ဆဲ",
+        "transferring": "လွှဲပြောင်းနေသည်",
         "completed": "ပြီးစီး",
         "rejected": "ငြင်းပယ်"
       }

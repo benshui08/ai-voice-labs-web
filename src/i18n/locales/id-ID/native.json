@@ -177,6 +177,7 @@
       "wallet": "Dompet",
       "status": {
         "pending": "Diproses",
+        "transferring": "Sedang transfer",
         "completed": "Selesai",
         "rejected": "Ditolak"
       }

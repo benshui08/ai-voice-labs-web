@@ -120,6 +120,7 @@ export default function TransactionHistorySheet({ isOpen, onClose }: Transaction
     switch (status) {
       case 'completed': return 'bg-emerald-500/15 text-emerald-400';
       case 'rejected': return 'bg-red-500/15 text-red-400';
+      case 'transferring': return 'bg-blue-500/15 text-blue-400';
       default: return 'bg-amber-500/15 text-amber-400'; // pending
     }
   };
@@ -128,6 +129,7 @@ export default function TransactionHistorySheet({ isOpen, onClose }: Transaction
     switch (status) {
       case 'completed': return t('native.history.status.completed');
       case 'rejected': return t('native.history.status.rejected');
+      case 'transferring': return t('native.history.status.transferring');
       default: return t('native.history.status.pending');
     }
   };
