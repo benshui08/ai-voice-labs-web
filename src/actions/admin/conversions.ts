@@ -5,7 +5,7 @@
  */
 import db from '@/lib/db';
 import { conversions } from '@/db/schema';
-import { eq, ilike, desc, count, gte, lte, and, sql } from 'drizzle-orm';
+import { ilike, desc, count, gte, lte, and, sql } from 'drizzle-orm';
 import { verifyAdminWithoutDb } from '@/lib/auth-admin';
 
 interface ConversionsQuery {
