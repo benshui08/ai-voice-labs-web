@@ -97,6 +97,8 @@ dependencies {
     implementation 'com.google.android.gms:play-services-ads:23.6.0'
     // Unity Ads mediation adapter (AdMob 中介)
     implementation 'com.google.ads.mediation:unity:4.12.5.0'
+    // Pangle mediation adapter (AdMob 中介)
+    implementation 'com.google.ads.mediation:pangle:6.5.0.3.0'
 }
 
 apply from: 'capacitor.build.gradle'
