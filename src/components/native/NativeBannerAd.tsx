@@ -17,7 +17,6 @@ import LuckyDrawBanner from './LuckyDrawBanner';
 
 export default function NativeBannerAd() {
   const { show_home_banner } = getMiningEconomyConfig();
-  if (!show_home_banner) return null;
   const { isSubscribed } = useSubscription();
   const [activeDraws, setActiveDraws] = useState<ActiveDrawInfo[] | undefined>(undefined);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -77,6 +76,8 @@ export default function NativeBannerAd() {
       else goToPrev();
     }
   }, [goToNext, goToPrev]);
+
+  if (!show_home_banner) return null;
 
   // Loading
   if (activeDraws === undefined) return (
