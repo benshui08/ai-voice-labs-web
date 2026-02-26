@@ -91,7 +91,7 @@ export default function VoicesTab({ isActive, refreshTrigger, onDetailOpen }: Ta
     <>
       <DateGroupedList
         records={filtered}
-        getDateStr={(v) => v.created_at.toString()}
+        getDateStr={(v) => v.created_at ?? ''}
         getKey={(v) => v.task_id}
         renderCard={(voice) => (
           <VoiceCard voice={voice} onClick={() => handleClick(voice)} />

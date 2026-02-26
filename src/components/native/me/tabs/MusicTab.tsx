@@ -121,7 +121,7 @@ export default function MusicTab({ isActive, refreshTrigger, onDetailOpen }: Tab
     <>
       <DateGroupedList
         records={filtered}
-        getDateStr={(m) => m.created_at.toString()}
+        getDateStr={(m) => m.created_at ?? ''}
         getKey={(m) => m.task_id}
         renderCard={(music) => (
           <MusicCard music={music} onClick={() => handleClick(music)} />
