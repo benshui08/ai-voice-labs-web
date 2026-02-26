@@ -285,32 +285,18 @@
       "learnMore": "了解更多"
     },
     "subscribe": {
-      "tabs": {
-        "subscription": "订阅",
-        "credits": "积分包"
-      },
-      "vipBonus": "成为VIP：每个积分包额外+20%",
-      "notSubscribed": "未订阅",
-      "mostPopular": "最受欢迎",
-      "creditsPerPeriod": "{{credits}} 积分 / {{period}}",
-      "membershipBenefits": "会员权益",
-      "benefits": {
-        "creditsRefresh": "每月刷新 {{credits}} 积分",
-        "fastChannel": "快速生成通道",
-        "simultaneous": "同时生成多个任务",
-        "higherQuality": "更高质量"
-      },
-      "creditPackInfo": {
-        "validity": "积分包有效期：永久",
-        "terms": "订阅条款：确认后将从您的账户扣款。订阅会以原价自动续费，除非在当前周期结束前至少24小时取消。您可以在账户设置中管理订阅和自动续费。"
-      },
-      "termsOfUse": "使用条款",
-      "privacyPolicy": "隐私政策",
-      "subscribeNow": "立即订阅",
-      "buyNow": "立即购买",
+      "title": "购买 VOICICA",
+      "balance": "VOICICA",
+      "estimatedValue": "≈ ${{value}}",
+      "youPay": "支付金额",
+      "youGet": "获得数量",
+      "fee": "手续费：$0.30",
+      "buyButton": "购买 VOICICA",
+      "rate": "汇率：$1 = 10,000 VOICICA（不含手续费）",
+      "minAmount": "最低 $1.00",
       "processing": "处理中...",
-      "currentPlan": "当前套餐",
-      "manageSubscription": "管理订阅"
+      "notSubscribed": "未订阅",
+      "loginRequired": "请先登录后购买"
     },
     "insufficientCredits": {
       "title": "积分不足",

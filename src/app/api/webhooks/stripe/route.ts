@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { userSubscriptions, subscriptionHistory } from '@/db/schema';
+import { userSubscriptions, subscriptionHistory, creditHistory } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { getCreditTierByProductId } from '@/config/subscription';
 import { addCredits } from '@/lib/credits';
@@ -78,6 +78,37 @@ async function handleCheckoutCompleted(session: CheckoutSession, eventId: string
   // Lucky Draw 购买走独立流程
   if (metadata.type === 'lucky_draw') {
     await handleLuckyDrawPurchase(session, eventId);
+    return;
+  }
+
+  // VOICICA 直接购买
+  if (metadata.type === 'voicica_purchase') {
+    const voicicaAmount = Number(metadata.voicica_amount);
+    const purchaseUserId = metadata.user_id;
+    if (!purchaseUserId || !voicicaAmount) {
+      console.error('❌ VOICICA purchase missing metadata:', metadata);
+      return;
+    }
+
+    // 防重复：用 session.id 作为 taskId 查 creditHistory
+    const existing = await db.select({ id: creditHistory.id })
+      .from(creditHistory)
+      .where(eq(creditHistory.taskId, session.id))
+      .limit(1);
+    if (existing.length > 0) {
+      console.log(`⏭️ VOICICA purchase already processed: ${session.id}`);
+      return;
+    }
+
+    await addCredits(
+      purchaseUserId,
+      voicicaAmount,
+      ProductType.CREDIT_PURCHASE,
+      false,
+      `Buy ${voicicaAmount.toLocaleString()} VOICICA`,
+      session.id,
+    );
+    console.log(`✅ VOICICA purchase completed: ${voicicaAmount} credits for user ${purchaseUserId}`);
     return;
   }
 

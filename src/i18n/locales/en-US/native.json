@@ -285,32 +285,18 @@
       "learnMore": "Learn More"
     },
     "subscribe": {
-      "tabs": {
-        "subscription": "Subscription",
-        "credits": "Credit Packs"
-      },
-      "vipBonus": "Become VIP: +20% credits on every pack",
-      "notSubscribed": "Not Subscribed",
-      "mostPopular": "Most Popular",
-      "creditsPerPeriod": "{{credits}} credits / {{period}}",
-      "membershipBenefits": "Membership Benefits",
-      "benefits": {
-        "creditsRefresh": "{{credits}} credits refresh monthly",
-        "fastChannel": "Fast Generation Channel",
-        "simultaneous": "Simultaneous Generations",
-        "higherQuality": "Higher Quality"
-      },
-      "creditPackInfo": {
-        "validity": "Validity Period of the Credits Pack: Lifetime",
-        "terms": "Subscription Terms: Payment is charged to your account upon confirmation. Subscription auto-renews at the original price, unless canceled at least 24 hours before the current period ends. Manage your subscription and auto-renewal in Account Settings."
-      },
-      "termsOfUse": "Terms of Use",
-      "privacyPolicy": "Privacy Policy",
-      "subscribeNow": "Subscribe Now",
-      "buyNow": "Buy Now",
+      "title": "Buy VOICICA",
+      "balance": "VOICICA",
+      "estimatedValue": "≈ ${{value}}",
+      "youPay": "You Pay",
+      "youGet": "You Get",
+      "fee": "Fee: $0.30",
+      "buyButton": "BUY VOICICA",
+      "rate": "Rate: $1 = 10,000 VOICICA (Excl. Fee)",
+      "minAmount": "Minimum $1.00",
       "processing": "Processing...",
-      "currentPlan": "Current Plan",
-      "manageSubscription": "Manage Subscription"
+      "notSubscribed": "Not Subscribed",
+      "loginRequired": "Please log in to purchase"
     },
     "insufficientCredits": {
       "title": "Insufficient Credits",

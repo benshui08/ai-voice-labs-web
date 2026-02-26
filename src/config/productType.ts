@@ -50,6 +50,8 @@ export const ProductType = {
   CONVERSION: 'conversion',
   /** USDT 提现 */
   WITHDRAWAL: 'withdrawal',
+  /** 直接购买 $VOICICA */
+  CREDIT_PURCHASE: 'credit_purchase',
   /** 推荐提成 */
   REFERRAL_COMMISSION: 'referral_commission',
 } as const;
