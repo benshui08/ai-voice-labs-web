@@ -93,7 +93,7 @@ export default function ReferralPage() {
 
   const handleShare = async () => {
     if (!info?.referralCode) return;
-    const shareUrl = `https://voicica.ai/native?ref=${info.referralCode}`;
+    const shareUrl = `https://voicica.ai/mining?ref=${info.referralCode}`;
     const shareText = t('native.referral.inviteText').replace('{{code}}', info.referralCode).replace('{{url}}', shareUrl);
     try {
       await Share.share({

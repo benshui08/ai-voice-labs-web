@@ -106,7 +106,7 @@
         "empty": "No team members yet. Share your invite code!",
         "loadMore": "Load more"
       },
-      "inviteText": "Join VoicicaAI and earn $VOICICA together! Use my invite code: {{code}} {{url}}",
+      "inviteText": "Claim your AI mining node on VOICICA! 🤖\n1. Install: {{url}}\n2. Code: {{code}} (+10% Speed Bonus)\n3. Start earning $VOICICA every 24h. ⚡️",
       "bind": {
         "hint": "Missing Inviter? Enter code to unlock +10% Mining Speed!",
         "placeholder": "Enter Inviter Code (Optional)",

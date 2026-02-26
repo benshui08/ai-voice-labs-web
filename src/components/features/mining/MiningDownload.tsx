@@ -23,17 +23,28 @@ interface MiningDownloadContent {
   hot: string;
 }
 
+interface ReferralContent {
+  invited: string;
+  codeLabel: string;
+  bonusTip: string;
+}
+
 /**
  * Mining Download — 核心转化区
  * 外层彩色渐变边框卡片，内部 APK(左) + Google Play(右) 横排
+ * 支持 ?ref=CODE 邀请码参数：显示邀请横幅 + 链接带 ref
  */
 export default function MiningDownload({
   content,
+  referralContent,
 }: {
   content: MiningDownloadContent;
+  referralContent: ReferralContent;
 }) {
   const [apkUrl, setApkUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refCode, setRefCode] = useState<string | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   useEffect(() => {
     getLatestRelease('android')
@@ -44,9 +55,74 @@ export default function MiningDownload({
       .finally(() => setLoading(false));
   }, []);
 
+  // 读取 URL 中的 ref 参数并存入 localStorage
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) {
+      setRefCode(ref);
+      localStorage.setItem('pending_referral_code', ref);
+    }
+  }, []);
+
+  // 复制邀请码到剪贴板
+  const copyRefCode = () => {
+    if (!refCode) return;
+    navigator.clipboard.writeText(refCode).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = refCode;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    });
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
+  };
+
+  // Google Play 链接带 referrer
+  const playHref = refCode
+    ? `${GOOGLE_PLAY_URL}&referrer=${encodeURIComponent(`ref=${refCode}`)}`
+    : GOOGLE_PLAY_URL;
+
   return (
     <section className="bg-[#06060f] px-4 py-3">
       <div className="mx-auto max-w-md">
+        {/* === 邀请横幅 === */}
+        {refCode && (
+          <div className="relative mb-3 rounded-2xl p-[1.5px]">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-cyan-400/40 via-purple-500/30 to-pink-500/40" />
+            <div className="relative rounded-2xl bg-[#0c0a1a] px-4 py-4">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg">🎁</span>
+                <span className="text-sm font-semibold text-white">{referralContent.invited}</span>
+              </div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-xs text-gray-400">{referralContent.codeLabel}:</span>
+                <button
+                  onClick={copyRefCode}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-purple-500/20 px-2.5 py-0.5 transition-colors hover:bg-purple-500/30 active:bg-purple-500/40"
+                >
+                  <span className="font-mono text-sm font-bold tracking-widest text-purple-300">
+                    {refCode}
+                  </span>
+                  {codeCopied ? (
+                    <svg className="h-3.5 w-3.5 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : (
+                    <svg className="h-3.5 w-3.5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400">{referralContent.bonusTip}</p>
+            </div>
+          </div>
+        )}
+
         {/* === 外层卡片：彩色渐变边框（紫→粉→青） === */}
         <div className="relative rounded-2xl p-[1.5px]">
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-600/30 via-pink-500/20 to-cyan-400/30" />
@@ -61,7 +137,10 @@ export default function MiningDownload({
               {/* === APK 主按钮 === */}
               <a
                 href={apkUrl || '#'}
-                onClick={(e) => { if (!apkUrl || loading) e.preventDefault(); }}
+                onClick={(e) => {
+                  if (!apkUrl || loading) { e.preventDefault(); return; }
+                  if (refCode) copyRefCode();
+                }}
                 className={`group relative flex-1 overflow-hidden rounded-xl p-[1.5px] transition-all ${
                   apkUrl && !loading ? 'hover:shadow-xl hover:shadow-purple-500/30' : 'opacity-50'
                 }`}
@@ -88,9 +167,10 @@ export default function MiningDownload({
 
               {/* === Google Play 次按钮 === */}
               <a
-                href={GOOGLE_PLAY_URL}
+                href={playHref}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => { if (refCode) copyRefCode(); }}
                 className="group flex w-[120px] flex-shrink-0 flex-col items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-4 transition-all hover:border-white/15 hover:bg-white/[0.06]"
               >
                 <GooglePlayIcon />

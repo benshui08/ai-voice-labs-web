@@ -16,7 +16,7 @@ export default function MiningPageContent({ locale }: { locale: string }) {
     <main className="min-h-screen bg-[#06060f]">
       <MiningHero content={content.hero} />
       <MiningSteps steps={content.steps} />
-      <MiningDownload content={content.download} />
+      <MiningDownload content={content.download} referralContent={content.referral} />
       <MiningLiveFeed />
       <MiningTrust content={content.trust} />
     </main>

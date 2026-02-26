@@ -9,6 +9,11 @@ export interface MiningLocaleContent {
     apkTip: string;
     hot: string;
   };
+  referral: {
+    invited: string;
+    codeLabel: string;
+    bonusTip: string;
+  };
   trust: { poweredBy: string; secureNode: string; ddosProtected: string };
   metadata: { title: string; description: string; keywords: string[] };
 }
@@ -31,6 +36,11 @@ export const MINING_CONTENT: Record<string, MiningLocaleContent> = {
       standardVersion: 'Standard Version',
       apkTip: 'Direct APK offers full access & mining & rewards',
       hot: 'HOT',
+    },
+    referral: {
+      invited: "You've been invited!",
+      codeLabel: 'Code',
+      bonusTip: 'Download & enter this code to earn bonus!',
     },
     trust: {
       poweredBy: 'Powered by',
@@ -70,6 +80,11 @@ export const MINING_CONTENT: Record<string, MiningLocaleContent> = {
       apkTip: 'APK直接インストールで全機能・マイニング・報酬にアクセス',
       hot: '注目',
     },
+    referral: {
+      invited: '招待されました！',
+      codeLabel: 'コード',
+      bonusTip: 'ダウンロードしてこのコードを入力するとボーナスがもらえます！',
+    },
     trust: {
       poweredBy: '提供元',
       secureNode: 'セキュアノード技術',
@@ -107,6 +122,11 @@ export const MINING_CONTENT: Record<string, MiningLocaleContent> = {
       standardVersion: '標準版',
       apkTip: '直接安裝 APK 享受完整功能、挖礦與獎勵',
       hot: '熱門',
+    },
+    referral: {
+      invited: '你收到了邀請！',
+      codeLabel: '邀請碼',
+      bonusTip: '下載並輸入此邀請碼即可獲得獎勵！',
     },
     trust: {
       poweredBy: '技術支持',
@@ -146,6 +166,11 @@ export const MINING_CONTENT: Record<string, MiningLocaleContent> = {
       apkTip: 'APK 직접 설치로 전체 기능, 마이닝, 보상 이용 가능',
       hot: '인기',
     },
+    referral: {
+      invited: '초대를 받았습니다!',
+      codeLabel: '코드',
+      bonusTip: '다운로드 후 이 코드를 입력하면 보너스를 받을 수 있습니다!',
+    },
     trust: {
       poweredBy: '기술 제공',
       secureNode: '보안 노드 기술',
@@ -184,6 +209,11 @@ export const MINING_CONTENT: Record<string, MiningLocaleContent> = {
       apkTip: 'APK โดยตรงให้การเข้าถึงเต็มรูปแบบ การขุด และรางวัล',
       hot: 'มาแรง',
     },
+    referral: {
+      invited: 'คุณได้รับคำเชิญ!',
+      codeLabel: 'รหัส',
+      bonusTip: 'ดาวน์โหลดและกรอกรหัสนี้เพื่อรับโบนัส!',
+    },
     trust: {
       poweredBy: 'ขับเคลื่อนโดย',
       secureNode: 'เทคโนโลยีโหนดปลอดภัย',
@@ -221,6 +251,11 @@ export const MINING_CONTENT: Record<string, MiningLocaleContent> = {
       standardVersion: 'Versión estándar',
       apkTip: 'El APK directo ofrece acceso completo, minería y recompensas',
       hot: 'POPULAR',
+    },
+    referral: {
+      invited: '¡Has sido invitado!',
+      codeLabel: 'Código',
+      bonusTip: '¡Descarga e ingresa este código para ganar un bono!',
     },
     trust: {
       poweredBy: 'Desarrollado por',
