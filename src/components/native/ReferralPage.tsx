@@ -453,9 +453,9 @@ export default function ReferralPage() {
         ) : (
           <div className="space-y-2">
             {team.map((member, idx) => (
-              <div key={idx} className="bg-slate-800/50 rounded-xl p-3 flex items-center justify-between">
+              <div key={idx} className="bg-slate-800/50 rounded-xl p-3 flex items-center">
                 {/* Left: avatar + name + date */}
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="flex items-center gap-2.5 min-w-0 w-2/5">
                   <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs text-slate-400 shrink-0">
                     {member.name.charAt(0).toUpperCase()}
                   </div>
@@ -465,12 +465,12 @@ export default function ReferralPage() {
                   </div>
                 </div>
                 {/* Center: sub-team count */}
-                <div className="text-center px-2">
+                <div className="w-1/5 text-center">
                   <p className="text-sm font-bold text-white">{member.subTeamCount}</p>
                   <p className="text-[10px] text-slate-400">{t('native.referral.teamMembers')}</p>
                 </div>
                 {/* Right: level + contribution */}
-                <div className="text-right shrink-0">
+                <div className="w-2/5 text-right">
                   <p className={`text-xs font-medium ${getLevelColor(member.level)}`}>
                     {getLevelLabel(member.level)}
                   </p>
