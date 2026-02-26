@@ -339,8 +339,8 @@ export default function ReferralPage() {
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-white text-sm font-semibold">{t('native.referral.team.title')} ({teamTotal})</h3>
           {info.inviterCode && (
-            <span className="text-xs text-slate-400">
-              {t('native.referral.bind.inviter')}: <span className="text-purple-400 font-mono">{info.inviterCode}</span>
+            <span className="inline-flex items-center px-2.5 py-1 rounded-lg border border-slate-600/60 bg-slate-800/60 text-xs">
+              <span className="text-green-400 font-mono">{t('native.referral.bind.inviter')}: {info.inviterCode}</span>
             </span>
           )}
         </div>
