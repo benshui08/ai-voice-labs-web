@@ -506,7 +506,12 @@ export async function distributeReferralCommissions(
       continue;
     }
 
-    const commissionAmount = Math.max(1, Math.round(amount * rate));
+    const commissionAmount = Math.round(amount * rate);
+
+    if (commissionAmount <= 0) {
+      currentUserId = referrerId;
+      continue;
+    }
 
     // 插入提成记录
     await db.insert(referralCommissions).values({
