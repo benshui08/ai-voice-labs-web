@@ -424,47 +424,22 @@ export default function ReferralPage() {
           const pctL3 = total > 0 ? (l3Plus / total) * 100 : 0;
           return (
             <div className="bg-slate-800/50 rounded-xl p-4 mb-3">
-              {/* 3-column stats */}
-              <div className="grid grid-cols-3 gap-2 text-center mb-3">
+              <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
                   <p className="text-lg font-bold text-white">{l1}</p>
-                  <p className="text-[10px] text-slate-400">{t('native.referral.team.l1')}</p>
+                  <p className="text-[10px] text-slate-400 mb-1.5">{t('native.referral.team.l1')}</p>
+                  <p className="text-[11px] font-medium text-purple-400">{pctL1.toFixed(1)}%</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold text-white">{l2}</p>
-                  <p className="text-[10px] text-slate-400">{t('native.referral.team.l2')}</p>
+                  <p className="text-[10px] text-slate-400 mb-1.5">{t('native.referral.team.l2')}</p>
+                  <p className="text-[11px] font-medium text-blue-400">{pctL2.toFixed(1)}%</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold text-white">{l3Plus}</p>
-                  <p className="text-[10px] text-slate-400">{t('native.referral.team.l3Plus')}</p>
+                  <p className="text-[10px] text-slate-400 mb-1.5">{t('native.referral.team.l3Plus')}</p>
+                  <p className="text-[11px] font-medium text-cyan-400">{pctL3.toFixed(1)}%</p>
                 </div>
-              </div>
-              {/* Proportion bar */}
-              <div className="h-2 rounded-full overflow-hidden flex bg-slate-700">
-                {pctL1 > 0 && (
-                  <div
-                    className="h-full bg-purple-500 transition-all"
-                    style={{ width: `${pctL1}%` }}
-                  />
-                )}
-                {pctL2 > 0 && (
-                  <div
-                    className="h-full bg-blue-500 transition-all"
-                    style={{ width: `${pctL2}%` }}
-                  />
-                )}
-                {pctL3 > 0 && (
-                  <div
-                    className="h-full bg-cyan-500 transition-all"
-                    style={{ width: `${pctL3}%` }}
-                  />
-                )}
-              </div>
-              {/* Percentage labels */}
-              <div className="grid grid-cols-3 gap-2 text-center mt-1.5">
-                <p className="text-[10px] text-purple-400">{pctL1.toFixed(1)}%</p>
-                <p className="text-[10px] text-blue-400">{pctL2.toFixed(1)}%</p>
-                <p className="text-[10px] text-cyan-400">{pctL3.toFixed(1)}%</p>
               </div>
             </div>
           );
