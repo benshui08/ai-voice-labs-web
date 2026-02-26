@@ -514,19 +514,17 @@ export async function distributeReferralCommissions(
     let levelLabel = '';
 
     if (depth === 1) {
-      rate = levelConfig.l1_rate + levelConfig.team_rate;
+      rate = levelConfig.l1_rate;
       levelLabel = 'l1';
     } else if (depth === 2) {
-      rate = levelConfig.l2_rate + levelConfig.team_rate;
+      rate = levelConfig.l2_rate;
       levelLabel = 'l2';
     } else {
-      // depth >= 3: 只有 team_rate
-      rate = levelConfig.team_rate;
-      levelLabel = 'team';
+      // depth >= 3: team_rate 不再实时分配，后续改为日结
+      break;
     }
 
     if (rate <= 0) {
-      // 如果当前层级没有提成，继续向上遍历（更上层可能有 team_rate）
       currentUserId = referrerId;
       continue;
     }

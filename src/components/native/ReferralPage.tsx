@@ -370,7 +370,7 @@ export default function ReferralPage() {
             <span className="text-slate-300">{t('native.referral.rules.l2')}</span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-purple-400 shrink-0">Team</span>
+            <span className="text-purple-400 shrink-0">Pool</span>
             <span className="text-slate-300">{t('native.referral.rules.team')}</span>
           </div>
         </div>
