@@ -29,6 +29,7 @@ interface RegisteredUser {
   has_active_subscription: boolean;
   referral_code: string | null;
   referred_by: string | null;
+  ip_address: string | null;
   referral_level: string;
 }
 
@@ -403,6 +404,7 @@ export default function UsersManagementPage() {
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">用户</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">注册方式</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">平台</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">位置</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">积分</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">已用积分</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">订阅</th>
@@ -416,7 +418,7 @@ export default function UsersManagementPage() {
                 <tbody className="divide-y divide-gray-200">
                   {registeredLoading ? (
                     <tr>
-                      <td colSpan={11} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={12} className="px-4 py-8 text-center text-gray-500">
                         <div className="flex items-center justify-center gap-2">
                           <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
                           加载中...
@@ -425,7 +427,7 @@ export default function UsersManagementPage() {
                     </tr>
                   ) : registeredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={12} className="px-4 py-8 text-center text-gray-500">
                         没有找到用户
                       </td>
                     </tr>
@@ -486,6 +488,9 @@ export default function UsersManagementPage() {
                           ) : (
                             <span className="text-xs text-gray-400">-</span>
                           )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <IpLocation ip={user.ip_address} />
                         </td>
                         <td className="px-4 py-3">
                           <span className="font-medium text-gray-900">

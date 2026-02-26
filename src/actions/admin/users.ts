@@ -34,6 +34,7 @@ export async function getAdminUserList(params: {
     referral_code: string | null;
     referred_by: string | null;
     referral_level: string;
+    ip_address: string | null;
   }>;
   total: number;
   page: number;
@@ -99,6 +100,7 @@ export async function getAdminUserList(params: {
     referral_code: u.referralCode,
     referred_by: u.referredBy,
     referral_level: u.referralLevel,
+    ip_address: u.ipAddress,
   }));
 
   // 过滤订阅状态

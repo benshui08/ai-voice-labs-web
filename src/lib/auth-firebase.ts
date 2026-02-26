@@ -71,8 +71,12 @@ async function verifyFirebaseToken(headersList: Awaited<ReturnType<typeof header
     const invokePath = headersList.get('x-invoke-path') || '';
     const isNative = clientType === 'native' || invokePath.includes('/native/');
 
+    // 获取 IP 和国家信息
+    const ipAddress = headersList.get('cf-connecting-ip') || headersList.get('x-forwarded-for')?.split(',')[0] || undefined;
+    const vercelCountry = headersList.get('cf-ipcountry') || headersList.get('x-vercel-ip-country') || undefined;
+
     // 自动注册或更新用户
-    await createOrUpdateFirebaseUser(decodedToken, isNative);
+    await createOrUpdateFirebaseUser(decodedToken, isNative, ipAddress, vercelCountry);
 
     return {
       uid: decodedToken.uid,
@@ -117,7 +121,9 @@ async function createOrUpdateFirebaseUser(
     picture?: string;
     firebase?: { sign_in_provider?: string };
   },
-  isNative: boolean = false
+  isNative: boolean = false,
+  ipAddress?: string,
+  vercelCountry?: string,
 ): Promise<void> {
   const [existingUser] = await db.select()
     .from(users)
@@ -126,6 +132,8 @@ async function createOrUpdateFirebaseUser(
 
   // 获取认证方式
   const authProvider = normalizeAuthProvider(decodedToken.firebase?.sign_in_provider);
+
+  const formattedIp = formatIpWithCountry(ipAddress, vercelCountry);
 
   if (existingUser) {
     // 只更新 email（email 以 Firebase 为准），name 和 photo_url 保留用户自己设置的值
@@ -139,6 +147,8 @@ async function createOrUpdateFirebaseUser(
         photoUrl: existingUser.photoUrl || decodedToken.picture,
         // 如果原来没有记录 auth_provider，现在补上
         authProvider: existingUser.authProvider || authProvider,
+        // 每次登录更新 IP 地址
+        ipAddress: formattedIp || existingUser.ipAddress,
       })
       .where(eq(users.userId, decodedToken.uid));
     console.log(`🔄 [Firebase Auth] 用户信息已更新: ${decodedToken.uid}`);
@@ -156,6 +166,7 @@ async function createOrUpdateFirebaseUser(
       authProvider: authProvider,
       credits: initialCredits,
       totalCreditsUsed: 0,
+      ipAddress: formattedIp,
     });
 
     // 只有赠送积分时才记录历史

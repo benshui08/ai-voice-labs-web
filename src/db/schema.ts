@@ -96,6 +96,7 @@ export const users = pgTable("users", {
 	referralCode: varchar("referral_code", { length: 10 }),
 	referredBy: varchar("referred_by", { length: 128 }),
 	referralLevel: varchar("referral_level", { length: 20 }).default('miner').notNull(),
+	ipAddress: varchar("ip_address", { length: 50 }),
 }, (table) => [
 	index("idx_user_email").using("btree", table.email.asc().nullsLast().op("text_ops")),
 	index("idx_user_id").using("btree", table.userId.asc().nullsLast().op("text_ops")),
