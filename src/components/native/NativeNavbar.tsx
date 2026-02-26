@@ -11,8 +11,6 @@ import { useDailyTasks } from '@/hooks/useDailyTasks';
 import LoginModal from './LoginModal';
 import NativeDailyTasksModal from './NativeDailyTasksModal';
 import LanguageSelectorSheet from './LanguageSelectorSheet';
-import CrownIcon from './common/CrownIcon';
-import LoadingDots from './common/LoadingDots';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 /**
@@ -23,7 +21,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 export default function NativeNavbar() {
   const router = useRouter();
   const { user } = useFirebaseAuth();
-  const { credits, loading: creditsLoading, refreshCredits } = useCredits();
+  const { refreshCredits } = useCredits();
   const { isTopNavVisible } = useBottomNav();
   const { shouldShowPopup, status, config } = useDailyTasks();
   const { t } = useLanguage();
@@ -90,13 +88,16 @@ export default function NativeNavbar() {
           {/* 右侧区域 */}
           <div className="flex items-center gap-2">
             {isLoggedIn ? (
-              /* 已登录：显示积分 */
+              /* 已登录：Buy 按钮 */
               <button
                 onClick={() => router.push('/native/subscribe')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all active:scale-95"
+                className="flex items-center gap-1 px-4 py-1.5 rounded-full text-white text-sm font-bold tracking-wide transition-all active:scale-95 shadow-lg shadow-amber-500/20"
+                style={{ background: 'linear-gradient(90deg, #D97706, #F59E0B, #EAB308)' }}
               >
-                <CrownIcon className="w-4 h-4 text-amber-400" />
-                <span className="text-white text-sm font-medium">{creditsLoading ? <LoadingDots /> : credits}</span>
+                BUY
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M9 5l7 7-7 7" />
+                </svg>
               </button>
             ) : (
               /* 未登录：显示登录按钮 */

@@ -94,7 +94,7 @@ export const appConfig: AppConfig = {
       IN: 0.01, VN: 0.01,
     },
     web_default_ecpm_usd: 0.03,
-    show_home_banner: true, // 是否显示首页 Banner
+    show_home_banner: false, // 是否显示首页 Banner
     show_wallet_card: true, // 是否显示首页 钱包
     conversion: {
       min_voicica_reserve: 2000, // 最低保留 2000 $VOICICA

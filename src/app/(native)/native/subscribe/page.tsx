@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useCredits } from '@/contexts/CreditsContext';
@@ -9,8 +10,6 @@ import LoginModal from '@/components/native/LoginModal';
 import LoadingDots from '@/components/native/common/LoadingDots';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
-  VOICICA_RATE,
-  STRIPE_FEE_USD,
   MIN_PURCHASE_USD,
   MAX_PURCHASE_USD,
   QUICK_AMOUNTS,
@@ -18,15 +17,9 @@ import {
   calculateEstimatedValue,
 } from '@/config/native/voicica-purchase';
 
-const CloseIcon = () => (
-  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M18 6L6 18M6 6l12 12" />
-  </svg>
-);
-
 /**
  * Native Subscribe Page — VOICICA Swap UI
- * 类似 Uniswap 的自由兑换界面
+ * 类似 Uniswap 的自由兑换界面，深色金融风格
  */
 export default function NativeSubscribePage() {
   const router = useRouter();
@@ -44,7 +37,6 @@ export default function NativeSubscribePage() {
   const isValidAmount = amountUsd >= MIN_PURCHASE_USD && amountUsd <= MAX_PURCHASE_USD;
 
   const handleAmountChange = (value: string) => {
-    // 只允许数字和小数点，最多2位小数
     const cleaned = value.replace(/[^0-9.]/g, '');
     const parts = cleaned.split('.');
     if (parts.length > 2) return;
@@ -61,16 +53,13 @@ export default function NativeSubscribePage() {
       setShowLoginModal(true);
       return;
     }
-
     if (!isValidAmount) return;
 
     setProcessing(true);
     try {
       const successUrl = `${window.location.origin}/native/payment/success`;
       const cancelUrl = `${window.location.origin}/native/subscribe`;
-
       const data = await createVoicicaPurchaseCheckout(amountUsd, successUrl, cancelUrl);
-
       if (data.checkout_url) {
         window.location.href = data.checkout_url;
       }
@@ -83,91 +72,125 @@ export default function NativeSubscribePage() {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#0a0a1a] flex flex-col overflow-auto">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-purple-900/30 via-transparent to-transparent pointer-events-none" />
+    <div className="fixed inset-0 z-[9999] bg-[#060613] flex flex-col overflow-auto">
+      {/* Background decorations */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-32 -left-32 w-80 h-80 rounded-full bg-amber-500/[0.07] blur-[100px]" />
+        <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-purple-600/[0.08] blur-[80px]" />
+        <div className="absolute bottom-40 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full bg-amber-600/[0.04] blur-[120px]" />
+      </div>
 
       {/* Close button */}
       <button
         onClick={() => router.push('/native')}
-        className="absolute left-4 z-20 w-10 h-10 flex items-center justify-center bg-gray-800/50 rounded-full text-gray-300 hover:text-white transition-colors"
+        className="absolute left-4 z-20 w-10 h-10 flex items-center justify-center bg-white/5 backdrop-blur-sm rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-all"
         style={{ top: 'calc(var(--safe-area-inset-top, 0px) + 8px)' }}
       >
-        <CloseIcon />
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M18 6L6 18M6 6l12 12" />
+        </svg>
       </button>
 
-      {/* Asset balance */}
+      {/* ── Balance Section ── */}
       <div
-        className="relative z-10 text-center py-6"
-        style={{ marginTop: 'calc(var(--safe-area-inset-top, 0px) + 56px)' }}
+        className="relative z-10 text-center pt-5 pb-4"
+        style={{ marginTop: 'calc(var(--safe-area-inset-top, 0px) + 52px)' }}
       >
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <span className="text-amber-400 text-lg">&#10022;</span>
-          <span className="text-4xl font-bold text-amber-400">
-            {creditsLoading ? <LoadingDots /> : credits.toLocaleString()}
+        <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-3">
+          {t('native.subscribe.yourBalance')}
+        </p>
+        <div className="flex items-center justify-center gap-2.5">
+          <Image
+            src="/logo/voicica-token.png"
+            alt="VOICICA"
+            width={36}
+            height={36}
+            className="w-9 h-9"
+          />
+          <span className="text-4xl font-bold text-white">
+            {creditsLoading ? <LoadingDots /> : Math.floor(credits).toLocaleString()}
           </span>
         </div>
-        <p className="text-slate-400 text-sm font-medium tracking-wider">
-          {t('native.subscribe.balance')}
-        </p>
-        <p className="text-slate-500 text-xs mt-0.5">
+        <p className="text-slate-500 text-xs mt-1.5">
           {t('native.subscribe.estimatedValue', { value: estimatedValue.toFixed(2) })}
         </p>
       </div>
 
-      {/* Swap card area */}
-      <div className="relative z-10 flex-1 px-4 space-y-3">
-        {/* You Pay card */}
-        <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700 rounded-2xl p-4">
-          <p className="text-slate-400 text-sm mb-3">{t('native.subscribe.youPay')}</p>
-          <div className="flex items-center gap-3">
-            <span className="text-slate-300 text-2xl font-medium">$</span>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={amountStr}
-              onChange={(e) => handleAmountChange(e.target.value)}
-              className="flex-1 bg-transparent text-white text-3xl font-bold outline-none placeholder-slate-600"
-              placeholder="0.00"
-            />
+      {/* ── Swap Card ── */}
+      <div className="relative z-10 flex-1 px-4 flex flex-col">
+        <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-3xl p-4 space-y-0">
+          {/* You Pay */}
+          <div className="bg-white/[0.04] rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-slate-500 text-xs font-medium uppercase tracking-wider">
+                {t('native.subscribe.youPay')}
+              </span>
+              <span className="text-slate-600 text-[11px]">
+                {t('native.subscribe.fee')}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.08]">
+                <span className="text-green-400 text-sm font-bold">$</span>
+                <span className="text-slate-300 text-sm font-medium">USD</span>
+              </div>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={amountStr}
+                onChange={(e) => handleAmountChange(e.target.value)}
+                className="flex-1 bg-transparent text-white text-right text-3xl font-bold outline-none placeholder-slate-700 min-w-0"
+                placeholder="0.00"
+              />
+            </div>
           </div>
-          <p className="text-slate-500 text-xs mt-2">
-            {t('native.subscribe.fee')}
-          </p>
-        </div>
 
-        {/* Arrow divider */}
-        <div className="flex justify-center -my-1">
-          <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
-            <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 5v14M5 12l7 7 7-7" />
-            </svg>
+          {/* Swap arrow */}
+          <div className="flex justify-center -my-2 relative z-10">
+            <div className="w-9 h-9 rounded-xl bg-[#0c0c20] border border-white/[0.08] flex items-center justify-center">
+              <svg className="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 5v14M19 12l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
-        </div>
 
-        {/* You Get card */}
-        <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700 rounded-2xl p-4">
-          <p className="text-slate-400 text-sm mb-3">{t('native.subscribe.youGet')}</p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-amber-300 text-3xl font-bold">
-              {voicicaAmount.toLocaleString()}
-            </span>
-            <span className="text-amber-400/60 text-sm font-medium">VOICICA</span>
+          {/* You Get */}
+          <div className="bg-white/[0.04] rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-slate-500 text-xs font-medium uppercase tracking-wider">
+                {t('native.subscribe.youGet')}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+                <Image
+                  src="/logo/voicica-token.png"
+                  alt=""
+                  width={18}
+                  height={18}
+                  className="w-[18px] h-[18px]"
+                />
+                <span className="text-amber-400 text-sm font-medium">VOICICA</span>
+              </div>
+              <span className="flex-1 text-right text-3xl font-bold text-amber-400 min-w-0 truncate">
+                {voicicaAmount.toLocaleString()}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Quick amount buttons */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 mt-4">
           {QUICK_AMOUNTS.map((amount) => {
             const isSelected = amountStr === String(amount);
             return (
               <button
                 key={amount}
                 onClick={() => handleQuickAmount(amount)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                   isSelected
-                    ? 'bg-amber-500/20 border border-amber-500 text-amber-400'
-                    : 'bg-slate-800/60 border border-slate-700 text-slate-400 hover:border-slate-600'
+                    ? 'bg-amber-500/15 border border-amber-500/50 text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.15)]'
+                    : 'bg-white/[0.03] border border-white/[0.06] text-slate-500 hover:text-slate-300 hover:border-white/10'
                 }`}
               >
                 ${amount}
@@ -176,32 +199,48 @@ export default function NativeSubscribePage() {
           })}
         </div>
 
-        {/* Rate info */}
-        <p className="text-center text-slate-500 text-xs pt-1">
-          {t('native.subscribe.rate')}
-        </p>
+        {/* Rate & info */}
+        <div className="mt-4 space-y-1.5">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-slate-600 text-[11px]">{t('native.subscribe.rateLabel')}</span>
+            <span className="text-slate-400 text-[11px] font-medium">1 USD = 10,000 VOICICA</span>
+          </div>
+          <div className="flex items-center justify-between px-1">
+            <span className="text-slate-600 text-[11px]">{t('native.subscribe.feeLabel')}</span>
+            <span className="text-slate-400 text-[11px] font-medium">$0.30</span>
+          </div>
+          <div className="flex items-center justify-between px-1">
+            <span className="text-slate-600 text-[11px]">{t('native.subscribe.totalLabel')}</span>
+            <span className="text-white text-[11px] font-semibold">
+              ${isValidAmount ? (amountUsd + 0.30).toFixed(2) : '—'}
+            </span>
+          </div>
+        </div>
 
         {/* Min amount hint */}
         {amountUsd > 0 && amountUsd < MIN_PURCHASE_USD && (
-          <p className="text-center text-red-400/80 text-xs">
+          <p className="text-center text-red-400/70 text-xs mt-3">
             {t('native.subscribe.minAmount')}
           </p>
         )}
       </div>
 
-      {/* Bottom buy button */}
+      {/* ── Bottom Buy Button ── */}
       <div
-        className="relative z-20 px-4 py-4 bg-gradient-to-t from-[#0a0a1a] via-[#0a0a1a] to-transparent"
+        className="relative z-20 px-4 pt-3 pb-4"
         style={{ paddingBottom: 'calc(var(--safe-area-inset-bottom, 0px) + 16px)' }}
       >
         <button
           onClick={handleBuy}
           disabled={processing || !isValidAmount}
-          className="w-full py-3.5 rounded-xl font-bold text-base text-white flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+          className="w-full py-4 rounded-2xl font-bold text-[15px] text-white flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
           style={{
             background: isValidAmount && !processing
-              ? 'linear-gradient(90deg, #D97706, #F59E0B, #EAB308)'
-              : 'linear-gradient(90deg, #44403c, #57534e, #44403c)',
+              ? 'linear-gradient(135deg, #b45309, #d97706, #f59e0b)'
+              : 'linear-gradient(135deg, #1e1e2e, #2a2a3e, #1e1e2e)',
+            boxShadow: isValidAmount && !processing
+              ? '0 8px 32px rgba(217,119,6,0.3), 0 2px 8px rgba(245,158,11,0.2)'
+              : 'none',
           }}
         >
           {processing ? (
@@ -213,7 +252,10 @@ export default function NativeSubscribePage() {
               {t('native.subscribe.processing')}
             </>
           ) : (
-            t('native.subscribe.buyButton')
+            <>
+              <Image src="/logo/voicica-token.png" alt="" width={20} height={20} className="w-5 h-5" />
+              {t('native.subscribe.buyButton')}
+            </>
           )}
         </button>
       </div>
