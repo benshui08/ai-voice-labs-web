@@ -39,7 +39,7 @@ export default function CreatePageHeader({
   const router = useRouter();
   const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
 
-  const goBack = () => router.back();
+  const goBack = () => router.push('/native');
 
   return (
     <>
