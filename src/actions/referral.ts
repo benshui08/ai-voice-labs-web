@@ -506,7 +506,7 @@ export async function distributeReferralCommissions(
       continue;
     }
 
-    const commissionAmount = Math.round(amount * rate);
+    const commissionAmount = Math.round(amount * rate * 10000) / 10000;
 
     if (commissionAmount <= 0) {
       currentUserId = referrerId;

@@ -2,6 +2,7 @@
 
 import { useLanguage } from '@/contexts/LanguageContext';
 import type { CreditHistoryItem as CreditHistoryItemType } from '@/types/user';
+import { formatCredits } from '@/utils/formatCredits';
 
 interface CreditHistoryItemProps {
   item: CreditHistoryItemType;
@@ -115,7 +116,7 @@ export function CreditHistoryItem({ item }: CreditHistoryItemProps) {
           isPositive ? 'text-green-600' : 'text-red-600'
         }`}>
           {isPositive ? '+' : ''}
-          {item.amount.toLocaleString()}
+          {formatCredits(item.amount)}
         </div>
       </div>
     </div>

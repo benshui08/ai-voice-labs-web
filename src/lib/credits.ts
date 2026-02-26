@@ -60,14 +60,14 @@ export async function checkCredits(
       .from(anonymousUsers)
       .where(eq(anonymousUsers.userId, userId))
       .limit(1);
-    const current = user?.credits ?? 0;
+    const current = Number(user?.credits ?? 0);
     return { hasEnough: current >= required, current };
   } else {
     const [user] = await db.select({ credits: users.credits, monthlyCredits: users.monthlyCredits })
       .from(users)
       .where(eq(users.userId, userId))
       .limit(1);
-    const current = (user?.credits ?? 0) + (user?.monthlyCredits ?? 0);
+    const current = Number(user?.credits ?? 0) + Number(user?.monthlyCredits ?? 0);
     return { hasEnough: current >= required, current };
   }
 }
@@ -84,13 +84,13 @@ export async function getCredits(
       .from(anonymousUsers)
       .where(eq(anonymousUsers.userId, userId))
       .limit(1);
-    return user?.credits ?? 0;
+    return Number(user?.credits ?? 0);
   } else {
     const [user] = await db.select({ credits: users.credits, monthlyCredits: users.monthlyCredits })
       .from(users)
       .where(eq(users.userId, userId))
       .limit(1);
-    return (user?.credits ?? 0) + (user?.monthlyCredits ?? 0);
+    return Number(user?.credits ?? 0) + Number(user?.monthlyCredits ?? 0);
   }
 }
 
@@ -124,7 +124,8 @@ export async function deductCredits(
       throw new Error('用户不存在');
     }
 
-    const fromMonthly = Math.min(user.monthlyCredits, amount);
+    const monthlyCreditsNum = Number(user.monthlyCredits);
+    const fromMonthly = Math.min(monthlyCreditsNum, amount);
     const fromCredits = amount - fromMonthly;
 
     await db.update(users)
@@ -261,12 +262,14 @@ export async function deductCreditsAtomic(
       .where(eq(users.userId, userId))
       .limit(1);
 
-    const totalCredits = (user?.credits ?? 0) + (user?.monthlyCredits ?? 0);
+    const creditsNum = Number(user?.credits ?? 0);
+    const monthlyCreditsNum = Number(user?.monthlyCredits ?? 0);
+    const totalCredits = creditsNum + monthlyCreditsNum;
     if (!user || totalCredits < amount) {
       throw new Error('积分扣减失败，余额不足');
     }
 
-    const fromMonthly = Math.min(user.monthlyCredits, amount);
+    const fromMonthly = Math.min(monthlyCreditsNum, amount);
     const fromCredits = amount - fromMonthly;
 
     await db.update(users)

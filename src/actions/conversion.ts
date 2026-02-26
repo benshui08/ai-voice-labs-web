@@ -42,7 +42,7 @@ export async function convertVoicicaToUsdt(amount: number): Promise<ConvertResul
     }
 
     // 3. 校验数量
-    if (!Number.isInteger(amount) || amount <= 0) {
+    if (amount <= 0) {
       return { success: false, error: 'invalid_amount' };
     }
 
@@ -100,7 +100,7 @@ export async function convertVoicicaToUsdt(amount: number): Promise<ConvertResul
 
     return {
       success: true,
-      credits: updated.credits,
+      credits: Number(updated.credits),
       usdt_balance: parseFloat(updated.usdtBalance) || 0,
       usdt_received: usdtReceived,
     };

@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useDailyTasks } from '@/hooks/useDailyTasks';
+import { formatCredits } from '@/utils/formatCredits';
 import Image from 'next/image';
 import EnergyOrb from '@/components/common/EnergyOrb';
 import { getMiningEconomyConfig } from '@/config/appConfig';
@@ -257,7 +258,6 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
 
   const isConfigLoading = !config;
   const isDisabled = config && !config.enabled;
-  const formatCredits = (credits: number) => credits.toLocaleString();
 
   // 渲染任务内容
   const renderLoggedInContent = () => {

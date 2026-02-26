@@ -248,7 +248,7 @@ async function createOrGetAnonymousUser(
       .where(eq(anonymousUsers.userId, anonymousUserId));
 
     console.log(`📱 匿名用户访问: ${anonymousUserId}, 积分: ${anonUser.credits}`);
-    return { user_id: anonUser.userId, credits: anonUser.credits };
+    return { user_id: anonUser.userId, credits: Number(anonUser.credits) };
   }
 
   // 创建新匿名用户
@@ -286,7 +286,7 @@ async function createOrGetAnonymousUser(
   }
 
   console.log(`✅ 新匿名用户创建: ${anonymousUserId}, 初始积分: ${initialCredits}, isNative: ${isNative}`);
-  return { user_id: newAnonUser.userId, credits: newAnonUser.credits };
+  return { user_id: newAnonUser.userId, credits: Number(newAnonUser.credits) };
 }
 
 /**

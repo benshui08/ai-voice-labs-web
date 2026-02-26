@@ -99,9 +99,9 @@ async function calculateVoicicaReward(isNative: boolean, adRevenueMicros?: numbe
 
   const revenueMicros = Math.round(revenueUsd * 1_000_000);
 
-  const voicicaAmount = Math.max(1, Math.round(
-    revenueUsd * miningConfig.revenue_share_ratio * randomMultiplier / miningConfig.token_value_usd
-  ));
+  const voicicaAmount = Math.max(0.0001, Math.round(
+    revenueUsd * miningConfig.revenue_share_ratio * randomMultiplier / miningConfig.token_value_usd * 10000
+  ) / 10000);
 
   return { voicicaAmount, randomMultiplier, revenueMicros, revenueSource };
 }

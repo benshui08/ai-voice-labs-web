@@ -1,5 +1,18 @@
-import { pgTable, index, uniqueIndex, varchar, text, integer, timestamp, boolean, serial, json, foreignKey, jsonb, doublePrecision, bigint, real, numeric } from "drizzle-orm/pg-core"
+import { pgTable, index, uniqueIndex, varchar, text, integer, timestamp, boolean, serial, json, foreignKey, jsonb, doublePrecision, bigint, real, numeric, customType } from "drizzle-orm/pg-core"
 import { relations, sql } from "drizzle-orm"
+
+/**
+ * numeric(12,4) 列，自动将 DB 返回的 string 转为 JS number。
+ * 用于积分余额/提成等需要支持小数的字段。
+ */
+const creditsNumeric = customType<{ data: number; driverData: string }>({
+	dataType() {
+		return 'numeric(12,4)';
+	},
+	fromDriver(value: string): number {
+		return Number(value);
+	},
+});
 
 // ============================================================
 // Tables
@@ -10,8 +23,8 @@ export const anonymousUsers = pgTable("anonymous_users", {
 	deviceFingerprint: varchar("device_fingerprint", { length: 255 }).notNull(),
 	ipAddress: varchar("ip_address", { length: 50 }),
 	userAgent: text("user_agent"),
-	credits: integer().notNull(),
-	totalCreditsUsed: integer("total_credits_used").notNull(),
+	credits: creditsNumeric("credits").notNull(),
+	totalCreditsUsed: creditsNumeric("total_credits_used").notNull(),
 	expiresAt: timestamp("expires_at", { precision: 6, withTimezone: true, mode: 'string' }),
 	lastUsedAt: timestamp("last_used_at", { precision: 6, withTimezone: true, mode: 'string' }),
 	isAnonymous: boolean("is_anonymous").notNull(),
@@ -82,13 +95,13 @@ export const users = pgTable("users", {
 	email: varchar({ length: 255 }),
 	name: varchar({ length: 255 }),
 	photoUrl: varchar("photo_url", { length: 500 }),
-	credits: integer().notNull(),
-	totalCreditsUsed: integer("total_credits_used").notNull(),
+	credits: creditsNumeric("credits").notNull(),
+	totalCreditsUsed: creditsNumeric("total_credits_used").notNull(),
 	id: serial().primaryKey().notNull(),
 	createdAt: timestamp("created_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { precision: 6, withTimezone: true, mode: 'string' }).$onUpdate(() => new Date().toISOString()),
 	phone: varchar({ length: 20 }),
-	monthlyCredits: integer("monthly_credits").default(0).notNull(),
+	monthlyCredits: creditsNumeric("monthly_credits").default(sql`0`).notNull(),
 	monthlyCreditsResetAt: timestamp("monthly_credits_reset_at", { precision: 6, withTimezone: true, mode: 'string' }),
 	authProvider: varchar("auth_provider", { length: 50 }),
 	platform: varchar({ length: 20 }),
@@ -152,7 +165,7 @@ export const ttsRecords = pgTable("tts_records", {
 
 export const creditHistory = pgTable("credit_history", {
 	userId: varchar("user_id", { length: 255 }).notNull(),
-	amount: integer().notNull(),
+	amount: creditsNumeric("amount").notNull(),
 	taskId: varchar("task_id", { length: 255 }),
 	description: text().notNull(),
 	id: serial().primaryKey().notNull(),
@@ -814,9 +827,9 @@ export const referralCommissions = pgTable("referral_commissions", {
 	userId: varchar("user_id", { length: 128 }).notNull(),
 	fromUserId: varchar("from_user_id", { length: 128 }).notNull(),
 	level: varchar("level", { length: 10 }).notNull(),
-	sourceAmount: integer("source_amount").notNull(),
+	sourceAmount: creditsNumeric("source_amount").notNull(),
 	commissionRate: real("commission_rate").notNull(),
-	commissionAmount: integer("commission_amount").notNull(),
+	commissionAmount: creditsNumeric("commission_amount").notNull(),
 	createdAt: timestamp("created_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
 	index("idx_referral_commissions_user_id").using("btree", table.userId.asc().nullsLast().op("text_ops")),

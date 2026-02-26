@@ -8,6 +8,7 @@
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { formatCredits } from '@/utils/formatCredits';
 import { useCredits } from '@/contexts/CreditsContext';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useUser } from '@/contexts/UserContext';
@@ -100,7 +101,7 @@ export default function TotalAssetsCard() {
                 <span className="text-gray-300 text-sm font-medium">$VOICICA</span>
               </div>
               <span className="text-white text-sm font-semibold">
-                {loading ? '...' : credits.toLocaleString()}
+                {loading ? '...' : formatCredits(credits)}
               </span>
             </div>
             <div className="flex justify-end">

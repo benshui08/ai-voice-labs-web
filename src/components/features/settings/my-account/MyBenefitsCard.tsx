@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { formatCredits } from '@/utils/formatCredits';
 
 interface MyBenefitsCardProps {
   credits: number;
@@ -81,7 +82,7 @@ export default function MyBenefitsCard({ credits, onRefresh }: MyBenefitsCardPro
                   {t('settings.benefits.voiceCredits')}
                 </p>
                 <p className="text-4xl font-bold text-white tracking-tight">
-                  {credits.toLocaleString()}
+                  {formatCredits(credits)}
                 </p>
               </div>
             </div>

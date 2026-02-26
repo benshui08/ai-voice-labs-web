@@ -8,6 +8,7 @@ import type { ReferralInfo, ReferralTeamMember } from '@/actions/referral';
 import { Share } from '@capacitor/share';
 import { getMiningEconomyConfig } from '@/config/appConfig';
 import LoginModal from './LoginModal';
+import { formatCredits } from '@/utils/formatCredits';
 
 /**
  * Referral Team 页面
@@ -342,7 +343,7 @@ export default function ReferralPage() {
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-slate-800/60 rounded-xl p-4">
           <p className="text-slate-400 text-xs mb-1">{t('native.referral.totalEarnings')}</p>
-          <p className="text-xl font-bold text-white">{info.totalEarnings.toLocaleString()}</p>
+          <p className="text-xl font-bold text-white">{formatCredits(info.totalEarnings)}</p>
           <p className="text-[10px] text-slate-500">$VOICICA</p>
           <p className="text-[10px] text-emerald-400/80 mt-0.5">
             ≈ {(info.totalEarnings * getMiningEconomyConfig().token_value_usd).toFixed(4)} USDT
@@ -350,7 +351,7 @@ export default function ReferralPage() {
         </div>
         <div className="bg-slate-800/60 rounded-xl p-4">
           <p className="text-slate-400 text-xs mb-1">{t('native.referral.todayEarnings')}</p>
-          <p className="text-xl font-bold text-white">{info.todayEarnings.toLocaleString()}</p>
+          <p className="text-xl font-bold text-white">{formatCredits(info.todayEarnings)}</p>
           <p className="text-[10px] text-slate-500">$VOICICA</p>
           <p className="text-[10px] text-emerald-400/80 mt-0.5">
             ≈ {(info.todayEarnings * getMiningEconomyConfig().token_value_usd).toFixed(4)} USDT
@@ -453,7 +454,7 @@ export default function ReferralPage() {
                     {getLevelLabel(member.level)}
                   </p>
                   <p className="text-[10px] text-slate-500">
-                    +{member.totalContribution} $V
+                    +{formatCredits(member.totalContribution)} $V
                   </p>
                 </div>
               </div>

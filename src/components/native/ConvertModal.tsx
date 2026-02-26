@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCredits } from '@/contexts/CreditsContext';
+import { formatCredits } from '@/utils/formatCredits';
 import { getConversionConfig, getMiningEconomyConfig } from '@/config/appConfig';
 import { convertVoicicaToUsdt } from '@/actions/conversion';
 
@@ -168,7 +169,7 @@ export default function ConvertModal({ isOpen, onClose, onSuccess }: ConvertModa
             <div className="flex justify-between items-center mb-2">
               <span className="text-gray-400 text-sm">{t('native.totalAssets.convertModal.from')}</span>
               <span className="text-gray-500 text-xs">
-                {credits.toLocaleString()} $VOICICA
+                {formatCredits(credits)} $VOICICA
               </span>
             </div>
             <div className="flex items-center gap-2">

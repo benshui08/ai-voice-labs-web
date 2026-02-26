@@ -9,6 +9,7 @@ import CreditsIcon from '@/components/icons/CreditsIcon';
 import LoginModal from '@/components/features/auth/LoginModal';
 import UpgradeModal from '@/components/features/pricing/UpgradeModal';
 import { appConfig } from '@/config/appConfig';
+import { formatCredits } from '@/utils/formatCredits';
 
 interface CreditsBarProps {
   /** 总积分 */
@@ -140,18 +141,18 @@ export default function CreditsBar({
               </span>
             ) : (
               <span className="cursor-default">
-                {credits.toLocaleString()}
+                {formatCredits(credits)}
                 {/* 已登录用户：hover 时显示积分明细 tooltip */}
                 {user && (
                   <span className="absolute left-0 bottom-full mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg whitespace-nowrap opacity-0 invisible group-hover/credits:opacity-100 group-hover/credits:visible transition-all duration-200 z-50">
                     <span className="flex flex-col gap-1">
                       <span className="flex items-center justify-between gap-4">
                         <span className="text-gray-300">{t('tts.input.permanent')}:</span>
-                        <span className="font-medium">{permanentCredits.toLocaleString()}</span>
+                        <span className="font-medium">{formatCredits(permanentCredits)}</span>
                       </span>
                       <span className="flex items-center justify-between gap-4">
                         <span className="text-gray-300">{t('tts.input.monthly')}:</span>
-                        <span className="font-medium">{monthlyCredits.toLocaleString()}</span>
+                        <span className="font-medium">{formatCredits(monthlyCredits)}</span>
                       </span>
                     </span>
                     {/* Tooltip arrow */}

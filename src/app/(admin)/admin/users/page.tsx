@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import { formatCredits } from '@/utils/formatCredits';
 import {
   getAdminUserList,
   getAdminAnonymousUserList,
@@ -507,12 +508,12 @@ export default function UsersManagementPage() {
                         </td>
                         <td className="px-4 py-3">
                           <span className="font-medium text-gray-900">
-                            {user.credits.toLocaleString()}
+                            {formatCredits(user.credits)}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-gray-600">
-                            {user.total_credits_used.toLocaleString()}
+                            {formatCredits(user.total_credits_used)}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -1030,7 +1031,7 @@ export default function UsersManagementPage() {
                             }`}
                           >
                             {record.amount >= 0 ? '+' : ''}
-                            {record.amount.toLocaleString()}
+                            {formatCredits(record.amount)}
                           </span>
                         </td>
                         <td className="px-4 py-3">
