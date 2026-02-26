@@ -158,11 +158,13 @@ export default function TotalAssetsCard() {
         </div>
       </div>
 
-      <NativeDailyTasksModal
-        isOpen={showDailyTasks}
-        onClose={() => setShowDailyTasks(false)}
-        onCreditsUpdated={refreshCredits}
-      />
+      {showDailyTasks && (
+        <NativeDailyTasksModal
+          isOpen
+          onClose={() => setShowDailyTasks(false)}
+          onCreditsUpdated={refreshCredits}
+        />
+      )}
 
       <ConvertModal
         isOpen={showConvertModal}

@@ -36,13 +36,24 @@ function getProjectId(): string {
   return projectId;
 }
 
+// 内存缓存：同一 token 在有效期内跳过重复验证
+// Cloudflare Workers 模块级变量在 warm instance 间持久化
+const tokenCache = new Map<string, { result: FirebaseDecodedToken; expiresAt: number }>();
+
 /**
- * 验证 Firebase ID Token
+ * 验证 Firebase ID Token（带内存缓存）
  *
  * @param token - Firebase ID Token (JWT)
  * @returns 解码后的 token payload，兼容 firebase-admin 的 DecodedIdToken
  */
 export async function verifyIdToken(token: string): Promise<FirebaseDecodedToken> {
+  // 检查缓存（提前 60 秒过期，预留刷新时间）
+  const cached = tokenCache.get(token);
+  const now = Math.floor(Date.now() / 1000);
+  if (cached && cached.expiresAt > now + 60) {
+    return cached.result;
+  }
+
   const projectId = getProjectId();
 
   const { payload } = await jwtVerify(token, jwks, {
@@ -61,7 +72,7 @@ export async function verifyIdToken(token: string): Promise<FirebaseDecodedToken
     throw new Error('Invalid token: auth_time is in the future');
   }
 
-  return {
+  const result: FirebaseDecodedToken = {
     uid: payload.sub,
     email: payload.email as string | undefined,
     name: payload.name as string | undefined,
@@ -75,4 +86,16 @@ export async function verifyIdToken(token: string): Promise<FirebaseDecodedToken
     sub: payload.sub,
     firebase: (payload.firebase as FirebaseDecodedToken['firebase']) || {},
   };
+
+  // 写入缓存，以 JWT exp 为过期时间
+  tokenCache.set(token, { result, expiresAt: payload.exp! });
+
+  // 清理过期缓存（防止内存泄漏，最多保留 100 条）
+  if (tokenCache.size > 100) {
+    for (const [key, val] of tokenCache) {
+      if (val.expiresAt <= now) tokenCache.delete(key);
+    }
+  }
+
+  return result;
 }

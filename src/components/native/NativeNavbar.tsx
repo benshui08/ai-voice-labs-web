@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useCredits } from '@/contexts/CreditsContext';
 import { useBottomNav } from '@/contexts/BottomNavContext';
-import { useDailyTasks } from '@/hooks/useDailyTasks';
 import LoginModal from './LoginModal';
 import NativeDailyTasksModal from './NativeDailyTasksModal';
 import LanguageSelectorSheet from './LanguageSelectorSheet';
@@ -23,27 +22,12 @@ export default function NativeNavbar() {
   const { user } = useFirebaseAuth();
   const { refreshCredits } = useCredits();
   const { isTopNavVisible } = useBottomNav();
-  const { shouldShowPopup, status, config } = useDailyTasks();
   const { t } = useLanguage();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDailyTasksOpen, setIsDailyTasksOpen] = useState(false);
   const [isLanguageSelectorOpen, setIsLanguageSelectorOpen] = useState(false);
-  const [hasAutoShown, setHasAutoShown] = useState(false);
 
   const isLoggedIn = !!user;
-
-  // 自动弹出每日任务弹窗（每30分钟，有未领奖励时）
-  useEffect(() => {
-    if (shouldShowPopup && !isDailyTasksOpen && !hasAutoShown) {
-      setIsDailyTasksOpen(true);
-      setHasAutoShown(true);
-    }
-  }, [shouldShowPopup, isDailyTasksOpen, hasAutoShown]);
-
-  // 判断是否有未领取的奖励（用于显示小红点）
-  const hasUnclaimedRewards = status
-    ? !status.checkinDone || status.adRewardsClaimed < (config?.ad_reward_tiers?.length || 0)
-    : true; // 未加载时默认显示
 
   // 通过 Context 控制隐藏
   if (!isTopNavVisible) return null;
@@ -78,10 +62,8 @@ export default function NativeNavbar() {
             >
               <Image src="/logo/voicica-token.png" alt="" width={20} height={20} className="w-5 h-5" />
               <span className="text-xs font-bold text-amber-400">Mine</span>
-              {/* 小红点提示 - 有未领取的奖励时显示 */}
-              {hasUnclaimedRewards && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              )}
+              {/* 小红点提示 */}
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             </button>
           </div>
 
@@ -138,12 +120,14 @@ export default function NativeNavbar() {
         }}
       />
 
-      {/* 每日任务弹窗 */}
-      <NativeDailyTasksModal
-        isOpen={isDailyTasksOpen}
-        onClose={() => setIsDailyTasksOpen(false)}
-        onCreditsUpdated={refreshCredits}
-      />
+      {/* 每日任务弹窗 - 延迟渲染，打开时才 mount */}
+      {isDailyTasksOpen && (
+        <NativeDailyTasksModal
+          isOpen
+          onClose={() => setIsDailyTasksOpen(false)}
+          onCreditsUpdated={refreshCredits}
+        />
+      )}
 
       {/* 语言选择器弹窗 */}
       <LanguageSelectorSheet
