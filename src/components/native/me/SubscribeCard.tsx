@@ -34,7 +34,7 @@ export default function SubscribeCard() {
             style={{ background: 'linear-gradient(135deg, #b45309, #d97706, #f59e0b)' }}
           >
             <Image src="/logo/voicica-token.png" alt="" width={16} height={16} className="w-4 h-4" />
-            BUY
+            {t('native.common.buy')}
           </div>
         </div>
       </Link>

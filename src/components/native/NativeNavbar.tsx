@@ -94,7 +94,7 @@ export default function NativeNavbar() {
                 className="flex items-center gap-1 px-4 py-1.5 rounded-full text-white text-sm font-bold tracking-wide transition-all active:scale-95 shadow-lg shadow-amber-500/20"
                 style={{ background: 'linear-gradient(90deg, #D97706, #F59E0B, #EAB308)' }}
               >
-                BUY
+                {t('native.common.buy')}
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M9 5l7 7-7 7" />
                 </svg>

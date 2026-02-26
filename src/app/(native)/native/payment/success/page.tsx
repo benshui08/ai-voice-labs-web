@@ -6,6 +6,7 @@ import { verifyStripePayment } from '@/actions/payment';
 import type { StripeVerifyResponse } from '@/types/subscription';
 import { useCredits } from '@/contexts/CreditsContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 type PaymentStatus = 'verifying' | 'success' | 'pending' | 'failed';
 
@@ -15,21 +16,18 @@ interface PaymentDetails {
   message?: string;
 }
 
-// 成功图标
 const SuccessIcon = () => (
   <svg className="w-16 h-16 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
   </svg>
 );
 
-// 待处理图标
 const PendingIcon = () => (
   <svg className="w-16 h-16 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
   </svg>
 );
 
-// 失败图标
 const FailedIcon = () => (
   <svg className="w-16 h-16 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -41,12 +39,12 @@ function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const { refreshCredits } = useCredits();
   const { refreshSubscription } = useSubscription();
+  const { t } = useLanguage();
   const [status, setStatus] = useState<PaymentStatus>('verifying');
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
   const [error, setError] = useState<string>('');
   const [countdown, setCountdown] = useState(5);
 
-  // 验证 Stripe 支付（仅用于订阅）
   const doVerifyPayment = useCallback(async (params: URLSearchParams) => {
     const requestId = params.get('request_id');
     if (!requestId) {
@@ -78,11 +76,9 @@ function PaymentSuccessContent() {
     }
   }, [refreshCredits, refreshSubscription]);
 
-  // 验证支付
   useEffect(() => {
     const doVerify = async () => {
       try {
-        // 检查是否是 Google Play 购买
         const source = searchParams.get('source');
         if (source === 'google_play') {
           const paymentType = searchParams.get('type');
@@ -97,13 +93,11 @@ function PaymentSuccessContent() {
               : 'Google Play purchase verified',
           });
           setStatus('success');
-          // 刷新积分和订阅状态
           refreshCredits();
           refreshSubscription();
           return;
         }
 
-        // Stripe 支付验证
         const { auth } = await import('@/lib/firebase');
         await new Promise<void>((resolve) => {
           const unsubscribe = auth.onAuthStateChanged(() => {
@@ -127,7 +121,6 @@ function PaymentSuccessContent() {
     doVerify();
   }, [searchParams, refreshCredits, refreshSubscription, doVerifyPayment]);
 
-  // 自动跳转倒计时
   useEffect(() => {
     if (status === 'success' && countdown > 0) {
       const timer = setTimeout(() => {
@@ -145,50 +138,49 @@ function PaymentSuccessContent() {
   return (
     <div className="min-h-screen bg-[#0a0a1a] flex items-center justify-center px-4">
       <div className="max-w-sm w-full">
-        {/* 验证中状态 */}
+        {/* Verifying */}
         {status === 'verifying' && (
           <div className="text-center">
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-purple-500/20 mb-6">
               <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">
-              Verifying Payment
+              {t('native.payment.verifying')}
             </h2>
             <p className="text-gray-400">
-              Please wait while we confirm your payment...
+              {t('native.payment.verifyingDesc')}
             </p>
           </div>
         )}
 
-        {/* 成功状态 */}
+        {/* Success */}
         {status === 'success' && (
           <div className="text-center animate-fadeIn">
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-500/20 mb-6">
               <SuccessIcon />
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">
-              Payment Successful!
+              {t('native.payment.successTitle')}
             </h2>
             <p className="text-gray-400 mb-6">
-              {paymentDetails?.message || 'Your purchase is complete. Enjoy your credits!'}
+              {paymentDetails?.message || t('native.payment.successDesc')}
             </p>
 
-            {/* 订单摘要 */}
             {paymentDetails && (
               <div className="bg-gray-800/50 rounded-2xl p-4 mb-6 text-left">
                 <h3 className="text-gray-400 text-xs uppercase tracking-wide mb-3">
-                  Order Summary
+                  {t('native.payment.orderSummary')}
                 </h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Order ID</span>
+                    <span className="text-gray-500">{t('native.payment.orderId')}</span>
                     <span className="text-white font-mono text-xs">
                       {paymentDetails.orderId.slice(0, 16)}...
                     </span>
                   </div>
                   {paymentDetails.subscriptionId && (
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Subscription</span>
+                      <span className="text-gray-500">{t('native.payment.subscription')}</span>
                       <span className="text-white font-mono text-xs">
                         #{paymentDetails.subscriptionId}
                       </span>
@@ -198,32 +190,30 @@ function PaymentSuccessContent() {
               </div>
             )}
 
-            {/* 自动跳转提示 */}
             <p className="text-gray-500 text-sm mb-4">
-              Redirecting in {countdown} seconds...
+              {t('native.payment.redirecting', { seconds: String(countdown) })}
             </p>
 
-            {/* 立即跳转按钮 */}
             <button
               onClick={() => router.push(searchParams.get('return_url') || '/native')}
               className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all"
             >
-              {searchParams.get('return_url') ? 'Continue' : 'Go to Home'}
+              {searchParams.get('return_url') ? t('native.payment.continue') : t('native.payment.goHome')}
             </button>
           </div>
         )}
 
-        {/* 待处理状态 */}
+        {/* Pending */}
         {status === 'pending' && (
           <div className="text-center animate-fadeIn">
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-yellow-500/20 mb-6">
               <PendingIcon />
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">
-              Payment Pending
+              {t('native.payment.pendingTitle')}
             </h2>
             <p className="text-gray-400 mb-6">
-              {error || 'Your payment is being processed. This may take a moment.'}
+              {error || t('native.payment.pendingDesc')}
             </p>
 
             <div className="space-y-3">
@@ -231,34 +221,34 @@ function PaymentSuccessContent() {
                 onClick={() => window.location.reload()}
                 className="w-full bg-purple-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-purple-700 transition-colors"
               >
-                Check Again
+                {t('native.payment.checkAgain')}
               </button>
               <button
-                onClick={() => router.push('/native/me')}
+                onClick={() => router.push('/native')}
                 className="w-full border-2 border-gray-700 text-gray-300 font-semibold py-3 px-6 rounded-xl hover:border-gray-600 transition-colors"
               >
-                Go Back
+                {t('native.payment.goBack')}
               </button>
             </div>
           </div>
         )}
 
-        {/* 失败状态 */}
+        {/* Failed */}
         {status === 'failed' && (
           <div className="text-center animate-fadeIn">
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-red-500/20 mb-6">
               <FailedIcon />
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">
-              Payment Failed
+              {t('native.payment.failedTitle')}
             </h2>
             <p className="text-gray-400 mb-4">
-              {error || 'Something went wrong with your payment.'}
+              {error || t('native.payment.failedDesc')}
             </p>
 
             <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6">
               <p className="text-sm text-red-400">
-                If you were charged, please contact support.
+                {t('native.payment.failedHint')}
               </p>
             </div>
 
@@ -267,13 +257,13 @@ function PaymentSuccessContent() {
                 onClick={() => router.push('/native/subscribe')}
                 className="w-full bg-purple-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-purple-700 transition-colors"
               >
-                Try Again
+                {t('native.payment.tryAgain')}
               </button>
               <button
-                onClick={() => router.push('/native/me')}
+                onClick={() => router.push('/native')}
                 className="w-full border-2 border-gray-700 text-gray-300 font-semibold py-3 px-6 rounded-xl hover:border-gray-600 transition-colors"
               >
-                Go Back
+                {t('native.payment.goBack')}
               </button>
             </div>
           </div>
@@ -309,7 +299,6 @@ export default function NativePaymentSuccessPage() {
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-purple-500/20 mb-6">
               <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
             </div>
-            <h2 className="text-2xl font-bold text-white">Loading...</h2>
           </div>
         </div>
       }

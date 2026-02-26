@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import LoadingDots from '@/components/native/common/LoadingDots';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface UserStatsBarProps {
   credits?: number;
@@ -11,12 +12,14 @@ interface UserStatsBarProps {
 
 /**
  * 用户信息栏
- * 显示 VOICICA 余额，点击跳转购买页
+ * 显示 $VOICICA 余额，点击跳转购买页
  */
 export default function UserStatsBar({
   credits = 0,
   creditsLoading = false,
 }: UserStatsBarProps) {
+  const { t } = useLanguage();
+
   return (
     <Link
       href="/native/subscribe"
@@ -26,7 +29,7 @@ export default function UserStatsBar({
       <span className="text-amber-400 font-bold text-lg">
         {creditsLoading ? <LoadingDots /> : Math.floor(credits).toLocaleString()}
       </span>
-      <span className="text-slate-500 text-xs font-medium">$VOICICA</span>
+      <span className="text-slate-500 text-xs font-medium">{t('native.subscribe.tokenLabel')}</span>
     </Link>
   );
 }

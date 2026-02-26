@@ -132,7 +132,7 @@ export default function NativeSubscribePage() {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.08]">
                 <span className="text-green-400 text-sm font-bold">$</span>
-                <span className="text-slate-300 text-sm font-medium">USD</span>
+                <span className="text-slate-300 text-sm font-medium">{t('native.subscribe.usdLabel')}</span>
               </div>
               <input
                 type="text"
@@ -170,7 +170,7 @@ export default function NativeSubscribePage() {
                   height={18}
                   className="w-[18px] h-[18px]"
                 />
-                <span className="text-amber-400 text-sm font-medium">VOICICA</span>
+                <span className="text-amber-400 text-sm font-medium">{t('native.subscribe.tokenLabel')}</span>
               </div>
               <span className="flex-1 text-right text-3xl font-bold text-amber-400 min-w-0 truncate">
                 {voicicaAmount.toLocaleString()}
@@ -203,11 +203,11 @@ export default function NativeSubscribePage() {
         <div className="mt-4 space-y-1.5">
           <div className="flex items-center justify-between px-1">
             <span className="text-slate-600 text-[11px]">{t('native.subscribe.rateLabel')}</span>
-            <span className="text-slate-400 text-[11px] font-medium">1 USD = 10,000 VOICICA</span>
+            <span className="text-slate-400 text-[11px] font-medium">{t('native.subscribe.rateValue')}</span>
           </div>
           <div className="flex items-center justify-between px-1">
             <span className="text-slate-600 text-[11px]">{t('native.subscribe.feeLabel')}</span>
-            <span className="text-slate-400 text-[11px] font-medium">$0.30</span>
+            <span className="text-slate-400 text-[11px] font-medium">{t('native.subscribe.feeValue')}</span>
           </div>
           <div className="flex items-center justify-between px-1">
             <span className="text-slate-600 text-[11px]">{t('native.subscribe.totalLabel')}</span>
