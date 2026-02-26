@@ -62,6 +62,13 @@
         "l2": "Referral tidak langsung (L2): 3% (Perunggu ke atas)",
         "team": "Bonus tim: 2% (Kapten Emas, semua level)"
       },
+      "level": {
+        "l1": "L1",
+        "l2": "L2",
+        "team": "Team",
+        "nextLevel": "Berikutnya",
+        "maxLevel": "Level Maksimum Tercapai"
+      },
       "team": {
         "title": "Tim Saya",
         "empty": "Belum ada anggota tim. Bagikan kode undangan!",

@@ -101,6 +101,13 @@
         "l2": "Indirect referral (L2): 3% (Bronze+)",
         "team": "Team bonus: 2% (Gold Captain, all levels)"
       },
+      "level": {
+        "l1": "L1",
+        "l2": "L2",
+        "team": "Team",
+        "nextLevel": "Next",
+        "maxLevel": "Max Level Reached"
+      },
       "team": {
         "title": "My Team",
         "empty": "No team members yet. Share your invite code!",

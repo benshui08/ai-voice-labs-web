@@ -62,6 +62,13 @@
         "l2": "Referido indirecto (L2): 3% (Bronce en adelante)",
         "team": "Bono de equipo: 2% (Capitán Oro, todos los niveles)"
       },
+      "level": {
+        "l1": "L1",
+        "l2": "L2",
+        "team": "Team",
+        "nextLevel": "Siguiente",
+        "maxLevel": "Nivel Máximo Alcanzado"
+      },
       "team": {
         "title": "Mi Equipo",
         "empty": "Aún no hay miembros. ¡Comparte tu código!",

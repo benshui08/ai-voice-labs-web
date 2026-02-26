@@ -62,6 +62,13 @@
         "l2": "Giới thiệu gián tiếp (L2): 3% (Đồng trở lên)",
         "team": "Thưởng đội: 2% (Đội trưởng Vàng, tất cả cấp)"
       },
+      "level": {
+        "l1": "L1",
+        "l2": "L2",
+        "team": "Team",
+        "nextLevel": "Tiếp",
+        "maxLevel": "Đã đạt cấp tối đa"
+      },
       "team": {
         "title": "Đội của tôi",
         "empty": "Chưa có thành viên. Chia sẻ mã mời ngay!",

@@ -151,13 +151,51 @@ export default function ReferralPage() {
     return map[level] || 'text-slate-400';
   };
 
-  const getLevelBg = (level: string) => {
+  const getLevelIcon = (level: string) => {
     const map: Record<string, string> = {
-      miner: 'bg-slate-700/50',
-      bronze: 'bg-amber-900/30 border border-amber-700/30',
-      gold: 'bg-yellow-900/30 border border-yellow-600/30',
+      miner: '⛏',
+      bronze: '🛡',
+      gold: '👑',
     };
-    return map[level] || 'bg-slate-700/50';
+    return map[level] || '⛏';
+  };
+
+  const getLevelBorderStyle = (level: string): React.CSSProperties => {
+    const gradients: Record<string, string> = {
+      miner: 'linear-gradient(135deg, #475569, #64748b, #475569)',
+      bronze: 'linear-gradient(135deg, #b45309, #f59e0b, #b45309)',
+      gold: 'linear-gradient(135deg, #ca8a04, #fbbf24, #eab308, #fbbf24, #ca8a04)',
+    };
+    return {
+      background: gradients[level] || gradients.miner,
+      padding: '1.5px',
+      borderRadius: '1rem',
+    };
+  };
+
+  const getLevelCardBg = (level: string) => {
+    const map: Record<string, string> = {
+      miner: 'bg-slate-900/95',
+      bronze: 'bg-gradient-to-br from-slate-900/95 via-amber-950/20 to-slate-900/95',
+      gold: 'bg-gradient-to-br from-slate-900/95 via-yellow-950/30 to-slate-900/95',
+    };
+    return map[level] || map.miner;
+  };
+
+  const getActivePillStyle = (level: string) => {
+    const map: Record<string, string> = {
+      miner: 'text-purple-300 bg-purple-500/20 border border-purple-500/30',
+      bronze: 'text-amber-300 bg-amber-500/20 border border-amber-500/30',
+      gold: 'text-yellow-300 bg-yellow-500/20 border border-yellow-500/30',
+    };
+    return map[level] || map.miner;
+  };
+
+  const isCommissionActive = (level: string, tier: 'l1' | 'l2' | 'team') => {
+    if (tier === 'l1') return true; // L1 always active
+    if (tier === 'l2') return level === 'bronze' || level === 'gold';
+    if (tier === 'team') return level === 'gold';
+    return false;
   };
 
   // Not logged in
@@ -224,43 +262,79 @@ export default function ReferralPage() {
       </div>
 
       {/* My Level */}
-      <div className={`rounded-2xl p-4 mb-4 ${getLevelBg(info.referralLevel)}`}>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-slate-400 text-sm">{t('native.referral.myLevel')}</span>
-          <span className={`text-lg font-bold ${getLevelColor(info.referralLevel)}`}>
-            {getLevelLabel(info.referralLevel)}
-          </span>
-        </div>
+      <div style={getLevelBorderStyle(info.referralLevel)} className="mb-4">
+        <div className={`rounded-2xl p-4 ${getLevelCardBg(info.referralLevel)}`}>
+          {/* Level Header */}
+          <div className="flex items-center gap-2.5 mb-4">
+            <span className="text-2xl">{getLevelIcon(info.referralLevel)}</span>
+            <span className={`text-lg font-bold ${getLevelColor(info.referralLevel)}`}>
+              {getLevelLabel(info.referralLevel)}
+            </span>
+          </div>
 
-        {/* Upgrade Progress */}
-        {info.referralLevel === 'miner' && (
-          <div>
-            <div className="flex justify-between text-xs text-slate-400 mb-1">
-              <span>{t('native.referral.upgradeProgress')}</span>
-              <span>{info.upgradeProgress.bronze.current}/{info.upgradeProgress.bronze.required} {t('native.referral.directReferrals')}</span>
-            </div>
-            <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full transition-all"
-                style={{ width: `${Math.min(100, (info.upgradeProgress.bronze.current / info.upgradeProgress.bronze.required) * 100)}%` }}
-              />
-            </div>
+          {/* Commission Rates */}
+          <div className="flex items-center gap-2 mb-4">
+            {([
+              { key: 'l1' as const, label: t('native.referral.level.l1'), rate: '8%' },
+              { key: 'l2' as const, label: t('native.referral.level.l2'), rate: '3%' },
+              { key: 'team' as const, label: t('native.referral.level.team'), rate: '2%' },
+            ]).map((item, idx) => {
+              const active = isCommissionActive(info.referralLevel, item.key);
+              return (
+                <div key={item.key} className="flex items-center gap-2">
+                  {idx > 0 && <span className="text-slate-600">·</span>}
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+                    active ? getActivePillStyle(info.referralLevel) : 'text-slate-600 bg-slate-800/50 line-through'
+                  }`}>
+                    {item.label} {item.rate}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-        )}
-        {info.referralLevel === 'bronze' && (
-          <div>
-            <div className="flex justify-between text-xs text-slate-400 mb-1">
-              <span>{t('native.referral.upgradeProgress')}</span>
-              <span>{info.upgradeProgress.gold.current}/{info.upgradeProgress.gold.required} {t('native.referral.bronzeCaptains')}</span>
+
+          {/* Upgrade Progress */}
+          {info.referralLevel === 'miner' && (
+            <div>
+              <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1.5">
+                <span>▸</span>
+                <span>{t('native.referral.level.nextLevel')}: {t('native.referral.levelBronze')}</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, (info.upgradeProgress.bronze.current / info.upgradeProgress.bronze.required) * 100)}%` }}
+                  />
+                </div>
+                <span className="text-xs text-slate-500 shrink-0">{info.upgradeProgress.bronze.current}/{info.upgradeProgress.bronze.required} {t('native.referral.directReferrals')}</span>
+              </div>
             </div>
-            <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full transition-all"
-                style={{ width: `${Math.min(100, (info.upgradeProgress.gold.current / info.upgradeProgress.gold.required) * 100)}%` }}
-              />
+          )}
+          {info.referralLevel === 'bronze' && (
+            <div>
+              <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1.5">
+                <span>▸</span>
+                <span>{t('native.referral.level.nextLevel')}: {t('native.referral.levelGold')}</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, (info.upgradeProgress.gold.current / info.upgradeProgress.gold.required) * 100)}%` }}
+                  />
+                </div>
+                <span className="text-xs text-slate-500 shrink-0">{info.upgradeProgress.gold.current}/{info.upgradeProgress.gold.required} {t('native.referral.bronzeCaptains')}</span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+          {info.referralLevel === 'gold' && (
+            <div className="flex items-center gap-1.5 text-xs text-yellow-400/70">
+              <span>★</span>
+              <span>{t('native.referral.level.maxLevel')}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Earnings Stats */}
