@@ -72,7 +72,10 @@
       "team": {
         "title": "Mi Equipo",
         "empty": "Aún no hay miembros. ¡Comparte tu código!",
-        "loadMore": "Cargar más"
+        "loadMore": "Cargar más",
+        "l1": "L1 Directo",
+        "l2": "L2 Indirecto",
+        "l3Plus": "L3+ Equipo"
       },
       "inviteText": "¡Únete a VoicicaAI y gana $VOICICA juntos! Usa mi código: {{code}} {{url}}"
     },

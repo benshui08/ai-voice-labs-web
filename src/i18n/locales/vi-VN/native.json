@@ -72,7 +72,10 @@
       "team": {
         "title": "Đội của tôi",
         "empty": "Chưa có thành viên. Chia sẻ mã mời ngay!",
-        "loadMore": "Tải thêm"
+        "loadMore": "Tải thêm",
+        "l1": "L1 Trực tiếp",
+        "l2": "L2 Gián tiếp",
+        "l3Plus": "L3+ Đội nhóm"
       },
       "inviteText": "Tham gia VoicicaAI và cùng kiếm $VOICICA! Dùng mã mời: {{code}} {{url}}"
     },

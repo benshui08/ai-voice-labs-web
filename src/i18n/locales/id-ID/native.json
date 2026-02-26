@@ -72,7 +72,10 @@
       "team": {
         "title": "Tim Saya",
         "empty": "Belum ada anggota tim. Bagikan kode undangan!",
-        "loadMore": "Muat lebih banyak"
+        "loadMore": "Muat lebih banyak",
+        "l1": "L1 Langsung",
+        "l2": "L2 Tidak langsung",
+        "l3Plus": "L3+ Tim"
       },
       "inviteText": "Bergabung VoicicaAI dan dapatkan $VOICICA bersama! Gunakan kode undangan: {{code}} {{url}}"
     },

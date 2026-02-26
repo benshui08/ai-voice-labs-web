@@ -72,7 +72,10 @@
       "team": {
         "title": "マイチーム",
         "empty": "まだチームメンバーがいません。招待コードをシェアしましょう！",
-        "loadMore": "もっと見る"
+        "loadMore": "もっと見る",
+        "l1": "L1 直接紹介",
+        "l2": "L2 間接紹介",
+        "l3Plus": "L3+ チーム"
       },
       "inviteText": "VoicicaAIに参加して$VOICICAを一緒に稼ごう！招待コード：{{code}} {{url}}"
     },

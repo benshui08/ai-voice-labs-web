@@ -111,7 +111,10 @@
       "team": {
         "title": "My Team",
         "empty": "No team members yet. Share your invite code!",
-        "loadMore": "Load more"
+        "loadMore": "Load more",
+        "l1": "L1 Direct",
+        "l2": "L2 Indirect",
+        "l3Plus": "L3+ Team"
       },
       "inviteText": "Claim your AI mining node on VOICICA! 🤖\n1. Install: {{url}}\n2. Code: {{code}} (+10% Speed Bonus)\n3. Start earning $VOICICA every 24h. ⚡️",
       "bind": {

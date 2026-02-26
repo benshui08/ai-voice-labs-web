@@ -18,7 +18,6 @@ export default function ReferralPage() {
   const { t } = useLanguage();
   const [info, setInfo] = useState<ReferralInfo | null>(null);
   const [team, setTeam] = useState<ReferralTeamMember[]>([]);
-  const [teamTotal, setTeamTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -42,7 +41,6 @@ export default function ReferralPage() {
       ]);
       setInfo(infoData);
       setTeam(teamData.items);
-      setTeamTotal(teamData.total);
       setHasMore(teamData.hasMore);
       setPage(1);
     } catch (err) {
@@ -359,18 +357,6 @@ export default function ReferralPage() {
         </div>
       </div>
 
-      {/* Team Stats */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-slate-800/60 rounded-xl p-4">
-          <p className="text-slate-400 text-xs mb-1">{t('native.referral.directReferrals')}</p>
-          <p className="text-xl font-bold text-white">{info.directReferrals}</p>
-        </div>
-        <div className="bg-slate-800/60 rounded-xl p-4">
-          <p className="text-slate-400 text-xs mb-1">{t('native.referral.teamMembers')}</p>
-          <p className="text-xl font-bold text-white">{info.teamMembers}</p>
-        </div>
-      </div>
-
       {/* Rules Card */}
       <div className="bg-slate-800/40 rounded-2xl p-4 mb-4 border border-slate-700/30">
         <h3 className="text-white text-sm font-semibold mb-3">{t('native.referral.rules.title')}</h3>
@@ -419,14 +405,72 @@ export default function ReferralPage() {
 
       {/* Team List */}
       <div className="mb-4">
+        {/* Header: title + inviter badge */}
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-white text-sm font-semibold">{t('native.referral.team.title')} ({teamTotal})</h3>
+          <h3 className="text-white text-sm font-semibold">{t('native.referral.team.title')} ({info.teamMembers})</h3>
           {info.inviterCode && (
             <span className="inline-flex items-center px-2.5 py-1 rounded-lg border border-slate-600/60 bg-slate-800/60 text-xs">
               <span className="text-green-400 font-mono">{t('native.referral.bind.inviter')}: {info.inviterCode}</span>
             </span>
           )}
         </div>
+
+        {/* L1/L2/L3+ Breakdown */}
+        {info.teamMembers > 0 && (() => {
+          const { l1, l2, l3Plus } = info.teamBreakdown;
+          const total = l1 + l2 + l3Plus;
+          const pctL1 = total > 0 ? (l1 / total) * 100 : 0;
+          const pctL2 = total > 0 ? (l2 / total) * 100 : 0;
+          const pctL3 = total > 0 ? (l3Plus / total) * 100 : 0;
+          return (
+            <div className="bg-slate-800/50 rounded-xl p-4 mb-3">
+              {/* 3-column stats */}
+              <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                <div>
+                  <p className="text-lg font-bold text-white">{l1}</p>
+                  <p className="text-[10px] text-slate-400">{t('native.referral.team.l1')}</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-white">{l2}</p>
+                  <p className="text-[10px] text-slate-400">{t('native.referral.team.l2')}</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-white">{l3Plus}</p>
+                  <p className="text-[10px] text-slate-400">{t('native.referral.team.l3Plus')}</p>
+                </div>
+              </div>
+              {/* Proportion bar */}
+              <div className="h-2 rounded-full overflow-hidden flex bg-slate-700">
+                {pctL1 > 0 && (
+                  <div
+                    className="h-full bg-purple-500 transition-all"
+                    style={{ width: `${pctL1}%` }}
+                  />
+                )}
+                {pctL2 > 0 && (
+                  <div
+                    className="h-full bg-blue-500 transition-all"
+                    style={{ width: `${pctL2}%` }}
+                  />
+                )}
+                {pctL3 > 0 && (
+                  <div
+                    className="h-full bg-cyan-500 transition-all"
+                    style={{ width: `${pctL3}%` }}
+                  />
+                )}
+              </div>
+              {/* Percentage labels */}
+              <div className="grid grid-cols-3 gap-2 text-center mt-1.5">
+                <p className="text-[10px] text-purple-400">{pctL1.toFixed(1)}%</p>
+                <p className="text-[10px] text-blue-400">{pctL2.toFixed(1)}%</p>
+                <p className="text-[10px] text-cyan-400">{pctL3.toFixed(1)}%</p>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Member list */}
         {team.length === 0 ? (
           <div className="bg-slate-800/40 rounded-xl p-8 text-center">
             <p className="text-slate-500 text-sm">{t('native.referral.team.empty')}</p>
@@ -444,7 +488,7 @@ export default function ReferralPage() {
                     <p className="text-[10px] text-slate-500">
                       {new Date(member.createdAt).toLocaleDateString()}
                       {member.subTeamCount > 0 && (
-                        <span className="ml-1.5 text-slate-400">· {member.subTeamCount} referrals</span>
+                        <span className="ml-1.5 text-slate-400">· {member.subTeamCount} {t('native.referral.teamMembers')}</span>
                       )}
                     </p>
                   </div>

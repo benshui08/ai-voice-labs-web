@@ -111,7 +111,10 @@
       "team": {
         "title": "我的團隊",
         "empty": "暫無團隊成員，快去分享邀請碼吧！",
-        "loadMore": "載入更多"
+        "loadMore": "載入更多",
+        "l1": "L1 直推",
+        "l2": "L2 間推",
+        "l3Plus": "L3+ 團隊"
       },
       "inviteText": "加入 VoicicaAI，一起賺取 $VOICICA！使用我的邀請碼：{{code}} {{url}}"
     },

@@ -69,6 +69,11 @@ export interface ReferralInfo {
   referralLevel: string;
   directReferrals: number;
   teamMembers: number;
+  teamBreakdown: {
+    l1: number;
+    l2: number;
+    l3Plus: number;
+  };
   totalEarnings: number;
   todayEarnings: number;
   referredBy: string | null;
@@ -120,24 +125,26 @@ export async function getMyReferralInfo(): Promise<ReferralInfo | null> {
         .where(eq(users.userId, userId));
     }
 
-    // 直推人数
-    const [directCount] = await db
-      .select({ count: count() })
-      .from(users)
-      .where(eq(users.referredBy, userId));
-
-    const directReferrals = directCount?.count ?? 0;
-
-    // 团队总人数（递归 CTE）
-    const teamResult = await db.execute<{ count: string }>(sql`
+    // 团队分层统计（单个递归 CTE 同时获取 L1/L2/L3+ 人数）
+    const teamBreakdownResult = await db.execute<{ l1: string; l2: string; l3_plus: string }>(sql`
       WITH RECURSIVE team AS (
-        SELECT user_id FROM users WHERE referred_by = ${userId}
+        SELECT user_id, 1 as depth FROM users WHERE referred_by = ${userId}
         UNION ALL
-        SELECT u.user_id FROM users u INNER JOIN team t ON u.referred_by = t.user_id
+        SELECT u.user_id, t.depth + 1 FROM users u
+        INNER JOIN team t ON u.referred_by = t.user_id
+        WHERE t.depth < 10
       )
-      SELECT COUNT(*)::text AS count FROM team
+      SELECT
+        COUNT(*) FILTER (WHERE depth = 1)::text AS l1,
+        COUNT(*) FILTER (WHERE depth = 2)::text AS l2,
+        COUNT(*) FILTER (WHERE depth >= 3)::text AS l3_plus
+      FROM team
     `);
-    const teamMembers = Number(teamResult.rows[0]?.count ?? 0);
+    const l1 = Number(teamBreakdownResult.rows[0]?.l1 ?? 0);
+    const l2 = Number(teamBreakdownResult.rows[0]?.l2 ?? 0);
+    const l3Plus = Number(teamBreakdownResult.rows[0]?.l3_plus ?? 0);
+    const directReferrals = l1;
+    const teamMembers = l1 + l2 + l3Plus;
 
     // 累计提成
     const [totalEarningsResult] = await db
@@ -187,6 +194,7 @@ export async function getMyReferralInfo(): Promise<ReferralInfo | null> {
       referralLevel: user.referralLevel,
       directReferrals,
       teamMembers,
+      teamBreakdown: { l1, l2, l3Plus },
       totalEarnings: Number(totalEarningsResult?.total ?? 0),
       todayEarnings: Number(todayEarningsResult?.total ?? 0),
       referredBy: user.referredBy,
@@ -254,25 +262,42 @@ export async function getReferralTeam(
       .limit(pageSize)
       .offset(offset);
 
-    // 获取每个下线的累计贡献提成和子团队人数
-    const items: ReferralTeamMember[] = [];
-    for (const ref of referrals) {
-      const [[contrib], [subCount]] = await Promise.all([
-        db
-          .select({ total: sum(referralCommissions.commissionAmount) })
-          .from(referralCommissions)
-          .where(
-            and(
-              eq(referralCommissions.userId, userId),
-              eq(referralCommissions.fromUserId, ref.userId)
-            )
-          ),
-        db
-          .select({ count: count() })
-          .from(users)
-          .where(eq(users.referredBy, ref.userId)),
-      ]);
+    // 批量获取子团队人数（递归 CTE，避免 N+1）
+    const memberIds = referrals.map(r => r.userId);
+    let subTeamCounts: Record<string, number> = {};
+    if (memberIds.length > 0) {
+      const subTeamResult = await db.execute<{ root_id: string; cnt: string }>(sql`
+        WITH RECURSIVE sub_team AS (
+          SELECT referred_by AS root_id, user_id
+          FROM users
+          WHERE referred_by = ANY(${memberIds})
+          UNION ALL
+          SELECT st.root_id, u.user_id
+          FROM users u
+          INNER JOIN sub_team st ON u.referred_by = st.user_id
+        )
+        SELECT root_id, COUNT(*)::text AS cnt FROM sub_team GROUP BY root_id
+      `);
+      for (const row of subTeamResult.rows) {
+        subTeamCounts[row.root_id] = Number(row.cnt);
+      }
+    }
 
+    // 批量获取累计贡献提成
+    let contribMap: Record<string, number> = {};
+    if (memberIds.length > 0) {
+      const contribResult = await db.execute<{ from_user_id: string; total: string }>(sql`
+        SELECT from_user_id, SUM(commission_amount)::text AS total
+        FROM referral_commissions
+        WHERE user_id = ${userId} AND from_user_id = ANY(${memberIds})
+        GROUP BY from_user_id
+      `);
+      for (const row of contribResult.rows) {
+        contribMap[row.from_user_id] = Number(row.total);
+      }
+    }
+
+    const items: ReferralTeamMember[] = referrals.map(ref => {
       // 脱敏处理
       let displayName = ref.name || ref.email || 'User';
       if (displayName.includes('@')) {
@@ -282,14 +307,14 @@ export async function getReferralTeam(
         displayName = displayName.substring(0, 3) + '***';
       }
 
-      items.push({
+      return {
         name: displayName,
         level: ref.referralLevel,
         createdAt: ref.createdAt,
-        totalContribution: Number(contrib?.total ?? 0),
-        subTeamCount: subCount?.count ?? 0,
-      });
-    }
+        totalContribution: contribMap[ref.userId] ?? 0,
+        subTeamCount: subTeamCounts[ref.userId] ?? 0,
+      };
+    });
 
     return {
       items,
