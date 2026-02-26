@@ -1,12 +1,21 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import NativeNavbar from '@/components/native/NativeNavbar';
-import BottomNav from '@/components/native/BottomNav';
+import BottomNav, { type TabType } from '@/components/native/BottomNav';
 import WebUpdatePrompt from '@/components/native/WebUpdatePrompt';
 import { BottomNavProvider } from '@/contexts/BottomNavContext';
 import { initNotifications, registerNotificationClickListener } from '@/lib/notifications';
+// Explore tab 子组件
+import NativeBannerAd from '@/components/native/NativeBannerAd';
+import TotalAssetsCard from '@/components/native/TotalAssetsCard';
+import FeatureGrid from '@/components/native/FeatureGrid';
+import ExploreSection from '@/components/native/ExploreSection';
+// Team tab
+import ReferralPage from '@/components/native/ReferralPage';
+// Me tab
+import MePageContent from '@/components/native/me/MePageContent';
 
 // 不显示顶部导航的路径
 const hideNavbarPaths = ['/native/me', '/native/settings', '/native/create', '/native/tools', '/native/video', '/native/voice/task', '/native/subscribe', '/native/payment', '/native/lucky-draw'];
@@ -14,10 +23,21 @@ const hideNavbarPaths = ['/native/me', '/native/settings', '/native/create', '/n
 // 不显示底部导航的路径
 const hideBottomNavPaths = ['/native/settings', '/native/create', '/native/tools', '/native/video', '/native/voice/task', '/native/subscribe', '/native/payment', '/native/lucky-draw'];
 
+// 三个主 Tab 的 pathname 前缀映射
+const pathnameToTab = (pathname: string): TabType | null => {
+  if (pathname === '/native' || pathname.startsWith('/native/explore')) return 'explore';
+  if (pathname.startsWith('/native/referral-earnings')) return 'team';
+  if (pathname === '/native/me') return 'me';
+  return null;
+};
+
 /**
  * Native App 专用布局
  * 用于 WebView 加载的原生应用页面
  * 与网页端完全独立，不共享导航栏和侧边栏
+ *
+ * 三个主 Tab（Explore / Team / Me）同时渲染，通过 CSS display 切换
+ * 保持页面状态不丢失
  */
 export default function NativeLayout({
   children,
@@ -26,6 +46,27 @@ export default function NativeLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+
+  // 根据初始 pathname 设定默认 activeTab
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    return pathnameToTab(pathname) || 'explore';
+  });
+
+  // 判断当前是否在主 Tab 页面（非子页面）
+  const isInSubPage = hideBottomNavPaths.some((p) => pathname.startsWith(p));
+  const isMainTab = !isInSubPage && pathnameToTab(pathname) !== null;
+
+  // 当用户通过浏览器后退/前进或直接访问 URL 时，同步 activeTab
+  useEffect(() => {
+    const tab = pathnameToTab(pathname);
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [pathname]);
+
+  const handleTabChange = useCallback((tab: TabType) => {
+    setActiveTab(tab);
+  }, []);
 
   // 捕获 URL 中的推荐码参数并存入 localStorage
   useEffect(() => {
@@ -59,8 +100,9 @@ export default function NativeLayout({
 
     return cleanup;
   }, [router]);
+
   const showNavbar = !hideNavbarPaths.some((path) => pathname.startsWith(path));
-  const showBottomNav = !hideBottomNavPaths.some((path) => pathname.startsWith(path));
+  const showBottomNav = !isInSubPage;
 
   return (
     <BottomNavProvider>
@@ -78,15 +120,40 @@ export default function NativeLayout({
             <div className="absolute bottom-0 right-0 w-[50vh] h-[50vh] bg-blue-900/10 blur-[100px]" />
           </div>
 
-          {/* 顶部导航 - 部分页面不显示 */}
-          {showNavbar && <NativeNavbar />}
+          {/* 顶部导航 - 主 Tab 模式下根据 activeTab 控制，子页面根据 pathname */}
+          {(isMainTab ? activeTab !== 'me' : showNavbar) && <NativeNavbar />}
 
-          {/* 主内容区域 - PC 端为 flex 滚动区域 */}
-          {/* 主内容区域 - PC 端为 flex 滚动区域 */}
-          <main className="relative lg:flex-1 lg:overflow-y-auto lg:min-h-0">{children}</main>
+          {/* 主内容区域 */}
+          <main className="relative lg:flex-1 lg:overflow-y-auto lg:min-h-0">
+            {isMainTab ? (
+              <>
+                {/* Explore Tab */}
+                <div style={{ display: activeTab === 'explore' ? 'block' : 'none' }}>
+                  <div className="pt-2 pb-20">
+                    <NativeBannerAd />
+                    <TotalAssetsCard />
+                    <FeatureGrid />
+                    <ExploreSection />
+                  </div>
+                </div>
+                {/* Team Tab */}
+                <div style={{ display: activeTab === 'team' ? 'block' : 'none' }}>
+                  <ReferralPage />
+                </div>
+                {/* Me Tab */}
+                <div style={{ display: activeTab === 'me' ? 'block' : 'none' }}>
+                  <MePageContent />
+                </div>
+              </>
+            ) : (
+              children
+            )}
+          </main>
 
-          {/* 底部导航 - 部分页面不显示 */}
-          {showBottomNav && <BottomNav />}
+          {/* 底部导航 - 子页面不显示 */}
+          {showBottomNav && (
+            <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+          )}
 
           {/* Web 内容更新提示 */}
           <WebUpdatePrompt />

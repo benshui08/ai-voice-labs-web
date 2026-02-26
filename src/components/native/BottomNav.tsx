@@ -1,9 +1,10 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useBottomNav } from '@/contexts/BottomNavContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+export type TabType = 'explore' | 'team' | 'me';
 
 // 首页图标
 const HomeIcon = ({ active }: { active: boolean }) => (
@@ -49,21 +50,40 @@ const TeamIcon = ({ active }: { active: boolean }) => (
   </svg>
 );
 
+interface BottomNavProps {
+  activeTab?: TabType;
+  onTabChange?: (tab: TabType) => void;
+}
+
 /**
  * 底部导航栏
  * Explore / Team / Me
+ * 支持 state 控制模式（主 Tab 页）和路由跳转模式（子页面 fallback）
  */
-export default function BottomNav() {
-  const pathname = usePathname();
+export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+  const router = useRouter();
   const { isVisible } = useBottomNav();
   const { t } = useLanguage();
 
-  const isExploreActive = pathname === '/native' || pathname.startsWith('/native/explore');
-  const isTeamActive = pathname.startsWith('/native/referral-earnings');
-  const isMeActive = pathname.startsWith('/native/me');
+  const isExploreActive = activeTab === 'explore';
+  const isTeamActive = activeTab === 'team';
+  const isMeActive = activeTab === 'me';
 
   // 通过 context 控制显示/隐藏
   if (!isVisible) return null;
+
+  const handleTabClick = (tab: TabType) => {
+    if (onTabChange) {
+      onTabChange(tab);
+    }
+    // 同步 URL，使用 replace 避免产生历史记录
+    const urlMap: Record<TabType, string> = {
+      explore: '/native',
+      team: '/native/referral-earnings',
+      me: '/native/me',
+    };
+    router.replace(urlMap[tab]);
+  };
 
   return (
     <>
@@ -74,8 +94,9 @@ export default function BottomNav() {
       >
         <div className="flex items-center justify-around h-16">
           {/* Explore */}
-          <Link
-            href="/native"
+          <button
+            type="button"
+            onClick={() => handleTabClick('explore')}
             className="flex flex-col items-center justify-center flex-1 h-full active:scale-95 transition-transform"
           >
             <HomeIcon active={isExploreActive} />
@@ -85,11 +106,12 @@ export default function BottomNav() {
             >
               {t('native.bottomNav.explore')}
             </span>
-          </Link>
+          </button>
 
           {/* Team */}
-          <Link
-            href="/native/referral-earnings"
+          <button
+            type="button"
+            onClick={() => handleTabClick('team')}
             className="flex flex-col items-center justify-center flex-1 h-full active:scale-95 transition-transform"
           >
             <TeamIcon active={isTeamActive} />
@@ -99,12 +121,13 @@ export default function BottomNav() {
             >
               {t('native.bottomNav.team')}
             </span>
-          </Link>
+          </button>
 
           {/* Me */}
-          <Link
-            href="/native/me"
-            className="flex flex-col items-center justify-center flex-1 h-full"
+          <button
+            type="button"
+            onClick={() => handleTabClick('me')}
+            className="flex flex-col items-center justify-center flex-1 h-full active:scale-95 transition-transform"
           >
             <UserIcon active={isMeActive} />
             <span
@@ -113,7 +136,7 @@ export default function BottomNav() {
             >
               {t('native.bottomNav.me')}
             </span>
-          </Link>
+          </button>
         </div>
       </nav>
     </>
