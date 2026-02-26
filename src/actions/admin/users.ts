@@ -7,6 +7,7 @@ import db from '@/lib/db';
 import { users, anonymousUsers, userSubscriptions, ttsRecords, creditHistory } from '@/db/schema';
 import { eq, and, or, ilike, desc, count, isNull, isNotNull, lt, gt } from 'drizzle-orm';
 import { verifyAdminWithoutDb } from '@/lib/auth-admin';
+import { generateUniqueCode, checkAndUpgradeLevel } from '@/actions/referral';
 
 /**
  * 获取注册用户列表
@@ -456,4 +457,92 @@ export async function getUserCreditHistory(params: {
     pageSize,
     totalPages: Math.ceil(Number(total) / pageSize),
   };
+}
+
+/**
+ * 为用户生成邀请码
+ */
+export async function adminGenerateReferralCode(
+  userId: string
+): Promise<{ success: boolean; message: string; code?: string }> {
+  await verifyAdminWithoutDb();
+
+  try {
+    const [user] = await db
+      .select({ referralCode: users.referralCode })
+      .from(users)
+      .where(eq(users.userId, userId))
+      .limit(1);
+
+    if (!user) {
+      return { success: false, message: '用户不存在' };
+    }
+
+    if (user.referralCode) {
+      return { success: false, message: '该用户已有邀请码' };
+    }
+
+    const code = await generateUniqueCode();
+    await db
+      .update(users)
+      .set({ referralCode: code })
+      .where(eq(users.userId, userId));
+
+    return { success: true, message: '邀请码生成成功', code };
+  } catch (error) {
+    console.error('生成邀请码失败:', error);
+    return { success: false, message: error instanceof Error ? error.message : '生成失败' };
+  }
+}
+
+/**
+ * 为用户绑定推荐人
+ */
+export async function adminBindReferrer(
+  userId: string,
+  referrerCode: string
+): Promise<{ success: boolean; message: string }> {
+  await verifyAdminWithoutDb();
+
+  try {
+    const [user] = await db
+      .select({ referredBy: users.referredBy })
+      .from(users)
+      .where(eq(users.userId, userId))
+      .limit(1);
+
+    if (!user) {
+      return { success: false, message: '用户不存在' };
+    }
+
+    if (user.referredBy) {
+      return { success: false, message: '该用户已有推荐人' };
+    }
+
+    const [referrer] = await db
+      .select({ userId: users.userId })
+      .from(users)
+      .where(eq(users.referralCode, referrerCode.toUpperCase()))
+      .limit(1);
+
+    if (!referrer) {
+      return { success: false, message: '推荐码不存在' };
+    }
+
+    if (referrer.userId === userId) {
+      return { success: false, message: '不能绑定自己为推荐人' };
+    }
+
+    await db
+      .update(users)
+      .set({ referredBy: referrer.userId })
+      .where(eq(users.userId, userId));
+
+    await checkAndUpgradeLevel(referrer.userId);
+
+    return { success: true, message: '绑定推荐人成功' };
+  } catch (error) {
+    console.error('绑定推荐人失败:', error);
+    return { success: false, message: error instanceof Error ? error.message : '绑定失败' };
+  }
 }
