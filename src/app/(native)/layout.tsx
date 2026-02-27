@@ -7,6 +7,7 @@ import BottomNav, { type TabType } from '@/components/native/BottomNav';
 import WebUpdatePrompt from '@/components/native/WebUpdatePrompt';
 import { BottomNavProvider } from '@/contexts/BottomNavContext';
 import { initNotifications, registerNotificationClickListener } from '@/lib/notifications';
+import { initPushNotifications } from '@/lib/push-notifications';
 // Explore tab 子组件
 import NativeBannerAd from '@/components/native/NativeBannerAd';
 import TotalAssetsCard from '@/components/native/TotalAssetsCard';
@@ -100,6 +101,11 @@ export default function NativeLayout({
 
     return cleanup;
   }, [router]);
+
+  // 初始化 FCM 远程推送
+  useEffect(() => {
+    initPushNotifications().catch(console.error);
+  }, []);
 
   const showNavbar = !hideNavbarPaths.some((path) => pathname.startsWith(path));
   const showBottomNav = !isInSubPage;

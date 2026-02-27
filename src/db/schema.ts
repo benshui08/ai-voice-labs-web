@@ -801,6 +801,22 @@ export const luckyDrawClaims = sqliteTable("lucky_draw_claims", {
 ]);
 
 // ============================================================
+// Device Tokens (FCM Push Notifications)
+// ============================================================
+
+export const deviceTokens = sqliteTable("device_tokens", {
+	id: integer().primaryKey({ autoIncrement: true }),
+	userId: text("user_id").notNull(),
+	token: text("token").notNull(),
+	platform: text("platform").notNull(), // 'android' | 'ios' | 'web'
+	createdAt: text("created_at").default(sql`(datetime('now'))`).notNull(),
+	updatedAt: text("updated_at").default(sql`(datetime('now'))`).notNull(),
+}, (table) => [
+	index("idx_device_tokens_user_id").on(table.userId),
+	uniqueIndex("uq_device_tokens_token").on(table.token),
+]);
+
+// ============================================================
 // Referral Commission Tables
 // ============================================================
 

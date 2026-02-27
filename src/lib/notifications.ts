@@ -129,14 +129,19 @@ export async function sendLocalNotification(
     return;
   }
 
-  const hasPermission = await checkNotificationPermission();
+  // 权限不足时尝试请求一次
+  let hasPermission = await checkNotificationPermission();
   if (!hasPermission) {
-    console.log('[Notifications] No permission, skipping notification');
-    return;
+    hasPermission = await requestNotificationPermission();
+    if (!hasPermission) {
+      console.log('[Notifications] No permission, skipping notification');
+      return;
+    }
+    await ensureNotificationChannel();
   }
 
   const config = notificationConfigs[type][status];
-  const notificationId = Date.now();
+  const notificationId = Math.floor(Math.random() * 100000);
 
   const options: ScheduleOptions = {
     notifications: [
@@ -144,8 +149,8 @@ export async function sendLocalNotification(
         id: notificationId,
         title: config.title,
         body: customBody || config.body,
-        schedule: { at: new Date(Date.now() + 100) }, // 立即发送
-        sound: undefined, // 使用默认声音
+        channelId: 'voicica_default',
+        schedule: { at: new Date(Date.now() + 3000) }, // 延迟 3 秒确保系统处理
         extra: {
           type,
           status,
@@ -192,6 +197,24 @@ export function registerNotificationClickListener(
 }
 
 /**
+ * 创建通知 channel（Android 8+ 必需，iOS 忽略）
+ */
+async function ensureNotificationChannel(): Promise<void> {
+  try {
+    await LocalNotifications.createChannel({
+      id: 'voicica_default',
+      name: 'VoicicaAI Notifications',
+      importance: 4, // HIGH
+      sound: 'default',
+      vibration: true,
+    });
+    console.log('[Notifications] Channel created');
+  } catch {
+    // iOS 不支持 channel，静默忽略
+  }
+}
+
+/**
  * 初始化通知服务
  * 应在 App 启动时调用
  */
@@ -201,7 +224,12 @@ export async function initNotifications(): Promise<void> {
     return;
   }
 
-  // 请求权限
+  // 请求权限（Android 13+ 会弹系统弹窗）
   const granted = await requestNotificationPermission();
   console.log('[Notifications] Permission granted:', granted);
+
+  // 创建通知 channel（Android 8+ 必需）
+  if (granted) {
+    await ensureNotificationChannel();
+  }
 }

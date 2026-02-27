@@ -102,6 +102,12 @@ const config: CapacitorConfig = {
       resize: 'none',
       resizeOnFullScreen: false,
     },
+    // 本地通知配置
+    LocalNotifications: {
+      smallIcon: 'ic_stat_icon_config_sample',
+      iconColor: '#7C3AED',
+      sound: 'default',
+    },
     // Firebase Authentication - 配置支持的登录方式
     FirebaseAuthentication: {
       skipNativeAuth: false,
