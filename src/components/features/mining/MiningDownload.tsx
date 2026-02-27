@@ -93,7 +93,6 @@ export default function MiningDownload({
                     {refCode}
                   </span>
                 </span>
-                  )}
               </div>
               <p className="text-xs text-gray-400">{referralContent.bonusTip}</p>
             </div>
