@@ -12,21 +12,12 @@ for /f "usebackq" %%a in (`powershell -Command "(Get-Content src/native-version.
 echo 当前版本: v%APP_VERSION% (Build %BUILD_NUMBER%)
 echo.
 echo 请选择打包类型:
-echo   1. 测试环境 APK  (ai-voice-labs.com)
-echo   2. 生产环境 APK  (voicica.ai) - 独立版本
-echo   3. 生产环境 AAB  (voicica.ai) - Google Play
+echo   1. 生产环境 APK  (voicica.ai) - 独立版本
+echo   2. 生产环境 AAB  (voicica.ai) - Google Play
 echo.
-set /p choice="输入选项 (1/2/3): "
+set /p choice="输入选项 (1/2): "
 
 if "%choice%"=="1" (
-    set FLAVOR=standalone
-    set BUILD_CMD=assembleStandaloneRelease
-    set BUILD_OUTPUT=android\app\build\outputs\apk\standalone\release\app-standalone-release.apk
-    set FINAL_NAME=voicica-test-%APP_VERSION%-b%BUILD_NUMBER%.apk
-    set OUTPUT_NAME=测试 APK
-    set SERVER_URL=https://ai-voice-labs.com/native
-    set ENV_NAME=测试环境
-) else if "%choice%"=="2" (
     set FLAVOR=standalone
     set BUILD_CMD=assembleStandaloneRelease
     set BUILD_OUTPUT=android\app\build\outputs\apk\standalone\release\app-standalone-release.apk
@@ -34,7 +25,7 @@ if "%choice%"=="1" (
     set OUTPUT_NAME=生产 APK
     set SERVER_URL=https://www.voicica.ai/native
     set ENV_NAME=生产环境
-) else if "%choice%"=="3" (
+) else if "%choice%"=="2" (
     set FLAVOR=playStore
     set BUILD_CMD=bundlePlayStoreRelease
     set BUILD_OUTPUT=android\app\build\outputs\bundle\playStoreRelease\app-playStore-release.aab
@@ -58,7 +49,7 @@ echo.
 echo 正在构建 %OUTPUT_NAME% (%FLAVOR%)...
 echo.
 
-echo [1/6] 同步原生版本号...
+echo [1/5] 同步原生版本号...
 call npm run native:version:sync
 if %errorlevel% neq 0 (
     echo 错误: 版本同步失败
@@ -67,17 +58,10 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [2/6] 构建 Web 资源...
-call npm run build
-if %errorlevel% neq 0 (
-    echo 错误: Web 构建失败
-    pause
-    exit /b 1
-)
-
-echo.
-echo [3/6] 同步到 Android 项目...
+echo [2/5] 同步到 Android 项目...
 echo      服务器地址: %SERVER_URL%
+REM 确保 webDir (out) 目录存在，远程加载模式不需要实际 Web 构建
+if not exist out mkdir out
 set CAPACITOR_SERVER_URL=%SERVER_URL%
 call npx cap sync android
 if %errorlevel% neq 0 (
@@ -87,7 +71,7 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [4/6] 清理 Gradle 缓存 (确保原生代码更新)...
+echo [3/5] 清理 Gradle 缓存 (确保原生代码更新)...
 cd android
 call gradlew clean
 if %errorlevel% neq 0 (
@@ -96,7 +80,7 @@ if %errorlevel% neq 0 (
 cd ..
 
 echo.
-echo [5/6] 打包 %OUTPUT_NAME%...
+echo [4/5] 打包 %OUTPUT_NAME%...
 cd android
 call gradlew %BUILD_CMD%
 if %errorlevel% neq 0 (
@@ -108,7 +92,7 @@ if %errorlevel% neq 0 (
 cd ..
 
 echo.
-echo [6/6] 复制并重命名输出文件...
+echo [5/5] 复制并重命名输出文件...
 set OUTPUT_DIR=build-output
 if not exist %OUTPUT_DIR% mkdir %OUTPUT_DIR%
 copy /Y "%BUILD_OUTPUT%" "%OUTPUT_DIR%\%FINAL_NAME%"
