@@ -1,8 +1,17 @@
 {
-  "version": "1.2.23",
-  "buildNumber": 44,
+  "version": "1.2.24",
+  "buildNumber": 45,
   "description": "原生应用版本（Android/iOS 应用壳）",
   "changelog": [
+    {
+      "version": "1.2.24",
+      "buildNumber": 45,
+      "date": "2026-02-27",
+      "changes": [
+        "新增剪贴板推荐码自动检测（@capacitor/clipboard）",
+        "App 启动后自动检测剪贴板中的邀请码并弹窗确认"
+      ]
+    },
     {
       "version": "1.2.23",
       "buildNumber": 44,
