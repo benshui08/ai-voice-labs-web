@@ -28,6 +28,8 @@ export default function NativeLoadingOverlay({ visible }: { visible: boolean }) 
         <div className="w-24 h-0.5 bg-white/10 rounded-full overflow-hidden mt-5">
           <div className="h-full bg-gradient-to-r from-purple-500 to-amber-400 rounded-full animate-[nav-loading_1.5s_ease-in-out_infinite]" />
         </div>
+        {/* Tagline */}
+        <p className="mt-4 text-[10px] text-white/20 font-medium tracking-widest uppercase">VOICICA PRINTS MONEY</p>
       </div>
     </div>,
     document.body,
