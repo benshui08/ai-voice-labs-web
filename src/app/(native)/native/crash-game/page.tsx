@@ -134,8 +134,6 @@ export default function CrashGamePage() {
         setRoundData(result.data);
         setGameState('playing');
         deductCredits(betAmount);
-        // 延迟静默刷新真实余额（兼容多端同时操作）
-        setTimeout(() => refreshCredits(), 2000);
       } else {
         alert(result.error || 'Failed to start game');
         setGameState('idle');
@@ -162,8 +160,6 @@ export default function CrashGamePage() {
         // 乐观更新余额：当前 + profit
         const profit = result.data.profit ?? -roundData.betAmount;
         updateCredits(credits + roundData.betAmount + profit);
-        // 延迟静默刷新真实余额（兼容多端同时操作）
-        setTimeout(() => refreshCredits(), 2000);
         // Refresh history
         const historyData = await getUserCrashHistory(10);
         setHistory(historyData);
@@ -187,8 +183,7 @@ export default function CrashGamePage() {
       if (result.success && result.data) {
         setRoundData(result.data);
         setGameState('result');
-        // 崩盘：betAmount 已在 start 时扣除，延迟刷新真实余额
-        setTimeout(() => refreshCredits(), 2000);
+        // 崩盘：betAmount 已在 start 时扣除，无需更新
         const historyData = await getUserCrashHistory(10);
         setHistory(historyData);
       }

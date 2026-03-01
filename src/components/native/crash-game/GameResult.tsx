@@ -51,7 +51,11 @@ export default function GameResult({
       {/* Play again */}
       <button
         onClick={onPlayAgain}
-        className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 py-3 text-white font-bold text-lg shadow-lg active:scale-[0.98] transition-transform"
+        className={`w-full rounded-2xl py-3.5 font-bold text-lg active:scale-[0.98] transition-all ${
+          isWin
+            ? 'bg-green-500/15 border border-green-500/30 text-green-400'
+            : 'bg-white/10 border border-white/10 text-white/80'
+        }`}
       >
         {t('native.crashGame.playAgain')}
       </button>
