@@ -31,7 +31,7 @@ export default function AppSplashWrapper({ children }: { children: ReactNode }) 
 
   // Native 进度：里程碑 + 持续缓慢爬行
   const milestoneProgress = (isLanguageReady ? 30 : 0) + (!isAuthLoading ? 35 : 0) + (!isCreditsLoading ? 35 : 0);
-  const [displayProgress, setDisplayProgress] = useState(0);
+  const [displayProgress, setDisplayProgress] = useState(5);
   const milestoneRef = useRef(milestoneProgress);
   milestoneRef.current = milestoneProgress;
 
