@@ -108,6 +108,11 @@ export default function NativeDailyTasksModal({ isOpen, onClose, onCreditsUpdate
     }
   }, [user, isLoginDismissedRecently]);
 
+  // 每次打开弹窗时静默刷新数据（确保跨天后状态最新）
+  useEffect(() => {
+    if (isOpen) refresh();
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 登录成功后自动执行之前被拦截的操作
   useEffect(() => {
     if (user && showLoginModal) {
