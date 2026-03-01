@@ -294,7 +294,8 @@ export default function CrashGamePage() {
               minBet={config?.minBet ?? 1}
               maxBet={config?.maxBet ?? 1000}
               usableBalance={usableBalance}
-              loading={loading || !config}
+              loading={loading}
+              disabled={!config}
               onStart={handleStart}
             />
           )}

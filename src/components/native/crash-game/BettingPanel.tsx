@@ -9,6 +9,7 @@ interface BettingPanelProps {
   maxBet: number;
   usableBalance: number;
   loading: boolean;
+  disabled?: boolean;
   onStart: (amount: number) => void;
 }
 
@@ -16,7 +17,7 @@ interface BettingPanelProps {
  * 投注面板 - 金额输入 + 快捷按钮 + Start
  * 余额不足时 Start 按钮变灰不可点击
  */
-export default function BettingPanel({ minBet, maxBet, usableBalance, loading, onStart }: BettingPanelProps) {
+export default function BettingPanel({ minBet, maxBet, usableBalance, loading, disabled, onStart }: BettingPanelProps) {
   const { t } = useLanguage();
   const [betAmount, setBetAmount] = useState<string>(String(minBet));
 
@@ -53,7 +54,7 @@ export default function BettingPanel({ minBet, maxBet, usableBalance, loading, o
         </div>
         <button
           onClick={handleStart}
-          disabled={loading || !isValid || isInsufficient}
+          disabled={loading || disabled || !isValid || isInsufficient}
           className="rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-3 text-white font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
         >
           {loading ? (
