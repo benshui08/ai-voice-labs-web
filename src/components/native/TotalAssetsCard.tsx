@@ -59,34 +59,25 @@ export default function TotalAssetsCard() {
 
   const usdtBalance = profile?.usdt_balance ?? 0;
   const rate = miningConfig.token_value_usd;
-  const totalValue = credits * rate + usdtBalance;
 
   return (
     <>
       <div className="mx-4 mt-2 rounded-2xl bg-gradient-to-br from-purple-900/40 via-[#1e1e3a]/80 to-[#1a1a35]/80 border border-purple-500/15 backdrop-blur-sm overflow-hidden">
         {/* Header */}
-        <div className="px-5 pt-5 pb-3">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-gray-400 text-sm font-medium">
-              {t('native.totalAssets.title')}
-            </p>
-            <button
-              onClick={() => requireLogin(() => setShowHistory(true))}
-              className="text-gray-400 hover:text-white transition-colors p-1 -mr-1"
-              aria-label="History"
-            >
-              <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </button>
-          </div>
-          <p className="text-white text-3xl font-bold tracking-tight">
-            {loading ? '...' : `$${totalValue.toFixed(4)}`}
+        <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+          <p className="text-gray-400 text-sm font-medium">
+            {t('native.totalAssets.title')}
           </p>
-          <p className="text-gray-500 text-xs mt-0.5">
-            1 $VOICICA = ${rate} USDT
-          </p>
+          <button
+            onClick={() => requireLogin(() => setShowHistory(true))}
+            className="text-gray-400 hover:text-white transition-colors p-1 -mr-1"
+            aria-label="History"
+          >
+            <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </button>
         </div>
 
         {/* Token rows with inline actions */}
@@ -98,7 +89,12 @@ export default function TotalAssetsCard() {
                 <div className="w-8 h-8 rounded-full bg-purple-500/25 flex items-center justify-center overflow-hidden">
                   <Image src="/logo/voicica-token.png" alt="VOICICA" width={32} height={32} className="w-full h-full object-cover" />
                 </div>
-                <span className="text-gray-300 text-sm font-medium">$VOICICA</span>
+                <div>
+                  <span className="text-gray-300 text-sm font-medium">$VOICICA</span>
+                  <span className="text-gray-500 text-[11px] ml-1.5">
+                    {loading ? '' : `≈ $${(credits * rate).toFixed(4)}`}
+                  </span>
+                </div>
               </div>
               <span className="text-white text-sm font-semibold">
                 {loading ? '...' : formatCredits(credits)}
