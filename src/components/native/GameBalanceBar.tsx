@@ -42,12 +42,7 @@ export default function GameBalanceBar() {
   return (
     <>
       <div className="mx-4 mt-3 mb-3 rounded-xl bg-white/5 border border-white/10 px-4 py-3">
-        {/* Reserve hint */}
-        <p className="text-white/25 text-[10px] mb-2">
-          {formatCredits(min_voicica_reserve)} $VOICICA reserved and not available for games
-        </p>
-
-        {/* Balance */}
+        {/* Row 1: Balance */}
         <div className="flex items-center gap-2">
           <Image src="/logo/voicica-token.png" alt="$VOICICA" width={24} height={24} className="w-6 h-6" />
           <span className="text-white font-bold text-lg">
@@ -56,8 +51,12 @@ export default function GameBalanceBar() {
           <span className="text-white/40 text-xs font-medium">$VOICICA</span>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-2 mt-2">
+        {/* Row 2: Reserve hint + Actions */}
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-white/25 text-[10px]">
+            {formatCredits(min_voicica_reserve)} reserved
+          </span>
+          <div className="flex items-center gap-2">
           <button
             onClick={() => setShowMining(true)}
             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-semibold hover:bg-amber-500/30 active:scale-95 transition-all"
@@ -81,6 +80,7 @@ export default function GameBalanceBar() {
             </svg>
             Buy
           </button>
+          </div>
         </div>
       </div>
 
