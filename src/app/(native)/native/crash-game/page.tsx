@@ -21,6 +21,7 @@ import CashOutButton from '@/components/native/crash-game/CashOutButton';
 import GameResult from '@/components/native/crash-game/GameResult';
 import GameHistory from '@/components/native/crash-game/GameHistory';
 import GameBalanceBar from '@/components/native/GameBalanceBar';
+import { DEFAULT_CRASH_SPEED, MAX_GAME_DURATION_SECONDS } from '@/config/native/crashGameConfig';
 
 type GameState = 'idle' | 'betting' | 'playing' | 'result';
 
@@ -77,12 +78,21 @@ export default function CrashGamePage() {
   }, []);
 
   // Load history separately (non-blocking, below the fold)
-  useEffect(() => {
-    getUserCrashHistory(20)
-      .then(setHistory)
-      .catch((error) => console.error('Failed to load history:', error))
-      .finally(() => setHistoryLoading(false));
+  const refreshHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const data = await getUserCrashHistory(20);
+      setHistory(data);
+    } catch (error) {
+      console.error('Failed to load history:', error);
+    } finally {
+      setHistoryLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    refreshHistory();
+  }, [refreshHistory]);
 
   // Start a new game
   const handleStart = useCallback(async (betAmount: number) => {
@@ -182,50 +192,34 @@ export default function CrashGamePage() {
   }
 
   return (
-    <div className="min-h-screen pb-20">
-      {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 bg-slate-950/80 backdrop-blur-lg border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.back()}
-            className="text-white/60 hover:text-white transition"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h1 className="text-lg font-bold text-white">{t('native.crashGame.title')}</h1>
+    <div className="min-h-screen flex flex-col">
+      {/* ── Game Area: flex to fill one screen ── */}
+      <div className="flex flex-col h-dvh shrink-0">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 bg-slate-950/80 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.back()}
+              className="text-white/60 hover:text-white transition"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <h1 className="text-lg font-bold text-white">{t('native.crashGame.title')}</h1>
+          </div>
         </div>
-      </div>
 
-      {/* Balance Bar - always visible at top */}
-      <GameBalanceBar />
+        {/* Balance Bar */}
+        <GameBalanceBar />
 
-      {!config ? (
-        /* Inline skeleton while config loads — seamless with loading.tsx */
-        <>
-          <div className="flex items-center justify-center py-16">
-            <div className="w-48 h-48 rounded-full border-2 border-purple-500/20 flex items-center justify-center">
-              <div className="h-10 w-24 rounded bg-white/10 animate-pulse" />
-            </div>
-          </div>
-          <div className="px-4 space-y-3">
-            <div className="h-14 rounded-xl bg-white/5 animate-pulse" />
-            <div className="flex gap-2">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="flex-1 h-10 rounded-lg bg-white/5 animate-pulse" />
-              ))}
-            </div>
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Multiplier Display */}
+        {/* Multiplier Display — flex-1 to fill remaining space */}
+        <div className="flex-1 flex items-center justify-center min-h-0">
           <MultiplierDisplay
             active={gameState === 'playing'}
-            speed={roundData?.speed ?? config.speed}
+            speed={roundData?.speed ?? config?.speed ?? DEFAULT_CRASH_SPEED}
             startedAt={roundData?.startedAt ?? ''}
-            maxDurationSeconds={config.maxDurationSeconds}
+            maxDurationSeconds={config?.maxDurationSeconds ?? MAX_GAME_DURATION_SECONDS}
             crashPoint={roundData?.crashPoint}
             onCrash={handleCrash}
             onExpire={handleCrash}
@@ -233,13 +227,15 @@ export default function CrashGamePage() {
             displayState={displayState}
             finalMultiplier={roundData?.cashOutMultiplier ?? roundData?.crashPoint}
           />
+        </div>
 
-          {/* Bottom section based on state */}
+        {/* Bottom section based on state */}
+        <div className="shrink-0">
           {gameState === 'idle' && (
             <BettingPanel
-              minBet={config.minBet}
-              maxBet={config.maxBet}
-              loading={loading}
+              minBet={config?.minBet ?? 1}
+              maxBet={config?.maxBet ?? 1000}
+              loading={loading || !config}
               onStart={handleStart}
             />
           )}
@@ -281,11 +277,11 @@ export default function CrashGamePage() {
               onPlayAgain={handlePlayAgain}
             />
           )}
-        </>
-      )}
+        </div>
+      </div>
 
-      {/* History — loads independently */}
-      <GameHistory history={history} loading={historyLoading} />
+      {/* ── History: below the fold, auto-refresh on scroll into view ── */}
+      <GameHistory history={history} loading={historyLoading} onRefresh={refreshHistory} />
     </div>
   );
 }

@@ -1,101 +1,117 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import type { CrashHistoryItem } from '@/actions/crash-game';
 
 interface GameHistoryProps {
   history: CrashHistoryItem[];
   loading: boolean;
+  onRefresh?: () => void;
 }
 
 /**
  * 最近游戏记录列表 + Rules 底部弹窗
+ * 滚动进入视口时自动触发 onRefresh
  */
-export default function GameHistory({ history, loading }: GameHistoryProps) {
+export default function GameHistory({ history, loading, onRefresh }: GameHistoryProps) {
   const { t } = useLanguage();
   const [showRules, setShowRules] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  if (loading) {
-    return (
-      <div className="px-4 py-6">
-        <div className="h-4 w-32 bg-white/10 rounded animate-pulse mb-3" />
-        {[1, 2, 3].map(i => (
-          <div key={i} className="h-12 bg-white/5 rounded-lg mb-2 animate-pulse" />
-        ))}
-      </div>
+  // Auto-refresh when scrolled into view
+  useEffect(() => {
+    if (!onRefresh || !sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          onRefresh();
+        }
+      },
+      { threshold: 0.1 }
     );
-  }
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [onRefresh]);
 
   return (
-    <div className="px-4 pb-6">
-      {/* Header row */}
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-white/60">
-          {t('native.crashGame.recentGames')}
-        </h3>
-        <button
-          onClick={() => setShowRules(true)}
-          className="flex items-center gap-1 text-xs text-white/40 hover:text-white/60 transition-colors"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Rules
-        </button>
-      </div>
-
-      {/* History list */}
-      {history.length === 0 ? (
-        <div className="text-center text-white/20 text-sm py-6">No games yet</div>
+    <div className="px-4 pb-6" ref={sentinelRef}>
+      {loading && history.length === 0 ? (
+        <>
+          <div className="h-4 w-32 bg-white/10 rounded animate-pulse mb-3" />
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-12 bg-white/5 rounded-lg mb-2 animate-pulse" />
+          ))}
+        </>
       ) : (
-        <div className="space-y-1.5">
-          {history.map((item) => {
-            const isWin = item.status === 'cashed_out';
-            return (
-              <div
-                key={item.roundId}
-                className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2.5"
-              >
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm font-bold ${isWin ? 'text-green-400' : 'text-red-400'}`}>
-                    {isWin ? '✓' : '✗'}
-                  </span>
-                  <span className="text-sm font-medium text-white/80">
-                    {item.crashPoint.toFixed(2)}x
-                  </span>
-                  {item.cashOutMultiplier && (
-                    <span className="text-xs text-white/40">
-                      @{item.cashOutMultiplier.toFixed(2)}x
-                    </span>
-                  )}
-                </div>
-                <div className="text-right">
-                  <span className={`text-sm font-semibold ${isWin ? 'text-green-400' : 'text-red-400'}`}>
-                    {(item.profit ?? 0) >= 0 ? '+' : ''}{(item.profit ?? 0).toFixed(2)}
-                  </span>
-                  <span className="ml-2 text-xs text-white/30">
-                    {item.betAmount} $VOICICA
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <>
+          {/* Header row */}
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-white/60">
+              {t('native.crashGame.recentGames')}
+            </h3>
+            <button
+              onClick={() => setShowRules(true)}
+              className="flex items-center gap-1 text-xs text-white/40 hover:text-white/60 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Rules
+            </button>
+          </div>
+
+          {/* History list */}
+          {history.length === 0 ? (
+            <div className="text-center text-white/20 text-sm py-6">No games yet</div>
+          ) : (
+            <div className="space-y-1.5">
+              {history.map((item) => {
+                const isWin = item.status === 'cashed_out';
+                return (
+                  <div
+                    key={item.roundId}
+                    className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2.5"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-bold ${isWin ? 'text-green-400' : 'text-red-400'}`}>
+                        {isWin ? '✓' : '✗'}
+                      </span>
+                      <span className="text-sm font-medium text-white/80">
+                        {item.crashPoint.toFixed(2)}x
+                      </span>
+                      {item.cashOutMultiplier && (
+                        <span className="text-xs text-white/40">
+                          @{item.cashOutMultiplier.toFixed(2)}x
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-sm font-semibold ${isWin ? 'text-green-400' : 'text-red-400'}`}>
+                        {(item.profit ?? 0) >= 0 ? '+' : ''}{(item.profit ?? 0).toFixed(2)}
+                      </span>
+                      <span className="ml-2 text-xs text-white/30">
+                        {item.betAmount} $VOICICA
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       {/* Rules Bottom Sheet */}
       {showRules && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/60 z-50"
             onClick={() => setShowRules(false)}
           />
-          {/* Sheet */}
           <div className="fixed bottom-0 left-0 right-0 z-50 animate-slide-up">
             <div className="mx-auto max-w-[430px] rounded-t-2xl bg-slate-900 border-t border-white/10 px-5 pt-4 pb-8 max-h-[70vh] overflow-y-auto">
-              {/* Handle bar */}
               <div className="flex justify-center mb-4">
                 <div className="w-10 h-1 rounded-full bg-white/20" />
               </div>
