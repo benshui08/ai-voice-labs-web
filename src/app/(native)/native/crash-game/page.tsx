@@ -35,7 +35,7 @@ type GameState = 'idle' | 'betting' | 'playing' | 'result';
 export default function CrashGamePage() {
   const router = useRouter();
   const { t } = useLanguage();
-  const { credits, refreshCredits } = useCredits();
+  const { credits, refreshCredits, deductCredits, updateCredits } = useCredits();
 
   // Available balance (total minus reserved)
   const { min_voicica_reserve } = getConversionConfig();
@@ -133,7 +133,9 @@ export default function CrashGamePage() {
       if (result.success && result.data) {
         setRoundData(result.data);
         setGameState('playing');
-        refreshCredits();
+        deductCredits(betAmount);
+        // 延迟静默刷新真实余额（兼容多端同时操作）
+        setTimeout(() => refreshCredits(), 2000);
       } else {
         alert(result.error || 'Failed to start game');
         setGameState('idle');
@@ -145,7 +147,7 @@ export default function CrashGamePage() {
     } finally {
       setLoading(false);
     }
-  }, [credits, min_voicica_reserve, refreshCredits]);
+  }, [credits, min_voicica_reserve, deductCredits]);
 
   // Cash out
   const handleCashOut = useCallback(async () => {
@@ -157,7 +159,11 @@ export default function CrashGamePage() {
       if (result.success && result.data) {
         setRoundData(result.data);
         setGameState('result');
-        refreshCredits();
+        // 乐观更新余额：当前 + profit
+        const profit = result.data.profit ?? -roundData.betAmount;
+        updateCredits(credits + roundData.betAmount + profit);
+        // 延迟静默刷新真实余额（兼容多端同时操作）
+        setTimeout(() => refreshCredits(), 2000);
         // Refresh history
         const historyData = await getUserCrashHistory(10);
         setHistory(historyData);
@@ -170,7 +176,7 @@ export default function CrashGamePage() {
     } finally {
       setLoading(false);
     }
-  }, [roundData, refreshCredits]);
+  }, [roundData, credits, updateCredits]);
 
   // Handle crash (multiplier exceeded crashPoint on client)
   const handleCrash = useCallback(async () => {
@@ -181,14 +187,15 @@ export default function CrashGamePage() {
       if (result.success && result.data) {
         setRoundData(result.data);
         setGameState('result');
-        refreshCredits();
+        // 崩盘：betAmount 已在 start 时扣除，延迟刷新真实余额
+        setTimeout(() => refreshCredits(), 2000);
         const historyData = await getUserCrashHistory(10);
         setHistory(historyData);
       }
     } catch (error) {
       console.error('Expire error:', error);
     }
-  }, [roundData, refreshCredits]);
+  }, [roundData]);
 
   // Play again
   const handlePlayAgain = useCallback(() => {
