@@ -95,6 +95,8 @@ export function FirebaseAuthProvider({ children }: { children: React.ReactNode }
   // 当检测到邮箱未验证需要登出时，增加版本号
   // onAuthStateChanged 完成异步操作后检查版本号，如果不匹配则跳过状态更新
   const authStateVersionRef = React.useRef(0);
+  // 记录 onAuthStateChanged 最近同步的 token，避免 onIdTokenChanged 重复 set-token
+  const lastSyncedTokenRef = React.useRef<string | null>(null);
   const { locale } = useLanguage();
 
   // 处理 redirect 登录结果（应用内浏览器使用 redirect 方式）
@@ -141,6 +143,7 @@ export function FirebaseAuthProvider({ children }: { children: React.ReactNode }
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: idToken }),
           });
+          lastSyncedTokenRef.current = idToken;
         } catch (err) {
           console.error('[FirebaseAuth] 设置 cookie 失败:', err);
         }
@@ -193,7 +196,10 @@ export function FirebaseAuthProvider({ children }: { children: React.ReactNode }
       if (!changedUser) return;
       try {
         const idToken = await changedUser.getIdToken();
+        // 跳过 onAuthStateChanged 已同步过的 token，避免重复 set-token
+        if (idToken === lastSyncedTokenRef.current) return;
         setToken(idToken);
+        lastSyncedTokenRef.current = idToken;
 
         await fetch('/api/auth/set-token', {
           method: 'POST',

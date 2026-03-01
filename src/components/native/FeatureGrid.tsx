@@ -10,6 +10,7 @@ import {
 } from '@/config/native/createMenuConfig';
 import { type LuckyDrawIcon } from '@/config/native/luckyDrawConfig';
 import { getActiveDrawsByProduct, type ActiveDrawInfo } from '@/actions/lucky-draw';
+import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import NativeLoadingOverlay from '@/components/native/common/NativeLoadingOverlay';
 
@@ -185,6 +186,7 @@ const luckyDrawIconMap: Record<LuckyDrawIcon, React.ReactNode> = {
  */
 export default function FeatureGrid() {
   const { t } = useLanguage();
+  const { loading: authLoading } = useFirebaseAuth();
   const router = useRouter();
   const pathname = usePathname();
   const items = getAvailableMenuItems();
@@ -203,16 +205,11 @@ export default function FeatureGrid() {
   }, [router]);
 
   useEffect(() => {
+    if (authLoading) return;
     getActiveDrawsByProduct()
       .then(setActiveLuckyDraws)
       .catch(() => setActiveLuckyDraws([]));
-    const interval = setInterval(() => {
-      getActiveDrawsByProduct()
-        .then(setActiveLuckyDraws)
-        .catch(() => {});
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [authLoading]);
 
   // 获取菜单项的翻译名称
   const getItemName = (id: string, fallback: string): string => {

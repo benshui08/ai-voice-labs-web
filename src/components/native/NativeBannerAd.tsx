@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { getActiveDrawsForBanner, type ActiveDrawInfo } from '@/actions/lucky-draw';
 import { getMiningEconomyConfig } from '@/config/appConfig';
 import AdsterraBanner from './AdsterraBanner';
@@ -18,6 +19,7 @@ import LuckyDrawBanner from './LuckyDrawBanner';
 export default function NativeBannerAd() {
   const { show_home_banner } = getMiningEconomyConfig();
   const { isSubscribed } = useSubscription();
+  const { loading: authLoading } = useFirebaseAuth();
   const [activeDraws, setActiveDraws] = useState<ActiveDrawInfo[] | undefined>(undefined);
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -27,16 +29,11 @@ export default function NativeBannerAd() {
   const isDragging = useRef(false);
 
   useEffect(() => {
+    if (authLoading) return;
     getActiveDrawsForBanner()
       .then((draws) => setActiveDraws(draws))
       .catch(() => setActiveDraws([]));
-    const interval = setInterval(() => {
-      getActiveDrawsForBanner()
-        .then((draws) => setActiveDraws(draws))
-        .catch(() => {});
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [authLoading]);
 
   // Auto-rotate every 5s when multiple draws
   useEffect(() => {
