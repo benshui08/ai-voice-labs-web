@@ -19,7 +19,8 @@ import MultiplierDisplay from '@/components/native/crash-game/MultiplierDisplay'
 import BettingPanel from '@/components/native/crash-game/BettingPanel';
 import CashOutButton from '@/components/native/crash-game/CashOutButton';
 import GameResult from '@/components/native/crash-game/GameResult';
-import GameHistory from '@/components/native/crash-game/GameHistory';
+import GameHistorySheet from '@/components/native/crash-game/GameHistorySheet';
+import GameRulesSheet from '@/components/native/crash-game/GameRulesSheet';
 import GameBalanceBar from '@/components/native/GameBalanceBar';
 import { DEFAULT_CRASH_SPEED, MAX_GAME_DURATION_SECONDS } from '@/config/native/crashGameConfig';
 
@@ -39,7 +40,9 @@ export default function CrashGamePage() {
   const [loading, setLoading] = useState(false);
   const multiplierRef = useRef(1.00);
 
-  // History
+  // History & Rules sheets
+  const [showHistory, setShowHistory] = useState(false);
+  const [showRules, setShowRules] = useState(false);
   const [history, setHistory] = useState<CrashHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
 
@@ -192,9 +195,8 @@ export default function CrashGamePage() {
   }
 
   return (
-    <div className="h-dvh flex flex-col overflow-hidden">
-      {/* ── Top: Game Area (fills remaining space) ── */}
-      <div className="flex-1 flex flex-col min-h-0">
+    <>
+      <div className="h-dvh flex flex-col overflow-hidden">
         {/* Header */}
         <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-slate-950/80 border-b border-white/5">
           <div className="flex items-center gap-3">
@@ -213,6 +215,28 @@ export default function CrashGamePage() {
         {/* Balance Bar */}
         <div className="shrink-0">
           <GameBalanceBar />
+        </div>
+
+        {/* History & Rules shortcuts */}
+        <div className="shrink-0 flex items-center justify-end gap-3 px-4 pb-1">
+          <button
+            onClick={() => { refreshHistory(); setShowHistory(true); }}
+            className="flex items-center gap-1 text-xs text-white/40 hover:text-white/60 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            History
+          </button>
+          <button
+            onClick={() => setShowRules(true)}
+            className="flex items-center gap-1 text-xs text-white/40 hover:text-white/60 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Rules
+          </button>
         </div>
 
         {/* Multiplier Display — fills remaining game area */}
@@ -282,10 +306,17 @@ export default function CrashGamePage() {
         </div>
       </div>
 
-      {/* ── Bottom: History (fixed 28dvh, header sticky + list scrollable) ── */}
-      <div className="shrink-0 h-[28dvh] flex flex-col border-t border-white/10">
-        <GameHistory history={history} loading={historyLoading} onRefresh={refreshHistory} />
-      </div>
-    </div>
+      {/* Bottom Sheets */}
+      <GameHistorySheet
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+        history={history}
+        loading={historyLoading}
+      />
+      <GameRulesSheet
+        isOpen={showRules}
+        onClose={() => setShowRules(false)}
+      />
+    </>
   );
 }
