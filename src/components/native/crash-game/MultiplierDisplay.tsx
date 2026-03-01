@@ -261,7 +261,7 @@ export default function MultiplierDisplay({
       {/* Pulsing ring during play */}
       {displayState === 'playing' && (
         <div
-          className="absolute z-0 rounded-full border border-purple-500/20 animate-ping"
+          className="absolute z-0 rounded-full border border-purple-500/20 animate-ping pointer-events-none"
           style={{ width: 210, height: 210, animationDuration: '2s' }}
         />
       )}
