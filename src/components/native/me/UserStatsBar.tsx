@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import LoadingDots from '@/components/native/common/LoadingDots';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { formatCredits } from '@/utils/formatCredits';
 import { getMiningEconomyConfig } from '@/config/appConfig';
 
 interface UserStatsBarProps {
@@ -51,7 +52,7 @@ export default function UserStatsBar({
             <div>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-white font-bold text-xl leading-tight">
-                  {creditsLoading ? <LoadingDots /> : credits.toFixed(4)}
+                  {creditsLoading ? <LoadingDots /> : formatCredits(credits)}
                 </span>
                 <span className="text-amber-400/60 text-[11px] font-medium">$VOICICA</span>
               </div>
