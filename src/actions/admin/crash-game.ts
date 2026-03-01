@@ -8,7 +8,7 @@
 
 import { getDb } from '@/lib/db';
 import { crashGameConfig, crashGameRounds } from '@/db/schema';
-import { eq, sql, desc, count } from 'drizzle-orm';
+import { eq, sql, desc, count, and, like, gte, lte, type SQL } from 'drizzle-orm';
 import { verifyAdmin } from '@/lib/auth-admin';
 
 // ============================================================
@@ -157,9 +157,18 @@ export async function getAdminCrashStats(): Promise<AdminCrashStats> {
 // ============================================================
 
 /**
- * 分页查看所有轮次
+ * 分页查看所有轮次（支持筛选）
  */
-export async function getAdminCrashRounds(page: number = 1, pageSize: number = 20): Promise<{
+export interface CrashRoundsQuery {
+  page?: number;
+  pageSize?: number;
+  status?: string;
+  userId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export async function getAdminCrashRounds(query: CrashRoundsQuery = {}): Promise<{
   rounds: AdminCrashRound[];
   total: number;
   page: number;
@@ -168,28 +177,50 @@ export async function getAdminCrashRounds(page: number = 1, pageSize: number = 2
   await verifyAdmin();
   const db = await getDb();
 
+  const { page = 1, pageSize = 20, status, userId, startDate, endDate } = query;
   const offset = (page - 1) * pageSize;
 
-  const [totalResult] = await db.select({ total: count() }).from(crashGameRounds);
-  const total = totalResult?.total ?? 0;
+  // Build WHERE conditions
+  const conditions: SQL[] = [];
 
-  const rounds = await db.select({
-    id: crashGameRounds.id,
-    roundId: crashGameRounds.roundId,
-    userId: crashGameRounds.userId,
-    betAmount: crashGameRounds.betAmount,
-    crashPoint: crashGameRounds.crashPoint,
-    cashOutMultiplier: crashGameRounds.cashOutMultiplier,
-    profit: crashGameRounds.profit,
-    status: crashGameRounds.status,
-    speed: crashGameRounds.speed,
-    startedAt: crashGameRounds.startedAt,
-    createdAt: crashGameRounds.createdAt,
-  })
-    .from(crashGameRounds)
-    .orderBy(desc(crashGameRounds.createdAt))
-    .limit(pageSize)
-    .offset(offset);
+  if (status) {
+    conditions.push(eq(crashGameRounds.status, status));
+  }
+  if (userId) {
+    conditions.push(like(crashGameRounds.userId, `%${userId}%`));
+  }
+  if (startDate) {
+    conditions.push(gte(crashGameRounds.createdAt, new Date(startDate).toISOString()));
+  }
+  if (endDate) {
+    conditions.push(lte(crashGameRounds.createdAt, new Date(endDate + 'T23:59:59.999Z').toISOString()));
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [[totalResult], rounds] = await Promise.all([
+    db.select({ total: count() }).from(crashGameRounds).where(whereClause),
+    db.select({
+      id: crashGameRounds.id,
+      roundId: crashGameRounds.roundId,
+      userId: crashGameRounds.userId,
+      betAmount: crashGameRounds.betAmount,
+      crashPoint: crashGameRounds.crashPoint,
+      cashOutMultiplier: crashGameRounds.cashOutMultiplier,
+      profit: crashGameRounds.profit,
+      status: crashGameRounds.status,
+      speed: crashGameRounds.speed,
+      startedAt: crashGameRounds.startedAt,
+      createdAt: crashGameRounds.createdAt,
+    })
+      .from(crashGameRounds)
+      .where(whereClause)
+      .orderBy(desc(crashGameRounds.createdAt))
+      .limit(pageSize)
+      .offset(offset),
+  ]);
+
+  const total = totalResult?.total ?? 0;
 
   return { rounds, total, page, pageSize };
 }

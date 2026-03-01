@@ -18,30 +18,64 @@ export default function CrashGameAdminPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [roundsLoading, setRoundsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  // Filter state
+  const [statusFilter, setStatusFilter] = useState('');
+  const [userIdFilter, setUserIdFilter] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  // Load config + stats once on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const [configData, statsData] = await Promise.all([
+          getAdminCrashConfig(),
+          getAdminCrashStats(),
+        ]);
+        setConfig(configData);
+        setStats(statsData);
+      } catch (error) {
+        console.error('Failed to load crash game data:', error);
+      }
+    })();
+  }, []);
+
+  // Load rounds when page or filters change
+  const loadRounds = useCallback(async () => {
+    setRoundsLoading(true);
     try {
-      const [configData, statsData, roundsData] = await Promise.all([
-        getAdminCrashConfig(),
-        getAdminCrashStats(),
-        getAdminCrashRounds(page),
-      ]);
-      setConfig(configData);
-      setStats(statsData);
-      setRounds(roundsData.rounds);
-      setTotal(roundsData.total);
+      const result = await getAdminCrashRounds({
+        page,
+        pageSize: 20,
+        status: statusFilter || undefined,
+        userId: userIdFilter || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      });
+      setRounds(result.rounds);
+      setTotal(result.total);
     } catch (error) {
-      console.error('Failed to load crash game data:', error);
+      console.error('Failed to load rounds:', error);
     } finally {
+      setRoundsLoading(false);
       setLoading(false);
     }
-  }, [page]);
+  }, [page, statusFilter, userIdFilter, startDate, endDate]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadRounds();
+  }, [loadRounds]);
+
+  const resetFilters = () => {
+    setStatusFilter('');
+    setUserIdFilter('');
+    setStartDate('');
+    setEndDate('');
+    setPage(1);
+  };
 
   const handleSaveConfig = async () => {
     if (!config) return;
@@ -183,7 +217,57 @@ export default function CrashGameAdminPage() {
       {/* Rounds Table */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Round History ({total})</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Round History ({total})</h2>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="block">
+              <span className="text-xs text-gray-500">Status</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+              >
+                <option value="">All</option>
+                <option value="cashed_out">cashed_out</option>
+                <option value="crashed">crashed</option>
+                <option value="expired">expired</option>
+                <option value="active">active</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-xs text-gray-500">User ID</span>
+              <input
+                type="text"
+                value={userIdFilter}
+                onChange={(e) => { setUserIdFilter(e.target.value); setPage(1); }}
+                placeholder="Search user ID..."
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs text-gray-500">Start Date</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs text-gray-500">End Date</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+              />
+            </label>
+            <button
+              onClick={resetFilters}
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-600"
+            >
+              Reset
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -200,9 +284,15 @@ export default function CrashGameAdminPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {rounds.length === 0 ? (
+              {roundsLoading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-400">No rounds yet</td>
+                  <td colSpan={8} className="px-4 py-8 text-center">
+                    <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600" />
+                  </td>
+                </tr>
+              ) : rounds.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-gray-400">No rounds found</td>
                 </tr>
               ) : (
                 rounds.map((round) => (
