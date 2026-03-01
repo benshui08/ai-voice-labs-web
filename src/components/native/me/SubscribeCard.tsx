@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -8,12 +9,13 @@ import { useLanguage } from '@/contexts/LanguageContext';
  * 引导用户购买 VOICICA 代币
  */
 export default function SubscribeCard() {
+  const router = useRouter();
   const { t } = useLanguage();
 
   return (
     <div className="mx-4 mt-1">
       <button
-        onClick={() => { window.location.href = '/native/subscribe'; }}
+        onClick={() => router.push('/native/subscribe')}
         className="block relative overflow-hidden rounded-2xl p-4 w-full text-left"
         style={{ background: 'linear-gradient(135deg, rgba(180,83,9,0.3), rgba(217,119,6,0.2), rgba(245,158,11,0.15))' }}
       >

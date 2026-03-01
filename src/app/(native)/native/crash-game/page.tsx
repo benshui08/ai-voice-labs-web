@@ -46,19 +46,16 @@ export default function CrashGamePage() {
   const gameStateRef = useRef(gameState);
   gameStateRef.current = gameState;
 
-  // Load config and check for active round on mount
+  // Load config and active round (critical path — renders game UI)
   useEffect(() => {
     const init = async () => {
       try {
-        const [configData, activeResult, historyData] = await Promise.all([
+        const [configData, activeResult] = await Promise.all([
           getCrashGameConfig(),
           getActiveRound(),
-          getUserCrashHistory(20),
         ]);
 
         setConfig(configData);
-        setHistory(historyData);
-        setHistoryLoading(false);
 
         // Restore active round
         if (activeResult.success && activeResult.data) {
@@ -66,7 +63,6 @@ export default function CrashGamePage() {
             setRoundData(activeResult.data);
             setGameState('playing');
           } else if (activeResult.data.status === 'expired') {
-            // Was auto-expired
             setRoundData(activeResult.data);
             setGameState('result');
             refreshCredits();
@@ -74,11 +70,18 @@ export default function CrashGamePage() {
         }
       } catch (error) {
         console.error('Failed to initialize crash game:', error);
-        setHistoryLoading(false);
       }
     };
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Load history separately (non-blocking, below the fold)
+  useEffect(() => {
+    getUserCrashHistory(20)
+      .then(setHistory)
+      .catch((error) => console.error('Failed to load history:', error))
+      .finally(() => setHistoryLoading(false));
   }, []);
 
   // Start a new game

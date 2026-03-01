@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useCredits } from '@/contexts/CreditsContext';
@@ -21,6 +22,7 @@ import {
  * 类似 Uniswap 的自由兑换界面，深色金融风格
  */
 export default function NativeSubscribePage() {
+  const router = useRouter();
   const { user } = useFirebaseAuth();
   const { credits, loading: creditsLoading } = useCredits();
   const { t } = useLanguage();
@@ -80,7 +82,7 @@ export default function NativeSubscribePage() {
 
       {/* Close button */}
       <button
-        onClick={() => { window.location.href = '/native'; }}
+        onClick={() => router.back()}
         className="absolute left-4 z-20 w-10 h-10 flex items-center justify-center bg-white/5 backdrop-blur-sm rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-all"
         style={{ top: 'calc(var(--safe-area-inset-top, 0px) + 8px)' }}
       >
@@ -262,10 +264,7 @@ export default function NativeSubscribePage() {
       <LoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
-        onLoginSuccess={() => {
-          setShowLoginModal(false);
-          window.location.reload();
-        }}
+        onLoginSuccess={() => setShowLoginModal(false)}
       />
     </div>
   );

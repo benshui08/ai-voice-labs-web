@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import LoadingDots from '@/components/native/common/LoadingDots';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -17,11 +18,12 @@ export default function UserStatsBar({
   credits = 0,
   creditsLoading = false,
 }: UserStatsBarProps) {
+  const router = useRouter();
   const { t } = useLanguage();
 
   return (
     <button
-      onClick={() => { window.location.href = '/native/subscribe'; }}
+      onClick={() => router.push('/native/subscribe')}
       className="mx-4 flex items-center justify-center gap-2 py-2 active:opacity-70 transition-opacity"
     >
       <Image src="/logo/voicica-token.png" alt="" width={20} height={20} className="w-5 h-5" />
