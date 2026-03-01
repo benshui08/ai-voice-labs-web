@@ -238,12 +238,21 @@ export default function CrashGamePage() {
       )}
 
       {gameState === 'playing' && (
-        <CashOutButton
-          betAmount={roundData?.betAmount ?? 0}
-          currentMultiplier={currentMultiplier}
-          loading={loading}
-          onCashOut={handleCashOut}
-        />
+        <>
+          <CashOutButton
+            betAmount={roundData?.betAmount ?? 0}
+            currentMultiplier={currentMultiplier}
+            loading={loading}
+            onCashOut={handleCashOut}
+          />
+          {/* Seed hash shown DURING game for provably fair commitment */}
+          {roundData?.seedHash && (
+            <div className="mx-4 mb-3 rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+              <p className="text-[10px] text-white/30 mb-0.5">SHA-256 Hash (pre-committed)</p>
+              <p className="text-[11px] text-white/50 font-mono break-all leading-tight">{roundData.seedHash}</p>
+            </div>
+          )}
+        </>
       )}
 
       {gameState === 'result' && roundData && (
