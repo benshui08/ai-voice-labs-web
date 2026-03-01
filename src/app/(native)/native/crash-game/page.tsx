@@ -81,7 +81,7 @@ export default function CrashGamePage() {
   const refreshHistory = useCallback(async () => {
     setHistoryLoading(true);
     try {
-      const data = await getUserCrashHistory(20);
+      const data = await getUserCrashHistory(10);
       setHistory(data);
     } catch (error) {
       console.error('Failed to load history:', error);
@@ -130,7 +130,7 @@ export default function CrashGamePage() {
         setGameState('result');
         refreshCredits();
         // Refresh history
-        const historyData = await getUserCrashHistory(20);
+        const historyData = await getUserCrashHistory(10);
         setHistory(historyData);
       } else {
         alert(result.error || 'Failed to cash out');
@@ -153,7 +153,7 @@ export default function CrashGamePage() {
         setRoundData(result.data);
         setGameState('result');
         refreshCredits();
-        const historyData = await getUserCrashHistory(20);
+        const historyData = await getUserCrashHistory(10);
         setHistory(historyData);
       }
     } catch (error) {
