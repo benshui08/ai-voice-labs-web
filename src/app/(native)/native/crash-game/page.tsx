@@ -38,7 +38,12 @@ export default function CrashGamePage() {
   const router = useRouter();
   const { t } = useLanguage();
   const { credits, refreshCredits, refreshCreditsSilent, deductCredits, updateCredits } = useCredits();
-  const { navigating, startLoading } = useNavigationLoading();
+  const { navigating: goingBack, startLoading } = useNavigationLoading();
+
+  const goBack = useCallback(() => {
+    startLoading();
+    router.replace('/native');
+  }, [router, startLoading]);
 
   // Available balance (total minus reserved)
   const { min_voicica_reserve } = getConversionConfig();
@@ -237,7 +242,7 @@ export default function CrashGamePage() {
         >
           <div className="flex items-center gap-3">
             <button
-              onClick={() => { startLoading(); router.back(); }}
+              onClick={goBack}
               className="text-white/60 hover:text-white transition"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -390,7 +395,7 @@ export default function CrashGamePage() {
         />
       )}
 
-      <NativeLoadingOverlay visible={navigating} />
+      <NativeLoadingOverlay visible={goingBack} />
     </>
   );
 }
