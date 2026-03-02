@@ -154,7 +154,7 @@ export default function NativeLayout({
       <FeatureGrid />
       <ExploreSection />
     </div>
-  ), [showCrashGame]);
+  ), [showCrashGame, t]);
 
   const teamTab = useMemo(() => <ReferralPage isActive={activeTab === 'team'} />, [activeTab]);
   const meTab = useMemo(() => <MePageContent isActive={activeTab === 'me'} />, [activeTab]);
