@@ -154,9 +154,8 @@ export function shouldUseUnity(isNativePlatform: boolean, scene?: AdScene): bool
 /**
  * 判断是否应该使用 ExoClick
  * @param isNativePlatform 是否在原生平台运行
- * @param scene 广告场景
  */
-export function shouldUseExoClick(isNativePlatform: boolean, scene?: AdScene): boolean {
+export function shouldUseExoClick(isNativePlatform: boolean): boolean {
   const { provider } = rewardedAdConfig;
 
   // 强制使用 ExoClick

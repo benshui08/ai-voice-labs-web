@@ -90,7 +90,7 @@ export function useRewardedAd(scene?: AdScene): UseRewardedAdReturn {
   const useAdMobEnabled = shouldUseAdMob(isNative, scene);
   const useAppodeal = shouldUseAppodeal(isNative, scene);
   const useUnity = shouldUseUnity(isNative, scene);
-  const useExoClick = shouldUseExoClick(isNative, scene);
+  const useExoClick = shouldUseExoClick(isNative);
 
   // 当前使用的提供商
   const provider: 'exoclick' | 'admob' | 'appodeal' | 'unity' | 'none' = (() => {
