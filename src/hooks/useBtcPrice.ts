@@ -28,7 +28,7 @@ export function useBtcPrice(): UseBtcPriceResult {
   const [isConnected, setIsConnected] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastUpdateRef = useRef(0);
   const historyRef = useRef<PriceTick[]>([]);
   const mountedRef = useRef(true);

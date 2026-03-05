@@ -69,7 +69,7 @@ export default function BullBearPage() {
   // Refs
   const gameStateRef = useRef(gameState);
   gameStateRef.current = gameState;
-  const countdownTimerRef = useRef<ReturnType<typeof setInterval>>();
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   // Multipliers map from config
   const multipliers: Record<number, number> = config ? {
