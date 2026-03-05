@@ -86,6 +86,14 @@ export const appConfig: AppConfig = {
       IN: 2, VN: 3,
     },
     default_ecpm_usd: 5,
+    // Unity Ads 激励视频（每日任务场景，约 AdMob 60%）
+    unity_estimated_ecpm_by_country: {
+      US: 15, CA: 13, AU: 12, GB: 11, DE: 10, JP: 12, KR: 11,
+      TW: 7, HK: 8, SG: 7,
+      TH: 4, MY: 3, PH: 2.5, ID: 2,
+      IN: 1.2, VN: 2,
+    },
+    unity_default_ecpm_usd: 3,
     // Web 端 ExoClick VAST In-Stream（每次播 2 个 zone）
     web_estimated_ecpm_by_country: {
       US: 0.10, CA: 0.10, AU: 0.10, GB: 0.10, DE: 0.10, JP: 0.10, KR: 0.10,

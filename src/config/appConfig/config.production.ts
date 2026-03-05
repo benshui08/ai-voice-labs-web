@@ -94,6 +94,22 @@ export const appConfig: AppConfig = {
       NG: 2, KE: 2, EG: 3, ZA: 5,
     },
     default_ecpm_usd: 5,
+    // Unity Ads 激励视频（每日任务场景，eCPM 约为 AdMob 的 60%）
+    unity_estimated_ecpm_by_country: {
+      // T1 高收益国家
+      US: 15, CA: 13, AU: 12, GB: 11, DE: 10, FR: 10, JP: 12, KR: 11,
+      NZ: 10, CH: 12, NO: 11, SE: 10, DK: 10, AT: 9, NL: 9, BE: 8,
+      // T2 中等收益
+      TW: 7, HK: 8, SG: 7, IL: 7,
+      BR: 5, MX: 4, AR: 4, CL: 4, CO: 4,
+      TH: 4, MY: 3, PH: 2.5, ID: 2,
+      SA: 6, AE: 7, TR: 3, PL: 4, CZ: 4, RO: 3,
+      // T3 低收益国家
+      IN: 1.2, PK: 1, BD: 0.6, LK: 1.2,
+      VN: 2, MM: 1, KH: 1.2, LA: 1,
+      NG: 1.2, KE: 1.2, EG: 2, ZA: 3,
+    },
+    unity_default_ecpm_usd: 3,
     // Web 端 ExoClick VAST In-Stream（eCPM 远低于 AdMob，单位 USD）
     // 每次奖励播 2 个 zone，所以实际收入 = eCPM × 2 / 1000
     web_estimated_ecpm_by_country: {

@@ -12,6 +12,7 @@ import com.getcapacitor.BridgeActivity;
 import ai.voicica.app.plugins.AppOpenAdPlugin;
 import ai.voicica.app.plugins.GooglePlayBillingPlugin;
 import ai.voicica.app.plugins.NativeAdPlugin;
+import ai.voicica.app.plugins.UnityRewardedAdPlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -28,6 +29,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AppOpenAdPlugin.class);
         registerPlugin(GooglePlayBillingPlugin.class);
         registerPlugin(NativeAdPlugin.class);
+        registerPlugin(UnityRewardedAdPlugin.class);
 
         super.onCreate(savedInstanceState);
 

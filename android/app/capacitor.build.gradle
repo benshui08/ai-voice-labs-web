@@ -27,6 +27,7 @@ dependencies {
     implementation project(':capacitor-toast')
     implementation project(':capawesome-capacitor-app-update')
     implementation project(':m430-capacitor-app-install')
+    implementation project(':capacitor-unity-ads')
 
 }
 

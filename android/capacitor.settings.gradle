@@ -55,3 +55,6 @@ project(':capawesome-capacitor-app-update').projectDir = new File('../node_modul
 
 include ':m430-capacitor-app-install'
 project(':m430-capacitor-app-install').projectDir = new File('../node_modules/@m430/capacitor-app-install/android')
+
+include ':capacitor-unity-ads'
+project(':capacitor-unity-ads').projectDir = new File('../node_modules/capacitor-unity-ads/android')

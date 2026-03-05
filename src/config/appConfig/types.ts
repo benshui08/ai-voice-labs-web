@@ -87,6 +87,10 @@ export interface MiningEconomyConfig {
   estimated_ecpm_by_country: Record<string, number>;
   /** 未知国家的默认 eCPM（USD），原生端 */
   default_ecpm_usd: number;
+  /** 按国家估算 eCPM（USD），原生端 Unity Ads 激励视频（每日任务场景） */
+  unity_estimated_ecpm_by_country: Record<string, number>;
+  /** 未知国家的默认 eCPM（USD），Unity Ads */
+  unity_default_ecpm_usd: number;
   /** 按国家估算 eCPM（USD），Web 端 ExoClick VAST In-Stream */
   web_estimated_ecpm_by_country: Record<string, number>;
   /** 未知国家的默认 eCPM（USD），Web 端 */

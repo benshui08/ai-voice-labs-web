@@ -192,7 +192,7 @@ export function useRewardedAd(scene?: AdScene): UseRewardedAdReturn {
 
     (async () => {
       try {
-        const { UnityAds } = await import('capacitor-unity-ads');
+        const { UnityRewardedAd } = await import('@/plugins/unity-rewarded-ad');
         const platform = Capacitor.getPlatform() as 'android' | 'ios';
         const gameId = getUnityGameId(platform);
 
@@ -204,7 +204,7 @@ export function useRewardedAd(scene?: AdScene): UseRewardedAdReturn {
         }
 
         // 初始化 SDK
-        await UnityAds.initialize({
+        await UnityRewardedAd.initialize({
           gameId,
           testMode: unityConfig.testMode,
         });
@@ -213,7 +213,7 @@ export function useRewardedAd(scene?: AdScene): UseRewardedAdReturn {
 
         // 预加载激励视频
         const placementId = getUnityRewardedPlacementId(platform);
-        await UnityAds.loadRewardedVideo({ placementId });
+        await UnityRewardedAd.loadAd({ placementId });
         unityReadyRef.current = true;
         setStatus('ready');
         console.log('[RewardedAd] Unity rewarded video loaded, placementId:', placementId);
@@ -386,7 +386,7 @@ export function useRewardedAd(scene?: AdScene): UseRewardedAdReturn {
       try {
         setStatus('loading');
 
-        const { UnityAds } = await import('capacitor-unity-ads');
+        const { UnityRewardedAd } = await import('@/plugins/unity-rewarded-ad');
         const platform = Capacitor.getPlatform() as 'android' | 'ios';
         const placementId = getUnityRewardedPlacementId(platform);
 
@@ -402,7 +402,7 @@ export function useRewardedAd(scene?: AdScene): UseRewardedAdReturn {
             return { success: false, reason: 'error', message: 'Unity Game ID not configured' };
           }
 
-          await UnityAds.initialize({
+          await UnityRewardedAd.initialize({
             gameId,
             testMode: unityConfig.testMode,
           });
@@ -411,15 +411,15 @@ export function useRewardedAd(scene?: AdScene): UseRewardedAdReturn {
         }
 
         // 检查广告是否已加载
-        const { loaded } = await UnityAds.isRewardedVideoLoaded();
+        const { loaded } = await UnityRewardedAd.isLoaded();
         if (!loaded) {
           console.log('[RewardedAd] Unity ad not loaded, loading...');
-          await UnityAds.loadRewardedVideo({ placementId });
+          await UnityRewardedAd.loadAd({ placementId });
 
           // 等待加载完成（最多 15 秒）
           let waited = 0;
           while (waited < 15000) {
-            const check = await UnityAds.isRewardedVideoLoaded();
+            const check = await UnityRewardedAd.isLoaded();
             if (check.loaded) {
               console.log('[RewardedAd] Unity ad loaded after', waited, 'ms');
               break;
@@ -432,24 +432,24 @@ export function useRewardedAd(scene?: AdScene): UseRewardedAdReturn {
         setStatus('showing');
 
         // 显示广告
-        const result = await UnityAds.showRewardedVideo();
+        const result = await UnityRewardedAd.showAd({ placementId });
 
-        if (result.success) {
+        if (result.rewarded) {
           setStatus('rewarded');
           console.log('[RewardedAd] Unity reward earned:', result);
 
           // 预加载下一个广告
-          UnityAds.loadRewardedVideo({ placementId }).catch((err) => {
+          UnityRewardedAd.loadAd({ placementId }).catch((err: unknown) => {
             console.warn('[RewardedAd] Unity preload next ad failed:', err);
           });
 
           return { success: true, reason: 'rewarded' };
         } else {
           setStatus('idle');
-          console.warn('[RewardedAd] Unity ad not rewarded');
+          console.warn('[RewardedAd] Unity ad not rewarded, state:', result.state);
 
           // 预加载下一个广告
-          UnityAds.loadRewardedVideo({ placementId }).catch((err) => {
+          UnityRewardedAd.loadAd({ placementId }).catch((err: unknown) => {
             console.warn('[RewardedAd] Unity preload next ad failed:', err);
           });
 
