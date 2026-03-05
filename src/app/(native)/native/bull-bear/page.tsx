@@ -123,9 +123,9 @@ export default function BullBearPage() {
 
         // Play sound on each new second
         if (remaining !== prevRemaining && remaining > 0) {
-          if (remaining <= 5) {
+          if (remaining <= 10) {
             playUrgentTick();
-          } else if (remaining <= 10) {
+          } else {
             playTick();
           }
         }
