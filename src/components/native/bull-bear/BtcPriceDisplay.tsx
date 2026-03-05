@@ -44,6 +44,19 @@ export default function BtcPriceDisplay({
     : true;
   const chartUp = isPlaying ? (priceChange ? priceChange.isUp : isUp) : isUp;
 
+  // Track tick-by-tick direction (compare last two prices)
+  const prevPriceRef = useRef<number | null>(null);
+  const tickDirection = useMemo(() => {
+    if (!price || prevPriceRef.current === null) return 'neutral' as const;
+    if (price > prevPriceRef.current) return 'up' as const;
+    if (price < prevPriceRef.current) return 'down' as const;
+    return 'neutral' as const;
+  }, [price]);
+  // Update prev price after computing direction
+  useEffect(() => {
+    if (price) prevPriceRef.current = price;
+  }, [price]);
+
   // Initialize chart once
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -180,11 +193,10 @@ export default function BtcPriceDisplay({
 
       {/* Price */}
       <div className="text-center">
-        <div className={`text-[28px] leading-none font-black tabular-nums tracking-tight ${
-          !isPlaying ? 'text-white' :
-          priceChange?.isUp ? 'text-green-400' :
-          priceChange?.isDown ? 'text-red-400' :
-          'text-white'
+        <div className={`text-[28px] leading-none font-black tabular-nums tracking-tight transition-colors duration-300 ${
+          isPlaying
+            ? (priceChange?.isUp ? 'text-green-400' : priceChange?.isDown ? 'text-red-400' : 'text-white')
+            : (tickDirection === 'up' ? 'text-green-400' : tickDirection === 'down' ? 'text-red-400' : 'text-white')
         }`}>
           {price ? `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
         </div>
