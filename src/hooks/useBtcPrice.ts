@@ -5,7 +5,7 @@ import { BINANCE_WS_URL, WS_RECONNECT_DELAY_MS, PRICE_CHART_HISTORY_SECONDS } fr
 
 export interface PriceTick {
   price: number;
-  time: number; // Date.now()
+  time: number; // Unix seconds (for lightweight-charts)
 }
 
 interface UseBtcPriceResult {
@@ -17,10 +17,9 @@ interface UseBtcPriceResult {
 /**
  * Binance WebSocket hook for real-time BTC/USDT price
  *
- * - 自动重连
- * - throttle 200ms 更新 React state
- * - 保留最近 PRICE_CHART_HISTORY_SECONDS 秒的 tick
- * - 仅在组件 mount 时连接，unmount 时关闭
+ * - 逐笔交易聚合为 1 秒 K 线（取每秒最后一笔价格）
+ * - 保留最近 PRICE_CHART_HISTORY_SECONDS 秒
+ * - 自动重连，unmount 时关闭
  */
 export function useBtcPrice(): UseBtcPriceResult {
   const [price, setPrice] = useState<number | null>(null);
@@ -29,9 +28,35 @@ export function useBtcPrice(): UseBtcPriceResult {
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const lastUpdateRef = useRef(0);
-  const historyRef = useRef<PriceTick[]>([]);
   const mountedRef = useRef(true);
+
+  // 1-second aggregation: keep a map of { unixSecond → lastPrice }
+  const candleMapRef = useRef<Map<number, number>>(new Map());
+  const latestPriceRef = useRef<number>(0);
+  const flushTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
+
+  /** Flush candle map → sorted array, trim old entries, push to React state */
+  const flush = useCallback(() => {
+    if (!mountedRef.current) return;
+    const now = Math.floor(Date.now() / 1000);
+    const cutoff = now - PRICE_CHART_HISTORY_SECONDS;
+    const map = candleMapRef.current;
+
+    // Remove old entries
+    for (const key of map.keys()) {
+      if (key < cutoff) map.delete(key);
+    }
+
+    // Convert to sorted array
+    const arr: PriceTick[] = [];
+    const sortedKeys = [...map.keys()].sort((a, b) => a - b);
+    for (const sec of sortedKeys) {
+      arr.push({ time: sec, price: map.get(sec)! });
+    }
+
+    setPrice(latestPriceRef.current || null);
+    setPriceHistory(arr);
+  }, []);
 
   const connect = useCallback(() => {
     if (!mountedRef.current) return;
@@ -52,21 +77,13 @@ export function useBtcPrice(): UseBtcPriceResult {
           const newPrice = parseFloat(data.p);
           if (isNaN(newPrice)) return;
 
-          const now = Date.now();
-          const tick: PriceTick = { price: newPrice, time: now };
+          latestPriceRef.current = newPrice;
 
-          // Update history ref (trim old ticks)
-          const cutoff = now - PRICE_CHART_HISTORY_SECONDS * 1000;
-          historyRef.current = [...historyRef.current.filter(t => t.time > cutoff), tick];
-
-          // Throttle React state updates to 200ms
-          if (now - lastUpdateRef.current >= 200) {
-            lastUpdateRef.current = now;
-            setPrice(newPrice);
-            setPriceHistory([...historyRef.current]);
-          }
+          // Aggregate into 1-second buckets
+          const sec = Math.floor(Date.now() / 1000);
+          candleMapRef.current.set(sec, newPrice);
         } catch {
-          // ignore parse errors
+          // ignore
         }
       };
 
@@ -89,16 +106,20 @@ export function useBtcPrice(): UseBtcPriceResult {
     mountedRef.current = true;
     connect();
 
+    // Flush aggregated data to React state every 500ms
+    flushTimerRef.current = setInterval(flush, 500);
+
     return () => {
       mountedRef.current = false;
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      if (flushTimerRef.current) clearInterval(flushTimerRef.current);
       if (wsRef.current) {
         wsRef.current.onclose = null;
         wsRef.current.close();
         wsRef.current = null;
       }
     };
-  }, [connect]);
+  }, [connect, flush]);
 
   return { price, priceHistory, isConnected };
 }

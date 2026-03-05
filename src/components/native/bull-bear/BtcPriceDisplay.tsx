@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
+import { createChart, AreaSeries, type IChartApi, type ISeriesApi, ColorType, type LineData, type Time } from 'lightweight-charts';
 import type { PriceTick } from '@/hooks/useBtcPrice';
 
 interface BtcPriceDisplayProps {
@@ -8,13 +9,13 @@ interface BtcPriceDisplayProps {
   priceHistory: PriceTick[];
   isConnected: boolean;
   entryPrice?: number;
-  countdown?: number; // seconds remaining
-  direction?: string; // 'bull' | 'bear'
+  countdown?: number;
+  direction?: string;
   isPlaying: boolean;
 }
 
 /**
- * 实时 BTC 价格显示 + Mini 折线图 + 倒计时 + Entry 基准线
+ * 实时 BTC 价格显示 + TradingView 专业图表
  */
 export default function BtcPriceDisplay({
   price,
@@ -25,7 +26,12 @@ export default function BtcPriceDisplay({
   direction,
   isPlaying,
 }: BtcPriceDisplayProps) {
-  // Price change indicator
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
+  const entryLineRef = useRef<ReturnType<ISeriesApi<'Area'>['createPriceLine']> | null>(null);
+
+  // Determine color based on trend
   const priceChange = useMemo(() => {
     if (!entryPrice || !price) return null;
     const diff = price - entryPrice;
@@ -33,93 +39,156 @@ export default function BtcPriceDisplay({
     return { diff, pct, isUp: diff > 0, isDown: diff < 0 };
   }, [price, entryPrice]);
 
-  // SVG mini chart
-  const chartPath = useMemo(() => {
-    if (priceHistory.length < 2) return '';
-    const prices = priceHistory.map(t => t.price);
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    const range = max - min || 1;
-    const w = 280;
-    const h = 100;
-    const padding = 4;
+  const isUp = priceHistory.length >= 2
+    ? priceHistory[priceHistory.length - 1].price >= priceHistory[0].price
+    : true;
+  const chartUp = isPlaying ? (priceChange ? priceChange.isUp : isUp) : isUp;
 
-    return prices.map((p, i) => {
-      const x = padding + (i / (prices.length - 1)) * (w - padding * 2);
-      const y = h - padding - ((p - min) / range) * (h - padding * 2);
-      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
-  }, [priceHistory]);
+  // Initialize chart once
+  useEffect(() => {
+    if (!chartContainerRef.current) return;
 
-  // Entry price line Y position
-  const entryLineY = useMemo(() => {
-    if (!entryPrice || priceHistory.length < 2) return null;
-    const prices = priceHistory.map(t => t.price);
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    const range = max - min || 1;
-    const h = 100;
-    const padding = 4;
-    return h - padding - ((entryPrice - min) / range) * (h - padding * 2);
-  }, [entryPrice, priceHistory]);
+    const chart = createChart(chartContainerRef.current, {
+      width: chartContainerRef.current.clientWidth,
+      height: 160,
+      layout: {
+        background: { type: ColorType.Solid, color: 'transparent' },
+        textColor: 'rgba(255,255,255,0.3)',
+        fontSize: 10,
+      },
+      grid: {
+        vertLines: { color: 'rgba(255,255,255,0.03)' },
+        horzLines: { color: 'rgba(255,255,255,0.03)' },
+      },
+      rightPriceScale: {
+        borderVisible: false,
+        scaleMargins: { top: 0.1, bottom: 0.05 },
+      },
+      timeScale: {
+        borderVisible: false,
+        timeVisible: true,
+        secondsVisible: true,
+        rightOffset: 3,
+        fixLeftEdge: false,
+        fixRightEdge: true,
+      },
+      crosshair: {
+        mode: 0, // Normal
+        vertLine: { visible: false },
+        horzLine: {
+          color: 'rgba(255,255,255,0.15)',
+          labelVisible: false,
+        },
+      },
+      handleScroll: false,
+      handleScale: false,
+    });
+
+    const series = chart.addSeries(AreaSeries, {
+      lineColor: '#4ade80',
+      topColor: 'rgba(74, 222, 128, 0.2)',
+      bottomColor: 'rgba(74, 222, 128, 0)',
+      lineWidth: 2,
+      crosshairMarkerVisible: false,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+
+    chartRef.current = chart;
+    seriesRef.current = series;
+
+    // Responsive resize
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        chart.applyOptions({ width: entry.contentRect.width });
+      }
+    });
+    ro.observe(chartContainerRef.current);
+
+    return () => {
+      ro.disconnect();
+      chart.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
+      entryLineRef.current = null;
+    };
+  }, []);
+
+  // Update series data + colors when priceHistory changes
+  useEffect(() => {
+    const series = seriesRef.current;
+    if (!series || priceHistory.length < 1) return;
+
+    const data: LineData<Time>[] = priceHistory.map(t => ({
+      time: t.time as Time,
+      value: t.price,
+    }));
+
+    series.setData(data);
+
+    // Update colors based on trend
+    const lineColor = chartUp ? '#4ade80' : '#f87171';
+    const topColor = chartUp ? 'rgba(74, 222, 128, 0.2)' : 'rgba(248, 113, 113, 0.2)';
+    const bottomColor = chartUp ? 'rgba(74, 222, 128, 0)' : 'rgba(248, 113, 113, 0)';
+    series.applyOptions({ lineColor, topColor, bottomColor });
+  }, [priceHistory, chartUp]);
+
+  // Entry price line
+  useEffect(() => {
+    const series = seriesRef.current;
+    if (!series) return;
+
+    // Remove old line
+    if (entryLineRef.current) {
+      series.removePriceLine(entryLineRef.current);
+      entryLineRef.current = null;
+    }
+
+    // Add new line if playing
+    if (isPlaying && entryPrice) {
+      entryLineRef.current = series.createPriceLine({
+        price: entryPrice,
+        color: '#fbbf24',
+        lineWidth: 1,
+        lineStyle: 2, // Dashed
+        axisLabelVisible: true,
+        title: 'Entry',
+      });
+    }
+  }, [isPlaying, entryPrice]);
 
   return (
-    <div className="flex flex-col items-center justify-center w-full px-4 gap-3">
+    <div className="flex flex-col items-center justify-center w-full px-2 gap-2">
       {/* Connection indicator */}
       <div className="flex items-center gap-1.5">
-        <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'} animate-pulse`} />
-        <span className="text-[10px] text-white/30 uppercase tracking-wider">BTC/USDT</span>
+        <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'} ${isConnected ? 'animate-pulse' : ''}`} />
+        <span className="text-[10px] text-white/30 uppercase tracking-wider font-medium">BTC/USDT</span>
       </div>
 
       {/* Price */}
       <div className="text-center">
-        <div className={`text-4xl font-black tabular-nums ${
+        <div className={`text-[42px] leading-none font-black tabular-nums tracking-tight ${
           !isPlaying ? 'text-white' :
           priceChange?.isUp ? 'text-green-400' :
           priceChange?.isDown ? 'text-red-400' :
           'text-white'
         }`}>
-          {price ? `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '...'}
+          {price ? `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
         </div>
         {isPlaying && priceChange && (
-          <div className={`text-sm font-semibold mt-1 ${priceChange.isUp ? 'text-green-400' : priceChange.isDown ? 'text-red-400' : 'text-white/40'}`}>
+          <div className={`text-sm font-semibold mt-1.5 ${priceChange.isUp ? 'text-green-400' : priceChange.isDown ? 'text-red-400' : 'text-white/40'}`}>
             {priceChange.diff >= 0 ? '+' : ''}{priceChange.diff.toFixed(2)} ({priceChange.pct >= 0 ? '+' : ''}{priceChange.pct.toFixed(4)}%)
           </div>
         )}
       </div>
 
-      {/* Mini Chart */}
-      {priceHistory.length >= 2 && (
-        <div className="w-full max-w-[280px] h-[100px] relative">
-          <svg width="280" height="100" viewBox="0 0 280 100" className="w-full h-full">
-            {/* Chart line */}
-            <path
-              d={chartPath}
-              fill="none"
-              stroke={priceChange?.isUp ? '#4ade80' : priceChange?.isDown ? '#f87171' : '#a78bfa'}
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            {/* Entry price line */}
-            {isPlaying && entryLineY != null && (
-              <line
-                x1="0" y1={entryLineY}
-                x2="280" y2={entryLineY}
-                stroke="#fbbf24"
-                strokeWidth="1"
-                strokeDasharray="4,4"
-                opacity="0.6"
-              />
-            )}
-          </svg>
-        </div>
-      )}
+      {/* TradingView Chart */}
+      <div ref={chartContainerRef} className="w-full" />
 
       {/* Countdown + Direction indicator during play */}
       {isPlaying && countdown != null && (
         <div className="flex items-center gap-3">
-          <span className={`text-xs font-bold uppercase px-2 py-1 rounded ${
+          <span className={`text-xs font-bold uppercase px-2.5 py-1 rounded-md ${
             direction === 'bull' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
           }`}>
             {direction === 'bull' ? '↑ BULL' : '↓ BEAR'}
