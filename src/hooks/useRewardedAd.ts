@@ -3,20 +3,18 @@
 /**
  * 统一激励广告 Hook
  *
- * 根据配置自动切换 ExoClick（Web）、AdMob（原生）或 Appodeal（原生）
+ * 根据配置自动切换 ExoClick（Web）、AdMob（原生）、Appodeal（原生）或 Unity Ads（原生）
+ * 支持按场景指定不同的原生提供商（如：每日任务用 Unity，其他场景用 AdMob）
  *
  * AdMob 使用 AdMobContext 在 App 启动时初始化，确保第一个广告能快速加载。
  *
  * 使用方式：
  * ```tsx
+ * // 默认场景（AI Creative Tools 等）→ AdMob
  * const { showRewardedAd, isReady, provider } = useRewardedAd();
  *
- * const handleWatchAd = async () => {
- *   const success = await showRewardedAd();
- *   if (success) {
- *     // 发放奖励
- *   }
- * };
+ * // 每日任务场景 → Unity Ads
+ * const { showRewardedAd, isReady, provider } = useRewardedAd('daily_tasks');
  * ```
  */
 
@@ -25,11 +23,14 @@ import { Capacitor } from '@capacitor/core';
 import {
   shouldUseAdMob,
   shouldUseAppodeal,
+  shouldUseUnity,
   shouldUseExoClick,
+  type AdScene,
 } from '@/config/ads';
 import { exoclickConfig } from '@/config/ads/exoclick';
 import { admobConfig } from '@/config/ads/admob';
 import { appodealConfig, getAppodealAppKey } from '@/config/ads/appodeal';
+import { unityConfig, getUnityGameId, getUnityRewardedPlacementId } from '@/config/ads/unity';
 import { useAdMob } from '@/contexts/AdMobContext';
 import { useExoClickAd } from './useExoClickAd';
 
@@ -49,7 +50,7 @@ interface UseRewardedAdReturn {
   /** 当前状态 */
   status: RewardedAdStatus;
   /** 当前使用的广告提供商 */
-  provider: 'exoclick' | 'admob' | 'appodeal' | 'none';
+  provider: 'exoclick' | 'admob' | 'appodeal' | 'unity' | 'none';
   /** 是否准备好显示广告 */
   isReady: boolean;
   /** 错误信息 */
@@ -60,14 +61,17 @@ interface UseRewardedAdReturn {
 
 /**
  * 统一激励广告 Hook
+ * @param scene 广告场景，用于按场景选择不同的原生提供商
  */
-export function useRewardedAd(): UseRewardedAdReturn {
+export function useRewardedAd(scene?: AdScene): UseRewardedAdReturn {
   const [status, setStatus] = useState<RewardedAdStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [AppodealPlugin, setAppodealPlugin] = useState<typeof import('@/plugins/appodeal').Appodeal | null>(null);
 
   const exoclickReadyRef = useRef(false);
   const appodealReadyRef = useRef(false);
+  const unityReadyRef = useRef(false);
+  const unityInitializedRef = useRef(false);
 
   // 使用 AdMob Context（在 App 启动时已初始化）
   const {
@@ -83,12 +87,14 @@ export function useRewardedAd(): UseRewardedAdReturn {
 
   // 检测平台
   const isNative = Capacitor.isNativePlatform();
-  const useAdMobEnabled = shouldUseAdMob(isNative);
-  const useAppodeal = shouldUseAppodeal(isNative);
-  const useExoClick = shouldUseExoClick(isNative);
+  const useAdMobEnabled = shouldUseAdMob(isNative, scene);
+  const useAppodeal = shouldUseAppodeal(isNative, scene);
+  const useUnity = shouldUseUnity(isNative, scene);
+  const useExoClick = shouldUseExoClick(isNative, scene);
 
   // 当前使用的提供商
-  const provider: 'exoclick' | 'admob' | 'appodeal' | 'none' = (() => {
+  const provider: 'exoclick' | 'admob' | 'appodeal' | 'unity' | 'none' = (() => {
+    if (useUnity && unityConfig.enabled) return 'unity';
     if (useAppodeal && appodealConfig.enabled) return 'appodeal';
     if (useAdMobEnabled && admobConfig.enabled) return 'admob';
     if (useExoClick && exoclickConfig.enabled) return 'exoclick';
@@ -176,6 +182,47 @@ export function useRewardedAd(): UseRewardedAdReturn {
       .catch((err) => {
         console.error('[RewardedAd] Appodeal module load failed:', err);
       });
+  }, [provider, isNative]);
+
+  // ==================== Unity Ads 初始化 ====================
+  useEffect(() => {
+    if (provider !== 'unity') return;
+    if (!isNative) return;
+    if (unityInitializedRef.current) return;
+
+    (async () => {
+      try {
+        const { UnityAds } = await import('capacitor-unity-ads');
+        const platform = Capacitor.getPlatform() as 'android' | 'ios';
+        const gameId = getUnityGameId(platform);
+
+        if (!gameId) {
+          console.warn('[RewardedAd] No Unity Game ID for platform:', platform);
+          setError('Unity Game ID not configured');
+          setStatus('error');
+          return;
+        }
+
+        // 初始化 SDK
+        await UnityAds.initialize({
+          gameId,
+          testMode: unityConfig.testMode,
+        });
+        unityInitializedRef.current = true;
+        console.log('[RewardedAd] Unity Ads initialized, gameId:', gameId, 'testMode:', unityConfig.testMode);
+
+        // 预加载激励视频
+        const placementId = getUnityRewardedPlacementId(platform);
+        await UnityAds.loadRewardedVideo({ placementId });
+        unityReadyRef.current = true;
+        setStatus('ready');
+        console.log('[RewardedAd] Unity rewarded video loaded, placementId:', placementId);
+      } catch (err) {
+        console.error('[RewardedAd] Unity Ads init failed:', err);
+        setError('Unity Ads initialization failed');
+        setStatus('error');
+      }
+    })();
   }, [provider, isNative]);
 
   // ==================== 显示广告 ====================
@@ -334,6 +381,88 @@ export function useRewardedAd(): UseRewardedAdReturn {
       }
     }
 
+    // ---- Unity Ads ----
+    if (provider === 'unity') {
+      try {
+        setStatus('loading');
+
+        const { UnityAds } = await import('capacitor-unity-ads');
+        const platform = Capacitor.getPlatform() as 'android' | 'ios';
+        const placementId = getUnityRewardedPlacementId(platform);
+
+        // 如果 SDK 未初始化，初始化它
+        if (!unityInitializedRef.current) {
+          console.log('[RewardedAd] Unity Ads not initialized, initializing now...');
+          const gameId = getUnityGameId(platform);
+
+          if (!gameId) {
+            console.warn('[RewardedAd] No Unity Game ID for platform:', platform);
+            setError('Unity Game ID not configured');
+            setStatus('error');
+            return { success: false, reason: 'error', message: 'Unity Game ID not configured' };
+          }
+
+          await UnityAds.initialize({
+            gameId,
+            testMode: unityConfig.testMode,
+          });
+          unityInitializedRef.current = true;
+          console.log('[RewardedAd] Unity Ads initialized on-demand');
+        }
+
+        // 检查广告是否已加载
+        const { loaded } = await UnityAds.isRewardedVideoLoaded();
+        if (!loaded) {
+          console.log('[RewardedAd] Unity ad not loaded, loading...');
+          await UnityAds.loadRewardedVideo({ placementId });
+
+          // 等待加载完成（最多 15 秒）
+          let waited = 0;
+          while (waited < 15000) {
+            const check = await UnityAds.isRewardedVideoLoaded();
+            if (check.loaded) {
+              console.log('[RewardedAd] Unity ad loaded after', waited, 'ms');
+              break;
+            }
+            await new Promise((r) => setTimeout(r, 200));
+            waited += 200;
+          }
+        }
+
+        setStatus('showing');
+
+        // 显示广告
+        const result = await UnityAds.showRewardedVideo();
+
+        if (result.success) {
+          setStatus('rewarded');
+          console.log('[RewardedAd] Unity reward earned:', result);
+
+          // 预加载下一个广告
+          UnityAds.loadRewardedVideo({ placementId }).catch((err) => {
+            console.warn('[RewardedAd] Unity preload next ad failed:', err);
+          });
+
+          return { success: true, reason: 'rewarded' };
+        } else {
+          setStatus('idle');
+          console.warn('[RewardedAd] Unity ad not rewarded');
+
+          // 预加载下一个广告
+          UnityAds.loadRewardedVideo({ placementId }).catch((err) => {
+            console.warn('[RewardedAd] Unity preload next ad failed:', err);
+          });
+
+          return { success: false, reason: 'skipped' };
+        }
+      } catch (err) {
+        console.error('[RewardedAd] Unity show failed:', err);
+        setError('Failed to show ad');
+        setStatus('error');
+        return { success: false, reason: 'error', message: 'Failed to show ad' };
+      }
+    }
+
     return { success: false, reason: 'error', message: 'No ad provider available' };
   }, [provider, AdMob, AppodealPlugin, admobIsReady, admobRewarded, resetAdMobRewarded, prepareAdMobAd, showExoClickAd]);
 
@@ -342,7 +471,8 @@ export function useRewardedAd(): UseRewardedAdReturn {
     provider === 'none' ||
     (provider === 'exoclick' && exoclickReadyRef.current) ||
     (provider === 'admob' && admobIsReady) ||
-    (provider === 'appodeal' && appodealReadyRef.current);
+    (provider === 'appodeal' && appodealReadyRef.current) ||
+    (provider === 'unity' && unityReadyRef.current);
 
   return {
     status,

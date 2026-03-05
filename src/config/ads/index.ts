@@ -5,7 +5,8 @@
  * - ExoClick: Web 端激励广告（VAST In-Stream）
  * - AdMob: 移动端广告（激励广告、插页式广告）
  * - Appodeal: 移动端广告聚合平台
- * - Rewarded: 激励广告统一配置（ExoClick/AdMob/Appodeal 切换）
+ * - Unity Ads: 移动端激励广告（每日任务场景）
+ * - Rewarded: 激励广告统一配置（ExoClick/AdMob/Appodeal/Unity 按场景切换）
  */
 
 // AdSense (Web 展示广告)
@@ -52,6 +53,15 @@ export {
   type AppodealConfig,
 } from './appodeal';
 
+// Unity Ads (Mobile 激励广告 - 每日任务场景)
+export {
+  unityConfig,
+  getUnityGameId,
+  isUnityEnabled,
+  getUnityRewardedPlacementId,
+  type UnityAdsConfig,
+} from './unity';
+
 // 激励广告统一配置
 export {
   rewardedAdConfig,
@@ -59,10 +69,12 @@ export {
   getNativeAdProvider,
   shouldUseAdMob,
   shouldUseAppodeal,
+  shouldUseUnity,
   shouldUseExoClick,
   type RewardedAdProvider,
   type NativeAdProvider,
   type RewardedAdConfig,
+  type AdScene,
 } from './rewarded';
 
 // Adsterra (Web Smart Link + Native Banner)
