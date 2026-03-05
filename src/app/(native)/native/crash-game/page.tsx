@@ -31,6 +31,7 @@ import { consumeCrashGamePrefetch } from '@/lib/crashGamePrefetch';
 import { useNavigationLoading } from '@/hooks/useNavigationLoading';
 import NativeLoadingOverlay from '@/components/native/common/NativeLoadingOverlay';
 import { Copy } from 'lucide-react';
+import { playCashOut, playCrash } from '@/lib/countdownSound';
 
 type GameState = 'idle' | 'betting' | 'playing' | 'result';
 
@@ -165,6 +166,7 @@ export default function CrashGamePage() {
       if (result.success && result.data) {
         setRoundData(result.data);
         setGameState('result');
+        playCashOut();
         // 乐观更新余额：当前 + profit
         const profit = result.data.profit ?? -roundData.betAmount;
         updateCredits(credits + roundData.betAmount + profit);
@@ -185,6 +187,7 @@ export default function CrashGamePage() {
   // Handle crash (multiplier exceeded crashPoint on client)
   const handleCrash = useCallback(async () => {
     if (!roundData || gameStateRef.current !== 'playing') return;
+    playCrash();
 
     try {
       const result = await expireCrashRound(roundData.roundId);

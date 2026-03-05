@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { playHeartbeat } from '@/lib/countdownSound';
 
 interface MultiplierDisplayProps {
   active: boolean;
@@ -69,6 +70,8 @@ export default function MultiplierDisplay({
   const onMultiplierUpdateRef = useRef(onMultiplierUpdate);
   onMultiplierUpdateRef.current = onMultiplierUpdate;
 
+  const lastHeartbeatRef = useRef(0);
+
   const animate = useCallback(() => {
     if (!active || !startedAt) return;
     const now = Date.now();
@@ -80,6 +83,14 @@ export default function MultiplierDisplay({
     const rounded = Math.floor(multiplier * 100) / 100;
     const elapsedSec = elapsedMs / 1000;
     const remaining = Math.max(0, maxDurationSeconds - elapsedSec);
+
+    // Heartbeat: interval decreases as multiplier rises (1200ms → 400ms)
+    const heartbeatInterval = Math.max(400, 1200 - (rounded - 1) * 120);
+    if (now - lastHeartbeatRef.current > heartbeatInterval) {
+      lastHeartbeatRef.current = now;
+      const intensity = Math.min(4, Math.floor(rounded));
+      playHeartbeat(intensity);
+    }
 
     // Direct DOM updates — no setState, no re-render
     if (multiplierTextRef.current) {
