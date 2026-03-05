@@ -872,6 +872,47 @@ export const crashGameConfig = sqliteTable("crash_game_config", {
 });
 
 // ============================================================
+// Bull or Bear Game Tables
+// ============================================================
+
+export const bullBearRounds = sqliteTable("bull_bear_rounds", {
+	id: integer().primaryKey({ autoIncrement: true }),
+	roundId: text("round_id").notNull(),
+	userId: text("user_id").notNull(),
+	betAmount: real("bet_amount").notNull(),
+	direction: text("direction").notNull(), // 'bull' | 'bear'
+	durationSeconds: integer("duration_seconds").notNull(),
+	multiplier: real("multiplier").notNull(),
+	entryPrice: real("entry_price").notNull(),
+	settlePrice: real("settle_price"),
+	outcome: text("outcome"), // 'bull' | 'bear' | 'draw'
+	profit: real("profit"),
+	status: text("status").notNull(), // 'active' | 'won' | 'lost' | 'draw' | 'expired'
+	startedAt: text("started_at").notNull(),
+	settledAt: text("settled_at"),
+	createdAt: text("created_at").default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+	updatedAt: text("updated_at").$onUpdate(() => new Date().toISOString()),
+}, (table) => [
+	uniqueIndex("uq_bull_bear_rounds_round_id").on(table.roundId),
+	index("idx_bull_bear_rounds_user_id").on(table.userId),
+	index("idx_bull_bear_rounds_user_created").on(table.userId, table.createdAt),
+	index("idx_bull_bear_rounds_status").on(table.status),
+	index("idx_bull_bear_rounds_created_at").on(table.createdAt),
+]);
+
+export const bullBearConfig = sqliteTable("bull_bear_config", {
+	id: integer().primaryKey({ autoIncrement: true }),
+	enabled: integer("enabled", { mode: 'boolean' }).default(false).notNull(),
+	minBet: real("min_bet").default(1).notNull(),
+	maxBet: real("max_bet").default(1000).notNull(),
+	multiplier30s: real("multiplier_30s").default(1.85).notNull(),
+	multiplier60s: real("multiplier_60s").default(1.90).notNull(),
+	multiplier120s: real("multiplier_120s").default(1.95).notNull(),
+	availableDurations: text("available_durations").default('[30,60,120]').notNull(),
+	updatedAt: text("updated_at").$onUpdate(() => new Date().toISOString()),
+});
+
+// ============================================================
 // Referral Commission Tables
 // ============================================================
 

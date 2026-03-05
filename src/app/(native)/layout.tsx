@@ -24,13 +24,15 @@ import ReferralPage from '@/components/native/ReferralPage';
 import MePageContent from '@/components/native/me/MePageContent';
 // Crash Game
 import CrashGameCard from '@/components/native/crash-game/CrashGameCard';
-import { getCrashGameHomeConfig } from '@/config/appConfig';
+import { getCrashGameHomeConfig, getBullBearHomeConfig } from '@/config/appConfig';
+// Bull or Bear
+import BullBearCard from '@/components/native/bull-bear/BullBearCard';
 
 // 不显示顶部导航的路径
-const hideNavbarPaths = ['/native/me', '/native/settings', '/native/create', '/native/tools', '/native/video', '/native/voice/task', '/native/subscribe', '/native/payment', '/native/lucky-draw', '/native/crash-game'];
+const hideNavbarPaths = ['/native/me', '/native/settings', '/native/create', '/native/tools', '/native/video', '/native/voice/task', '/native/subscribe', '/native/payment', '/native/lucky-draw', '/native/crash-game', '/native/bull-bear'];
 
 // 不显示底部导航的路径
-const hideBottomNavPaths = ['/native/settings', '/native/create', '/native/tools', '/native/video', '/native/voice/task', '/native/subscribe', '/native/payment', '/native/lucky-draw', '/native/crash-game'];
+const hideBottomNavPaths = ['/native/settings', '/native/create', '/native/tools', '/native/video', '/native/voice/task', '/native/subscribe', '/native/payment', '/native/lucky-draw', '/native/crash-game', '/native/bull-bear'];
 
 // 三个主 Tab 的 pathname 前缀映射
 const pathnameToTab = (pathname: string): TabType | null => {
@@ -137,15 +139,17 @@ export default function NativeLayout({
 
   // Memoize tab content to prevent re-init when navigating to/from sub-pages
   const showCrashGame = getCrashGameHomeConfig().show_home_card;
+  const showBullBear = getBullBearHomeConfig().show_home_card;
   const exploreTab = useMemo(() => (
     <div className="pt-2 pb-20">
       <TotalAssetsCard />
-      {showCrashGame && (
+      {(showCrashGame || showBullBear) && (
         <>
           <div className="px-5 mt-5 mb-1">
             <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">{t('native.home.sectionPlayEarn')}</h2>
           </div>
-          <CrashGameCard />
+          {showCrashGame && <CrashGameCard />}
+          {showBullBear && <BullBearCard />}
         </>
       )}
       <div className="px-5 mt-5 mb-1">
@@ -154,7 +158,7 @@ export default function NativeLayout({
       <FeatureGrid />
       <ExploreSection />
     </div>
-  ), [showCrashGame, t]);
+  ), [showCrashGame, showBullBear, t]);
 
   const teamTab = useMemo(() => <ReferralPage isActive={activeTab === 'team'} />, [activeTab]);
   const meTab = useMemo(() => <MePageContent isActive={activeTab === 'me'} />, [activeTab]);

@@ -108,6 +108,13 @@ export interface MiningEconomyConfig {
     /** 卡片副标题文案 */
     subtitle: string;
   };
+  /** Bull or Bear 首页卡片配置 */
+  bull_bear: {
+    /** 是否在首页显示 Bull or Bear 卡片 */
+    show_home_card: boolean;
+    /** 卡片副标题文案 */
+    subtitle: string;
+  };
 }
 
 /**

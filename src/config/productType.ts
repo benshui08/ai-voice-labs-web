@@ -58,6 +58,10 @@ export const ProductType = {
   CRASH_GAME_BET: 'crash_game_bet',
   /** Crash Game 赢奖 */
   CRASH_GAME_WIN: 'crash_game_win',
+  /** Bull or Bear 下注 */
+  BULL_BEAR_BET: 'bull_bear_bet',
+  /** Bull or Bear 赢奖 */
+  BULL_BEAR_WIN: 'bull_bear_win',
 } as const;
 
 export type ProductType = typeof ProductType[keyof typeof ProductType];

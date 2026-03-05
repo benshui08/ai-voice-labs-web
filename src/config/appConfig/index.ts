@@ -114,6 +114,13 @@ export function getCrashGameHomeConfig() {
 }
 
 /**
+ * 获取 Bull or Bear 首页卡片配置
+ */
+export function getBullBearHomeConfig() {
+  return appConfig.mining_economy.bull_bear;
+}
+
+/**
  * 获取推荐裂变配置
  */
 export function getReferralConfig(): ReferralConfig {

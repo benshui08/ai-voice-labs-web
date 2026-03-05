@@ -132,6 +132,10 @@ export const appConfig: AppConfig = {
       show_home_card: true,
       subtitle: 'Turn $1 into $100 in seconds.',
     },
+    bull_bear: {
+      show_home_card: true,
+      subtitle: 'Predict BTC. Win big.',
+    },
   },
 
   /**
