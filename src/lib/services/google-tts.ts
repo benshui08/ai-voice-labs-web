@@ -401,10 +401,10 @@ async function synthesizeChunk(
  * 自动处理长文本分割，支持各种语言（包括泰语、中文等无空格语言）
  */
 export async function synthesizeSpeech(request: GoogleTtsRequest): Promise<GoogleTtsResult> {
-  const apiKey = process.env.GOOGLE_API_KEY;
+  const apiKey = process.env.GOOGLE_TTS_API_KEY;
 
   if (!apiKey) {
-    throw new Error('GOOGLE_API_KEY 未配置');
+    throw new Error('GOOGLE_TTS_API_KEY 未配置');
   }
 
   const { text, voiceName: rawVoiceName, language } = request;

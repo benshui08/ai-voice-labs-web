@@ -52,10 +52,10 @@ interface GoogleVoice {
  * 从 Google TTS API 获取所有语音列表
  */
 async function fetchVoicesFromGoogle(): Promise<GoogleVoice[]> {
-  const apiKey = process.env.GOOGLE_API_KEY;
+  const apiKey = process.env.GOOGLE_TTS_API_KEY;
 
   if (!apiKey) {
-    throw new Error('未配置 GOOGLE_API_KEY 环境变量');
+    throw new Error('未配置 GOOGLE_TTS_API_KEY 环境变量');
   }
 
   const response = await fetch(
