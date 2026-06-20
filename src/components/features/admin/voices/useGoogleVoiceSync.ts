@@ -48,6 +48,7 @@ export interface GoogleLocaleStats {
   dbCount: number;
   sampleCount: number;
   avatarCount: number;
+  inactiveCount: number;
   canSync: boolean;
 }
 

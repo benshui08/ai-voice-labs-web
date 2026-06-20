@@ -89,6 +89,9 @@ export default function GoogleLocaleTable({
                   头像
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  无效数量
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   状态
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -172,6 +175,13 @@ function GoogleLocaleTableRow({
           </span>
         ) : (
           <span className="text-gray-400">-</span>
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm">
+        {item.inactiveCount > 0 ? (
+          <span className="text-red-500">{item.inactiveCount}</span>
+        ) : (
+          <span className="text-gray-400">0</span>
         )}
       </td>
       <td className="px-6 py-4 whitespace-nowrap">

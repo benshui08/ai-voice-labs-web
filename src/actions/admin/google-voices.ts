@@ -32,8 +32,9 @@ interface LocaleStats {
   localeName: string;
   googleCount: number;
   dbCount: number;
-  sampleCount: number; // 已有语音样例的数量
-  avatarCount: number; // 已有头像的数量
+  sampleCount: number;
+  avatarCount: number;
+  inactiveCount: number;
   canSync: boolean;
 }
 
@@ -240,17 +241,17 @@ export async function getGoogleVoiceStatsByLocale(): Promise<LocaleStats[]> {
       locale: voices.locale,
       voiceSampleUrl: voices.voiceSampleUrl,
       avatarUrl: voices.avatarUrl,
+      isActive: voices.isActive,
     }).from(voices).where(eq(voices.provider, 'google'));
 
-    // 统计每个 locale 的样例和头像数量
+    // 统计每个 locale 的样例、头像、无效数量
     const sampleCountByLocale: Record<string, number> = {};
     const avatarCountByLocale: Record<string, number> = {};
+    const inactiveCountByLocale: Record<string, number> = {};
     for (const voice of dbVoices) {
-      // 检查 voice_sample_url 是否有内容
       const hasSample = voice.voiceSampleUrl &&
         typeof voice.voiceSampleUrl === 'object' &&
         Object.keys(voice.voiceSampleUrl as Record<string, unknown>).length > 0;
-      // 检查 avatar_url 是否有内容
       const hasAvatar = voice.avatarUrl && voice.avatarUrl.length > 0;
 
       if (hasSample) {
@@ -258,6 +259,9 @@ export async function getGoogleVoiceStatsByLocale(): Promise<LocaleStats[]> {
       }
       if (hasAvatar) {
         avatarCountByLocale[voice.locale] = (avatarCountByLocale[voice.locale] || 0) + 1;
+      }
+      if (!voice.isActive) {
+        inactiveCountByLocale[voice.locale] = (inactiveCountByLocale[voice.locale] || 0) + 1;
       }
     }
 
@@ -270,16 +274,17 @@ export async function getGoogleVoiceStatsByLocale(): Promise<LocaleStats[]> {
       const dbCount = dbCountByLocale[dbLocale] || 0;
       const sampleCount = sampleCountByLocale[dbLocale] || 0;
       const avatarCount = avatarCountByLocale[dbLocale] || 0;
-      // 尝试用标准化后的 locale 获取显示名称
+      const inactiveCount = inactiveCountByLocale[dbLocale] || 0;
       const localeInfo = getLocaleInfo(dbLocale) || getLocaleInfo(locale);
 
       results.push({
-        locale, // 保留原始 Google locale 用于 API 调用
+        locale,
         localeName: localeInfo?.name || locale,
         googleCount,
         dbCount,
         sampleCount,
         avatarCount,
+        inactiveCount,
         canSync: googleCount > dbCount,
       });
     }
@@ -497,8 +502,10 @@ export async function updateAllGoogleVoices(): Promise<SyncResult> {
       }
 
       if (!googleVoice) {
+        // Google 中已下线，标记为不活跃
+        await db.update(voices).set({ isActive: false }).where(eq(voices.id, dbVoice.id));
         skipped++;
-        console.log(`⏭️ 跳过（Google 中不存在）: ${dbVoice.name}`);
+        console.log(`⏭️ 已下线（Google 中不存在），标记为不活跃: ${dbVoice.name}`);
         continue;
       }
 
@@ -510,6 +517,7 @@ export async function updateAllGoogleVoices(): Promise<SyncResult> {
         country: getCountryFromLocale(dbVoice.locale),
         displayName: parseDisplayName(originalName),
         tags: buildTags(originalName, googleVoice.naturalSampleRateHertz),
+        isActive: true,
       }).where(eq(voices.id, dbVoice.id));
 
       updated++;
