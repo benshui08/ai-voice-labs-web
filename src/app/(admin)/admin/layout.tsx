@@ -3,8 +3,6 @@
 import { ReactNode, useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
-import { ADMIN_EMAILS } from '@/config/admin';
 
 // 菜单分组配置
 const MENU_GROUPS = [
@@ -71,11 +69,9 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, loading } = useFirebaseAuth();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // 根据当前路径自动展开对应分组
   const activeGroupIndex = useMemo(() =>
     MENU_GROUPS.findIndex(g => g.items.some(item => pathname.startsWith(item.href))),
     [pathname]
@@ -84,7 +80,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     new Set(activeGroupIndex >= 0 ? [activeGroupIndex] : [0])
   );
 
-  // pathname 变化时自动展开当前分组
   useEffect(() => {
     if (activeGroupIndex >= 0) {
       setExpandedGroups(prev => {
@@ -104,37 +99,33 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, []);
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-
-      // 检查是否为管理员
-      const isAdmin = user.email && ADMIN_EMAILS.includes(user.email);
-      if (!isAdmin) {
-        router.push('/');
-        return;
-      }
-
+    const isLoginPage = pathname === '/admin/login';
+    if (isLoginPage) {
+      setIsAuthorized(true);
+      return;
+    }
+    const hasSession = document.cookie.includes('admin_session=authenticated');
+    if (!hasSession) {
+      router.push('/admin/login');
+    } else {
       setIsAuthorized(true);
     }
-  }, [user, loading, router]);
+  }, [pathname, router]);
 
-  // 路由变化时关闭移动端菜单
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  if (loading || !isAuthorized) {
+  if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">验证权限中...</p>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
       </div>
     );
+  }
+
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
   }
 
   return (
@@ -167,10 +158,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
 
             <div className="flex items-center gap-4">
-              <span className="hidden sm:inline text-sm text-gray-500">{user?.email}</span>
-              <Link href="/" className="text-sm text-purple-600 hover:text-purple-700">
-                返回前台
-              </Link>
+              <button
+                onClick={async () => {
+                  await fetch('/api/admin/auth', { method: 'DELETE' });
+                  router.push('/admin/login');
+                }}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                退出
+              </button>
             </div>
           </div>
         </div>
@@ -219,9 +215,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   </div>
                 );
               })}
-              <div className="border-t border-gray-200 mt-2 pt-2">
-                <div className="px-3 py-2 text-sm text-gray-500">{user?.email}</div>
-              </div>
             </nav>
           </div>
         )}

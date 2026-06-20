@@ -6,14 +6,7 @@ import TTSIcon from '@/components/icons/TTSIcon';
 import type { NavigationConfig } from './types';
 
 export const navigationConfig: NavigationConfig = {
-  links: [
-    {
-      href: '/pricing',
-      labelKey: 'nav.pricing',
-      type: 'section',
-      sectionId: 'pricing',
-    },
-  ],
+  links: [],
   dropdowns: [
     {
       id: 'studio',
