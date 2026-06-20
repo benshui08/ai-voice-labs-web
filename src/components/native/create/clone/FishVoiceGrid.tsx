@@ -73,7 +73,7 @@ export default function FishVoiceGrid({
 }: FishVoiceGridProps) {
   const { t } = useLanguage();
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<string>(getSavedLanguage);
+  const [filter, setFilter] = useState<string>(MY_CLONES);
   const [voices, setVoices] = useState<FishVoiceItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -277,34 +277,6 @@ export default function FishVoiceGrid({
     <div>
       {/* Sticky top: Search + Filter tabs */}
       <div className="sticky top-0 z-10 bg-[#0a0a1a] pb-3 space-y-3">
-        {/* Filter tabs: My Clones + Languages */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-          <button
-            onClick={() => handleFilterChange(MY_CLONES)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1 ${
-              isMyClones
-                ? 'bg-gray-700 text-white'
-                : 'bg-gray-800/60 text-gray-400 hover:text-white hover:bg-gray-700/60'
-            }`}
-          >
-            <Mic className="w-3 h-3" />
-            My Clones
-          </button>
-          {FISH_LANGUAGES.map((lang) => (
-            <button
-              key={lang.code}
-              onClick={() => handleFilterChange(lang.code)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                filter === lang.code
-                  ? 'bg-gray-700 text-white'
-                  : 'bg-gray-800/60 text-gray-400 hover:text-white hover:bg-gray-700/60'
-              }`}
-            >
-              {lang.label}
-            </button>
-          ))}
-        </div>
-
         {/* Search Bar (only for language filter) */}
         {!isMyClones && (
           <div className="relative">

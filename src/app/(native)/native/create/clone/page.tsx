@@ -406,20 +406,6 @@ export default function VoiceClonePage() {
               }}
             />
 
-            {/* Reference Text */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-300">
-                {t('native.createClone.clone.referenceText')} <span className="text-gray-500 font-normal">(Optional)</span>
-              </label>
-              <textarea
-                value={cloneReferenceText}
-                onChange={(e) => setCloneReferenceText(e.target.value)}
-                placeholder={t('native.createClone.clone.referenceTextPlaceholder')}
-                rows={3}
-                className="w-full px-4 py-3 bg-gray-800/60 border border-gray-700/50 rounded-xl text-white text-sm placeholder-gray-500 resize-none focus:outline-none focus:border-purple-500/50"
-              />
-            </div>
-
             {/* Voice Name */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-300">
