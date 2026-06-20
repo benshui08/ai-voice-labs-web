@@ -18,8 +18,8 @@ import ExploreSection from '@/components/native/ExploreSection';
 // Me tab
 import MePageContent from '@/components/native/me/MePageContent';
 
-const hideNavbarPaths = ['/native/me', '/native/settings', '/native/create', '/native/tools', '/native/video', '/native/voice/task', '/native/subscribe', '/native/payment', '/native/lucky-draw', '/native/crash-game', '/native/bull-bear'];
-const hideBottomNavPaths = ['/native/settings', '/native/create', '/native/tools', '/native/video', '/native/voice/task', '/native/subscribe', '/native/payment', '/native/lucky-draw', '/native/crash-game', '/native/bull-bear'];
+const hideNavbarPaths = ['/native/me', '/native/settings', '/native/create', '/native/tools', '/native/video', '/native/voice/task', '/native/subscribe', '/native/payment'];
+const hideBottomNavPaths = ['/native/settings', '/native/create', '/native/tools', '/native/video', '/native/voice/task', '/native/subscribe', '/native/payment'];
 
 const pathnameToTab = (pathname: string): TabType | null => {
   const p = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;

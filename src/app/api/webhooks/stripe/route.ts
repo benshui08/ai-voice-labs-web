@@ -5,7 +5,6 @@ import { eq, and, desc } from 'drizzle-orm';
 import { getCreditTierByProductId } from '@/config/subscription';
 import { addCredits } from '@/lib/credits';
 import { ProductType } from '@/config/productType';
-import { handleLuckyDrawPurchase, handleLuckyDrawSessionExpired } from '@/actions/lucky-draw';
 import {
   verifyWebhookSignature,
   retrieveSubscription,
@@ -74,12 +73,6 @@ async function handleCheckoutCompleted(session: CheckoutSession, eventId: string
   console.log('💳 处理 checkout.session.completed:', session.id);
 
   const metadata = session.metadata || {};
-
-  // Lucky Draw 购买走独立流程
-  if (metadata.type === 'lucky_draw') {
-    await handleLuckyDrawPurchase(session, eventId);
-    return;
-  }
 
   // VOICICA 直接购买
   if (metadata.type === 'voicica_purchase') {
@@ -516,13 +509,8 @@ export async function POST(request: NextRequest) {
         await handleSubscriptionDeleted(event.data.object as unknown as Subscription, event.id);
         break;
 
-      case 'checkout.session.expired': {
-        const expiredSession = event.data.object as unknown as CheckoutSession;
-        if (expiredSession.metadata?.type === 'lucky_draw') {
-          await handleLuckyDrawSessionExpired(expiredSession);
-        }
+      case 'checkout.session.expired':
         break;
-      }
 
       default:
         console.log(`⏭️ 未处理的事件类型: ${event.type}`);

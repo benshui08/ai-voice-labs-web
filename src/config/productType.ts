@@ -42,8 +42,6 @@ export const ProductType = {
   DIALOGUE: 'dialogue',
   /** AI 翻唱 */
   AI_COVER: 'ai_cover',
-  /** Lucky Draw 购买 */
-  LUCKY_DRAW: 'lucky_draw',
   /** 图片工具（去背景/高清放大） */
   IMAGE_TOOL: 'image_tool',
   /** $VOICICA → USDT 兑换 */
