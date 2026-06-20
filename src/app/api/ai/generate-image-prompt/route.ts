@@ -5,7 +5,7 @@
  * 使用 AI 生成图片提示词
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { generateImagePrompt } from '@/lib/services/openai';
+import { generateImagePrompt } from '@/lib/services/gemini';
 
 export async function POST(req: NextRequest) {
   try {

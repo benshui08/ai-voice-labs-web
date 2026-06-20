@@ -5,7 +5,7 @@
  * 使用 AI 生成视频提示词
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { generateVideoPrompt } from '@/lib/services/openai';
+import { generateVideoPrompt } from '@/lib/services/gemini';
 
 export async function POST(req: NextRequest) {
   try {

@@ -5,7 +5,7 @@
  * 使用 AI 生成语音/旁白文本
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { generateSpeechText } from '@/lib/services/openai';
+import { generateSpeechText } from '@/lib/services/gemini';
 
 export async function POST(req: NextRequest) {
   try {
