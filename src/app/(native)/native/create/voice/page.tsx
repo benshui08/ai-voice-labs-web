@@ -647,7 +647,7 @@ export default function NativeTTSPage() {
         <div className="fixed inset-0 z-50 flex items-end bg-black/50" onClick={() => setIsSettingsOpen(false)}>
           <div
             className="w-full bg-[#1a1a2e] rounded-t-3xl shadow-xl"
-            style={{ paddingBottom: 'var(--safe-area-inset-bottom, 0px)' }}
+            style={{ paddingBottom: 'calc(64px + var(--safe-area-inset-bottom, 0px))' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header with tabs */}
@@ -663,7 +663,7 @@ export default function NativeTTSPage() {
                     onClick={() => setActiveSettingsTab(tab.id)}
                     className={`flex flex-col items-center p-3 rounded-lg transition-colors ${
                       activeSettingsTab === tab.id
-                        ? 'bg-purple-600 text-white'
+                        ? 'bg-white/15 text-white'
                         : 'bg-gray-800 text-gray-400'
                     }`}
                   >
@@ -692,7 +692,7 @@ export default function NativeTTSPage() {
                   </div>
 
                   <div className="text-center">
-                    <div className="inline-block bg-purple-600/20 text-purple-400 text-2xl font-bold px-6 py-3 rounded-xl">
+                    <div className="inline-block bg-gray-700/80 text-white text-2xl font-bold px-6 py-3 rounded-xl">
                       {tempSettings.speed}x
                     </div>
                   </div>
@@ -707,7 +707,7 @@ export default function NativeTTSPage() {
                       onChange={(e) =>
                         setTempSettings({ ...tempSettings, speed: parseFloat(e.target.value) })
                       }
-                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-white"
                     />
                     <div className="flex justify-between text-sm text-gray-500 mt-2">
                       <span>{AUDIO_SETTINGS_RANGE.speed.min}x</span>
@@ -728,7 +728,7 @@ export default function NativeTTSPage() {
                   </div>
 
                   <div className="text-center">
-                    <div className="inline-block bg-purple-600/20 text-purple-400 text-2xl font-bold px-6 py-3 rounded-xl">
+                    <div className="inline-block bg-gray-700/80 text-white text-2xl font-bold px-6 py-3 rounded-xl">
                       {tempSettings.volume}%
                     </div>
                   </div>
@@ -743,7 +743,7 @@ export default function NativeTTSPage() {
                       onChange={(e) =>
                         setTempSettings({ ...tempSettings, volume: parseInt(e.target.value) })
                       }
-                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-white"
                     />
                     <div className="flex justify-between text-sm text-gray-500 mt-2">
                       <span>{AUDIO_SETTINGS_RANGE.volume.min}%</span>
@@ -764,7 +764,7 @@ export default function NativeTTSPage() {
                   </div>
 
                   <div className="text-center">
-                    <div className="inline-block bg-purple-600/20 text-purple-400 text-2xl font-bold px-6 py-3 rounded-xl">
+                    <div className="inline-block bg-gray-700/80 text-white text-2xl font-bold px-6 py-3 rounded-xl">
                       {tempSettings.pitch}
                     </div>
                   </div>
@@ -779,7 +779,7 @@ export default function NativeTTSPage() {
                       onChange={(e) =>
                         setTempSettings({ ...tempSettings, pitch: parseInt(e.target.value) })
                       }
-                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-white"
                     />
                     <div className="flex justify-between text-xs text-gray-500 mt-2">
                       <span>{t('native.createVoice.pitchDeep')}</span>
@@ -788,7 +788,7 @@ export default function NativeTTSPage() {
                       <span>{t('native.createVoice.pitchBright')}</span>
                       <span>{t('native.createVoice.pitchCrisp')}</span>
                     </div>
-                    <div className="text-center mt-2 text-sm font-medium text-purple-400">
+                    <div className="text-center mt-2 text-sm font-medium text-gray-300">
                       {getPitchLabel(tempSettings.pitch)}
                     </div>
                   </div>
@@ -798,7 +798,7 @@ export default function NativeTTSPage() {
               {/* Save Button */}
               <button
                 onClick={handleSaveSettings}
-                className="w-full mt-6 bg-purple-600 text-white py-4 rounded-xl font-medium hover:bg-purple-700 transition-colors"
+                className="w-full mt-6 bg-white text-gray-900 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
               >
                 {t('native.common.save')}
               </button>

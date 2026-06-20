@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getAvailableMenuItems, CreateMenuIcon } from '@/config/native/createMenuConfig';
+import { createMenuItems, getAvailableMenuItems, CreateMenuIcon, type CreateMenuItem } from '@/config/native/createMenuConfig';
+import { getFeatureFlags, type FeatureFlags } from '@/actions/admin/system-config';
 
 interface CreateSheetProps {
   isOpen: boolean;
@@ -103,6 +104,15 @@ const iconMap: Record<CreateMenuIcon, React.FC> = {
  * 点击 "+" 按钮后显示
  */
 export default function CreateSheet({ isOpen, onClose }: CreateSheetProps) {
+  const [menuItems, setMenuItems] = useState<CreateMenuItem[]>(createMenuItems.filter(i => i.enabled.production));
+
+  // 根据 DB feature flags 过滤菜单项（与 FeatureGrid 逻辑一致）
+  useEffect(() => {
+    getFeatureFlags().then((flags: FeatureFlags) => {
+      setMenuItems(createMenuItems.filter(i => flags[i.id as keyof FeatureFlags] !== false));
+    });
+  }, []);
+
   // 禁止背景滚动
   useEffect(() => {
     if (isOpen) {
@@ -116,8 +126,6 @@ export default function CreateSheet({ isOpen, onClose }: CreateSheetProps) {
   }, [isOpen]);
 
   if (!isOpen) return null;
-
-  const menuItems = getAvailableMenuItems();
 
   return (
     <>

@@ -574,8 +574,6 @@ export default function NativeImagePage() {
             className="w-full flex items-center justify-between p-3 bg-gray-800/60 rounded-xl"
           >
             <div className="flex items-center gap-4 text-sm text-gray-300">
-              <span>{isPublic ? t('native.createImage.public') : t('native.createImage.private')}</span>
-              <span>·</span>
               <span>{aspectRatio}</span>
               {selectedModel.qualities.length > 0 && (
                 <>
@@ -744,7 +742,7 @@ export default function NativeImagePage() {
               <div className="w-10 h-1 bg-gray-600 rounded-full" />
             </div>
             <h3 className="text-white font-semibold text-lg text-center mb-4">{t('native.createImage.selectModel')}</h3>
-            <div className="px-4 pb-6 space-y-3">
+            <div className="px-4 space-y-3" style={{ paddingBottom: 'calc(64px + var(--safe-area-inset-bottom, 0px))' }}>
               {imageModels.map((model) => (
                 <button
                   key={model.id}
@@ -808,37 +806,7 @@ export default function NativeImagePage() {
               {t('native.createImage.parameterSettings')}
             </h3>
 
-            <div className="px-4 pb-6 space-y-6">
-              {/* Visibility */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-white font-medium">{t('native.createImage.visibility')}</span>
-                  <InfoIcon />
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setIsPublic(true)}
-                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${
-                      isPublic
-                        ? 'bg-gray-600 text-white'
-                        : 'bg-gray-800/60 text-gray-400 hover:bg-gray-700/60'
-                    }`}
-                  >
-                    {t('native.createImage.public')}
-                  </button>
-                  <button
-                    onClick={() => setIsPublic(false)}
-                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${
-                      !isPublic
-                        ? 'bg-gray-600 text-white'
-                        : 'bg-gray-800/60 text-gray-400 hover:bg-gray-700/60'
-                    }`}
-                  >
-                    {t('native.createImage.private')}
-                  </button>
-                </div>
-              </div>
-
+            <div className="px-4 space-y-6" style={{ paddingBottom: 'calc(80px + var(--safe-area-inset-bottom, 0px))' }}>
               {/* Aspect Ratio */}
               <div>
                 <span className="text-white font-medium mb-3 block">{t('native.createImage.aspectRatio')}</span>
