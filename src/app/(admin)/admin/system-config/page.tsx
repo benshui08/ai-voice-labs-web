@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAllFeatureFlags, updateFeatureFlags, getTtsMaxCharacters, updateTtsMaxCharacters, type FeatureFlags } from '@/actions/admin/system-config';
+import { getAllFeatureFlags, updateFeatureFlags, getTtsMaxCharacters, updateTtsMaxCharacters, getCreditsGiftConfig, updateCreditsGiftConfig, type FeatureFlags, type CreditsGiftConfig } from '@/actions/admin/system-config';
 import { createMenuItems } from '@/config/native/createMenuConfig';
 
 const FEATURE_LABELS: Record<string, string> = {
@@ -101,13 +101,26 @@ export default function SystemConfigPage() {
   const [savingTts, setSavingTts] = useState(false);
   const [savedTts, setSavedTts] = useState(false);
 
+  const [giftConfig, setGiftConfig] = useState<CreditsGiftConfig>({ threshold: 5000, giftAmount: 10000 });
+  const [savingGift, setSavingGift] = useState(false);
+  const [savedGift, setSavedGift] = useState(false);
+
   useEffect(() => {
     getAllFeatureFlags().then(({ prod, dev }) => {
       setProdFlags(prod);
       setDevFlags(dev);
     });
     getTtsMaxCharacters().then(setTtsMaxChars);
+    getCreditsGiftConfig().then(setGiftConfig);
   }, []);
+
+  const handleSaveGiftConfig = async () => {
+    setSavingGift(true);
+    await updateCreditsGiftConfig(giftConfig);
+    setSavingGift(false);
+    setSavedGift(true);
+    setTimeout(() => setSavedGift(false), 2000);
+  };
 
   const handleSaveTtsMaxChars = async () => {
     setSavingTts(true);
@@ -182,6 +195,54 @@ export default function SystemConfigPage() {
             className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
           >
             {savingTts ? '保存中...' : '保存'}
+          </button>
+        </div>
+      </div>
+
+      {/* 积分礼物配置 */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">积分礼物配置</h2>
+          <p className="text-sm text-gray-500 mt-0.5">用户积分低于阈值时，首页弹出激励广告领取积分</p>
+        </div>
+        <div className="divide-y divide-gray-100">
+          <div className="px-6 py-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-900">触发阈值</p>
+              <p className="text-xs text-gray-400 mt-0.5">积分低于此值时弹出领取提示</p>
+            </div>
+            <input
+              type="number"
+              min={100}
+              value={giftConfig.threshold}
+              onChange={(e) => setGiftConfig(c => ({ ...c, threshold: Number(e.target.value) }))}
+              className="w-28 px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div className="px-6 py-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-900">赠送积分数量</p>
+              <p className="text-xs text-gray-400 mt-0.5">看完广告后赠送的积分</p>
+            </div>
+            <input
+              type="number"
+              min={100}
+              value={giftConfig.giftAmount}
+              onChange={(e) => setGiftConfig(c => ({ ...c, giftAmount: Number(e.target.value) }))}
+              className="w-28 px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+          <span className={`text-sm transition-opacity ${savedGift ? 'text-green-600 opacity-100' : 'opacity-0'}`}>
+            ✓ 保存成功
+          </span>
+          <button
+            onClick={handleSaveGiftConfig}
+            disabled={savingGift}
+            className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+          >
+            {savingGift ? '保存中...' : '保存'}
           </button>
         </div>
       </div>

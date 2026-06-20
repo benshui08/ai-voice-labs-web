@@ -24,13 +24,12 @@ export const appConfig: AppConfig = {
    * 新用户首次登录用户积分配置
    */
   credits: {
-    // Web 端
-    anonymous_user: 1000,
-    registered_user: 2000,
-    // Native App 端
+    // 新用户不赠送初始积分，通过首页激励广告领取
+    anonymous_user: 0,
+    registered_user: 0,
     native: {
-      anonymous_user: 1000,    // Native 匿名用户不赠送积分
-      registered_user: 2000, // Native 登录用户赠送 2000 积分
+      anonymous_user: 0,
+      registered_user: 0,
     },
   },
 

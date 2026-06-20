@@ -75,6 +75,33 @@ export async function updateFeatureFlags(flags: FeatureFlags, scope: 'prod' | 'd
   return { success: true };
 }
 
+export interface CreditsGiftConfig {
+  threshold: number;
+  giftAmount: number;
+}
+
+const DEFAULT_CREDITS_GIFT_CONFIG: CreditsGiftConfig = {
+  threshold: 5000,
+  giftAmount: 10000,
+};
+
+/** 读取积分礼物配置（低于 threshold 时赠送 giftAmount） */
+export async function getCreditsGiftConfig(): Promise<CreditsGiftConfig> {
+  try {
+    const db = await getDb();
+    const row = await db.select().from(systemConfigs).where(eq(systemConfigs.key, 'credits_gift_config')).get();
+    if (!row) return DEFAULT_CREDITS_GIFT_CONFIG;
+    return { ...DEFAULT_CREDITS_GIFT_CONFIG, ...JSON.parse(row.value) };
+  } catch {
+    return DEFAULT_CREDITS_GIFT_CONFIG;
+  }
+}
+
+/** 更新积分礼物配置 */
+export async function updateCreditsGiftConfig(config: CreditsGiftConfig) {
+  return updateSystemConfig('credits_gift_config', config, '积分不足时自动赠送配置');
+}
+
 const DEFAULT_TTS_MAX_CHARACTERS = 500;
 
 /** 读取 TTS 最大输入字符数 */
