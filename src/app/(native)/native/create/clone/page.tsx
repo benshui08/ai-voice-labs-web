@@ -311,7 +311,7 @@ export default function VoiceClonePage() {
   // ==================== Render ====================
 
   return (
-    <div className="h-dvh bg-[#0a0a1a] flex flex-col overflow-hidden">
+    <div className="h-[calc(100dvh-4rem)] bg-[#0a0a1a] flex flex-col overflow-hidden">
       {/* Header */}
       <CreatePageHeader title={t('native.createClone.title')} />
 

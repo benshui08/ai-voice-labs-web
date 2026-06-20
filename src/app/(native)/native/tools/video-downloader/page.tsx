@@ -163,7 +163,7 @@ export default function VideoDownloaderPage() {
   }, [isGeneratingModalOpen, generatingStatus, isSubscribed, adWatched, showRewardedAd]);
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-[calc(100dvh-4rem)]">
       <CreatePageHeader title={t('videoDownloader.title')} />
 
       <div

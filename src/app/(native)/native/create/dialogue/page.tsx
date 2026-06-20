@@ -366,7 +366,7 @@ export default function NativeDialoguePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a1a] flex flex-col">
+    <div className="min-h-[calc(100dvh-4rem)] bg-[#0a0a1a] flex flex-col">
       {/* Header */}
       <CreatePageHeader title={t('native.createDialogue.title')} />
 
