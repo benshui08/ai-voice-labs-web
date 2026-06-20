@@ -230,6 +230,7 @@ interface LocaleStats {
   avatarCount: number;
   sampleCount: number;
   activeCount: number;
+  inactiveCount: number;
   canSync: boolean;
 }
 
@@ -405,6 +406,7 @@ export async function getVoiceStatsByLocale(): Promise<LocaleStats[]> {
         avatarCount,
         sampleCount,
         activeCount,
+        inactiveCount: dbCount - activeCount,
         canSync: azureCount > dbCount,
       });
     }
