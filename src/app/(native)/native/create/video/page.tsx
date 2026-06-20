@@ -384,7 +384,7 @@ export default function CreateVideoPage() {
       <CreatePageHeader title="AI Video" />
 
       {/* 内容区域 - 可滚动 */}
-      <div className="flex-1 px-4 overflow-auto">
+      <div className="flex-1 px-4 overflow-auto pb-40">
         {/* 模式切换 Tabs */}
         <div className="mb-4">
           <div className="flex bg-gray-800/60 rounded-xl p-1">
@@ -470,7 +470,7 @@ export default function CreateVideoPage() {
 
       {/* 固定底部按钮 */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 px-4 pt-3 pb-3 bg-[#0a0a1a]"
+        className="fixed bottom-16 left-0 right-0 z-30 px-4 pt-3 pb-3 bg-[#0a0a1a]"
         style={{ paddingBottom: 'calc(var(--safe-area-inset-bottom, 0px) + 12px)' }}
       >
         {/* Credits Info Bar */}

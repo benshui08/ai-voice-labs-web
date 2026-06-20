@@ -282,7 +282,7 @@ export default function NativeImageToolsPage() {
       <div
         className="flex-1 flex flex-col px-4 overflow-y-auto"
         style={{
-          paddingBottom: 'calc(100px + var(--safe-area-inset-bottom, 0px))',
+          paddingBottom: 'calc(164px + var(--safe-area-inset-bottom, 0px))',
         }}
       >
         {/* Tab Switcher */}
@@ -384,7 +384,7 @@ export default function NativeImageToolsPage() {
 
       {/* Fixed Bottom Section */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 px-4 pt-3 pb-3 bg-[#0a0a1a]"
+        className="fixed bottom-16 left-0 right-0 z-30 px-4 pt-3 pb-3 bg-[#0a0a1a]"
         style={{ paddingBottom: 'calc(var(--safe-area-inset-bottom, 0px) + 12px)' }}
       >
         <CreditsInfoBar

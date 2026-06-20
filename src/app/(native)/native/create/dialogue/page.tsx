@@ -374,7 +374,7 @@ export default function NativeDialoguePage() {
       <div
         className="flex-1 overflow-y-auto px-4 pb-4"
         style={{
-          paddingBottom: 'calc(80px + var(--safe-area-inset-bottom, 0px))',
+          paddingBottom: 'calc(144px + var(--safe-area-inset-bottom, 0px))',
         }}
       >
         {/* Error Message */}
@@ -505,7 +505,7 @@ export default function NativeDialoguePage() {
 
       {/* Fixed Bottom Section */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 px-4 pt-3 pb-3 bg-[#0a0a1a]"
+        className="fixed bottom-16 left-0 right-0 z-30 px-4 pt-3 pb-3 bg-[#0a0a1a]"
         style={{ paddingBottom: 'calc(var(--safe-area-inset-bottom, 0px) + 12px)' }}
       >
         <CreditsInfoBar

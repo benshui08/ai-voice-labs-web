@@ -337,7 +337,7 @@ export default function VoiceClonePage() {
       {/* Content */}
       <div
         className={`flex-1 flex flex-col px-4 pt-3 min-h-0 ${activeTab === 'clone' ? 'overflow-y-auto' : 'overflow-hidden'}`}
-        style={{ paddingBottom: activeTab === 'clone' ? 'calc(110px + var(--safe-area-inset-bottom, 0px))' : undefined }}
+        style={{ paddingBottom: activeTab === 'clone' ? 'calc(174px + var(--safe-area-inset-bottom, 0px))' : undefined }}
       >
         {/* ==================== Generate Tab ==================== */}
         {activeTab === 'generate' && (
@@ -362,7 +362,7 @@ export default function VoiceClonePage() {
             {/* Scrollable voice grid */}
             <div
               className="flex-1 min-h-0 overflow-y-auto"
-              style={{ paddingBottom: 'calc(110px + var(--safe-area-inset-bottom, 0px))' }}
+              style={{ paddingBottom: 'calc(174px + var(--safe-area-inset-bottom, 0px))' }}
             >
               <FishVoiceGrid
                 selectedVoice={selectedVoice}
@@ -491,7 +491,7 @@ export default function VoiceClonePage() {
 
       {/* Fixed Bottom Section */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 px-4 pt-3 pb-3 bg-[#0a0a1a]"
+        className="fixed bottom-16 left-0 right-0 z-30 px-4 pt-3 pb-3 bg-[#0a0a1a]"
         style={{ paddingBottom: 'calc(var(--safe-area-inset-bottom, 0px) + 12px)' }}
       >
         {activeTab === 'generate' ? (
