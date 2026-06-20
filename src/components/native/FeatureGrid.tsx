@@ -3,10 +3,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
-  getAvailableMenuItems,
+  createMenuItems,
   getCategoryConfig,
   CreateMenuIcon,
+  type CreateMenuItem,
 } from '@/config/native/createMenuConfig';
+import { getFeatureFlags, type FeatureFlags } from '@/actions/admin/system-config';
 import { useLanguage } from '@/contexts/LanguageContext';
 import NativeLoadingOverlay from '@/components/native/common/NativeLoadingOverlay';
 
@@ -168,8 +170,14 @@ export default function FeatureGrid() {
   const { t } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
-  const items = getAvailableMenuItems();
   const [navigating, setNavigating] = useState<string | null>(null);
+  const [items, setItems] = useState<CreateMenuItem[]>(createMenuItems.filter(i => i.enabled.production));
+
+  useEffect(() => {
+    getFeatureFlags().then((flags: FeatureFlags) => {
+      setItems(createMenuItems.filter(i => flags[i.id as keyof FeatureFlags] !== false));
+    });
+  }, []);
 
   // 点击后显示 loading，pathname 变化后清除
   useEffect(() => {

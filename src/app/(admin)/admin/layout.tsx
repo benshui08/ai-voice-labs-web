@@ -37,6 +37,7 @@ const MENU_GROUPS = [
   {
     title: '配置',
     items: [
+      { href: '/admin/system-config', label: '系统配置', icon: '⚙️' },
       { href: '/admin/native-banners', label: 'Native Banner', icon: '🖼️' },
       { href: '/admin/push', label: '推送通知', icon: '🔔' },
       { href: '/admin/device-tokens', label: '设备令牌', icon: '📲' },

@@ -765,3 +765,14 @@ export const storyParagraphsRelations = relations(storyParagraphs, ({one}) => ({
 		references: [stories.id]
 	}),
 }));
+
+// ============================================================
+// System Configs
+// ============================================================
+
+export const systemConfigs = sqliteTable("system_configs", {
+	key: text("key").primaryKey(),
+	value: text("value").notNull(), // JSON string
+	description: text("description"),
+	updatedAt: text("updated_at").$onUpdate(() => new Date().toISOString()),
+});
