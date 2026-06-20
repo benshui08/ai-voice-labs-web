@@ -4,13 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
-import { useCredits } from '@/contexts/CreditsContext';
 import { useBottomNav } from '@/contexts/BottomNavContext';
 import LoginModal from './LoginModal';
-import NativeDailyTasksModal from './NativeDailyTasksModal';
 import LanguageSelectorSheet from './LanguageSelectorSheet';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getMiningEconomyConfig } from '@/config/appConfig';
 
 /**
  * Native App 顶部导航栏
@@ -19,14 +16,11 @@ import { getMiningEconomyConfig } from '@/config/appConfig';
  */
 export default function NativeNavbar() {
   const { user } = useFirebaseAuth();
-  const { refreshCredits } = useCredits();
   const { isTopNavVisible } = useBottomNav();
   const { t } = useLanguage();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isDailyTasksOpen, setIsDailyTasksOpen] = useState(false);
   const [isLanguageSelectorOpen, setIsLanguageSelectorOpen] = useState(false);
   const isLoggedIn = !!user;
-  const { show_navbar_mining } = getMiningEconomyConfig();
 
   // 通过 Context 控制隐藏
   if (!isTopNavVisible) return null;
@@ -54,18 +48,6 @@ export default function NativeNavbar() {
               </picture>
             </Link>
 
-            {/* Mining Center 入口 */}
-            {show_navbar_mining && (
-              <button
-                onClick={() => setIsDailyTasksOpen(true)}
-                className="relative flex items-center gap-1 px-2 py-1 rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 animate-pulse hover:from-amber-500/30 hover:to-orange-500/30 transition-all active:scale-95"
-              >
-                <Image src="/logo/voicica-token.png" alt="" width={20} height={20} className="w-5 h-5" />
-                <span className="text-xs font-bold text-amber-400">Mine</span>
-                {/* 小红点提示 */}
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              </button>
-            )}
           </div>
 
           {/* 右侧区域 */}
@@ -104,15 +86,6 @@ export default function NativeNavbar() {
           setIsLoginModalOpen(false);
         }}
       />
-
-      {/* 每日任务弹窗 - 条件渲染（预取实例在 layout 层） */}
-      {isDailyTasksOpen && (
-        <NativeDailyTasksModal
-          isOpen
-          onClose={() => setIsDailyTasksOpen(false)}
-          onCreditsUpdated={refreshCredits}
-        />
-      )}
 
       {/* 语言选择器弹窗 */}
       <LanguageSelectorSheet
