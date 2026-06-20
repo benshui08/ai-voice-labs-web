@@ -141,25 +141,11 @@ export default function NativeImagePage() {
   const [taskId, setTaskId] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<ImageRecord | null>(null);
 
-  // 输入状态 - 默认选中 Seedream 4.5 或从 localStorage 恢复
-  const [prompt, setPrompt] = useState(() => {
-    if (typeof window === 'undefined') return '';
-    return localStorage.getItem(IMAGE_PROMPT_STORAGE_KEY) || '';
-  });
-  const [selectedModel, setSelectedModel] = useState<ImageModel>(() => {
-    // 服务端渲染时使用默认模型
-    if (typeof window === 'undefined') {
-      return imageModels.find(m => m.id === DEFAULT_IMAGE_MODEL_ID) || imageModels[0];
-    }
-    // 客户端尝试从 localStorage 恢复
-    const savedModelId = localStorage.getItem(IMAGE_MODEL_STORAGE_KEY);
-    if (savedModelId) {
-      const savedModel = imageModels.find(m => m.id === savedModelId);
-      if (savedModel) return savedModel;
-    }
-    // 默认使用 Z-Image
-    return imageModels.find(m => m.id === DEFAULT_IMAGE_MODEL_ID) || imageModels[0];
-  });
+  // 输入状态 - 初始值固定，避免 SSR hydration 不匹配；mount 后从 localStorage 恢复
+  const [prompt, setPrompt] = useState('');
+  const [selectedModel, setSelectedModel] = useState<ImageModel>(
+    imageModels.find(m => m.id === DEFAULT_IMAGE_MODEL_ID) || imageModels[0]
+  );
   const [guidanceImage, setGuidanceImage] = useState<File | null>(null);
   const [guidanceImageUrl, setGuidanceImageUrl] = useState<string | null>(null);
 
@@ -175,8 +161,22 @@ export default function NativeImagePage() {
     }
   }, [isGeneratePromptSheetOpen]);
 
-  // 用于追踪是否是初次加载
   const isInitialMount = useRef(true);
+  const skipPromptClear = useRef(false);
+
+  // mount 后从 localStorage 恢复（避免 SSR hydration 不匹配）
+  useEffect(() => {
+    const savedPrompt = localStorage.getItem(IMAGE_PROMPT_STORAGE_KEY);
+    const savedModelId = localStorage.getItem(IMAGE_MODEL_STORAGE_KEY);
+    if (savedModelId) {
+      const savedModel = imageModels.find(m => m.id === savedModelId);
+      if (savedModel && savedModel.id !== selectedModel.id) {
+        skipPromptClear.current = true;
+        setSelectedModel(savedModel);
+      }
+    }
+    if (savedPrompt) setPrompt(savedPrompt);
+  }, []);
 
   // 当模型改变时，重置参数并清空 prompt
   useEffect(() => {
@@ -186,12 +186,12 @@ export default function NativeImagePage() {
     if (selectedModel.aspectRatios.length > 0) {
       setAspectRatio(selectedModel.aspectRatios[0]);
     }
-    // 保存选择到 localStorage
     localStorage.setItem(IMAGE_MODEL_STORAGE_KEY, selectedModel.id);
 
-    // 切换模型时清空 prompt（初次加载除外）
     if (isInitialMount.current) {
       isInitialMount.current = false;
+    } else if (skipPromptClear.current) {
+      skipPromptClear.current = false;
     } else {
       setPrompt('');
     }

@@ -291,8 +291,8 @@
       "title": "$VOICICA غير كافٍ",
       "subtitle": "تحتاج إلى المزيد من $VOICICA للمتابعة",
       "subtitleWithAmount": "المطلوب: {{required}} $VOICICA، الحالي: {{current}} $VOICICA",
-      "getFreeCredits": "تعدين $VOICICA",
-      "getFreeCreditsDesc": "أكمل المهام للحصول على $VOICICA مجانًا",
+      "getFreeCredits": "احصل على رصيد مجاني",
+      "getFreeCreditsDesc": "شاهد إعلانًا قصيرًا للحصول على رصيد",
       "subscribe": "شراء $VOICICA",
       "subscribeDesc": "شحن فوري عبر دفع آمن"
     },

@@ -337,8 +337,8 @@
       "title": "Insufficient $VOICICA",
       "subtitle": "You need more $VOICICA to continue",
       "subtitleWithAmount": "Required: {{required}} $VOICICA, Current: {{current}} $VOICICA",
-      "getFreeCredits": "Mine $VOICICA",
-      "getFreeCreditsDesc": "Complete tasks to earn free $VOICICA",
+      "getFreeCredits": "Claim Free Credits",
+      "getFreeCreditsDesc": "Watch a short ad to get free credits",
       "subscribe": "Buy $VOICICA",
       "subscribeDesc": "Instant top-up via secure payment"
     },

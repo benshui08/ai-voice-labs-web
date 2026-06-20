@@ -291,8 +291,8 @@
       "title": "$VOICICA မလုံလောက်ပါ",
       "subtitle": "ဆက်လက်ဆောင်ရွက်ရန် $VOICICA ပိုလိုအပ်ပါသည်",
       "subtitleWithAmount": "လိုအပ်သည်: {{required}} $VOICICA၊ လက်ရှိ: {{current}} $VOICICA",
-      "getFreeCredits": "$VOICICA တူးဖော်ပါ",
-      "getFreeCreditsDesc": "အခမဲ့ $VOICICA ရရှိရန် လုပ်ငန်းများပြီးဆုံးပါ",
+      "getFreeCredits": "ခရက်ဒစ် အခမဲ့ ရယူပါ",
+      "getFreeCreditsDesc": "ကြော်ငြာတိုကြည့်ပြီး ခရက်ဒစ်ရယူပါ",
       "subscribe": "$VOICICA ဝယ်ရန်",
       "subscribeDesc": "လုံခြုံသော ငွေပေးချေမှုဖြင့် ချက်ချင်းဖြည့်သွင်းပါ"
     },

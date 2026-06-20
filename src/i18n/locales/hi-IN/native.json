@@ -291,8 +291,8 @@
       "title": "अपर्याप्त $VOICICA",
       "subtitle": "जारी रखने के लिए आपको अधिक $VOICICA की आवश्यकता है",
       "subtitleWithAmount": "आवश्यक: {{required}} $VOICICA, वर्तमान: {{current}} $VOICICA",
-      "getFreeCredits": "$VOICICA माइन करें",
-      "getFreeCreditsDesc": "मुफ्त $VOICICA पाने के लिए कार्य पूरे करें",
+      "getFreeCredits": "मुफ्त क्रेडिट प्राप्त करें",
+      "getFreeCreditsDesc": "क्रेडिट पाने के लिए छोटा विज्ञापन देखें",
       "subscribe": "$VOICICA खरीदें",
       "subscribeDesc": "सुरक्षित भुगतान से तुरंत टॉप-अप करें"
     },

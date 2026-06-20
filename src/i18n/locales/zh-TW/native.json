@@ -330,8 +330,8 @@
       "title": "$VOICICA 不足",
       "subtitle": "您需要更多 $VOICICA 才能繼續",
       "subtitleWithAmount": "需要：{{required}} $VOICICA，當前：{{current}} $VOICICA",
-      "getFreeCredits": "挖礦賺 $VOICICA",
-      "getFreeCreditsDesc": "完成任務免費獲取 $VOICICA",
+      "getFreeCredits": "領取免費積分",
+      "getFreeCreditsDesc": "觀看短視頻廣告領取積分",
       "subscribe": "購買 $VOICICA",
       "subscribeDesc": "安全支付，即時到帳"
     },

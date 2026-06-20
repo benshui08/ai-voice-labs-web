@@ -291,8 +291,8 @@
       "title": "$VOICICA ไม่เพียงพอ",
       "subtitle": "คุณต้องการ $VOICICA เพิ่มเติมเพื่อดำเนินการต่อ",
       "subtitleWithAmount": "ต้องการ: {{required}} $VOICICA, คงเหลือ: {{current}} $VOICICA",
-      "getFreeCredits": "ขุด $VOICICA",
-      "getFreeCreditsDesc": "ทำภารกิจเพื่อรับ $VOICICA ฟรี",
+      "getFreeCredits": "รับเครดิตฟรี",
+      "getFreeCreditsDesc": "ดูโฆษณาสั้นเพื่อรับเครดิต",
       "subscribe": "ซื้อ $VOICICA",
       "subscribeDesc": "เติมเงินทันทีผ่านการชำระเงินที่ปลอดภัย"
     },

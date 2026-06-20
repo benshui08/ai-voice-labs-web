@@ -291,8 +291,8 @@
       "title": "Không đủ $VOICICA",
       "subtitle": "Bạn cần thêm $VOICICA để tiếp tục",
       "subtitleWithAmount": "Cần: {{required}} $VOICICA, Hiện có: {{current}} $VOICICA",
-      "getFreeCredits": "Đào $VOICICA",
-      "getFreeCreditsDesc": "Hoàn thành nhiệm vụ để nhận $VOICICA miễn phí",
+      "getFreeCredits": "Nhận tín dụng miễn phí",
+      "getFreeCreditsDesc": "Xem quảng cáo ngắn để nhận tín dụng",
       "subscribe": "Mua $VOICICA",
       "subscribeDesc": "Nạp tức thì qua thanh toán an toàn"
     },

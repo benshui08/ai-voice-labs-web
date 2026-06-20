@@ -291,8 +291,8 @@
       "title": "$VOICICA が不足しています",
       "subtitle": "続行するにはさらに $VOICICA が必要です",
       "subtitleWithAmount": "必要: {{required}} $VOICICA、現在: {{current}} $VOICICA",
-      "getFreeCredits": "$VOICICA をマイニング",
-      "getFreeCreditsDesc": "タスクを完了して無料の $VOICICA を獲得",
+      "getFreeCredits": "無料クレジットを受け取る",
+      "getFreeCreditsDesc": "短い広告を見てクレジットをゲット",
       "subscribe": "$VOICICA を購入",
       "subscribeDesc": "安全な決済で即時チャージ"
     },

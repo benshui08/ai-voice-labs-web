@@ -291,8 +291,8 @@
       "title": "$VOICICA Tidak Cukup",
       "subtitle": "Anda memerlukan lebih banyak $VOICICA untuk melanjutkan",
       "subtitleWithAmount": "Diperlukan: {{required}} $VOICICA, Saat ini: {{current}} $VOICICA",
-      "getFreeCredits": "Tambang $VOICICA",
-      "getFreeCreditsDesc": "Selesaikan tugas untuk mendapatkan $VOICICA gratis",
+      "getFreeCredits": "Klaim Kredit Gratis",
+      "getFreeCreditsDesc": "Tonton iklan singkat untuk mendapatkan kredit",
       "subscribe": "Beli $VOICICA",
       "subscribeDesc": "Top-up instan melalui pembayaran aman"
     },

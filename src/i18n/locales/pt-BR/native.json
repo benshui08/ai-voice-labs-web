@@ -291,8 +291,8 @@
       "title": "$VOICICA Insuficientes",
       "subtitle": "Você precisa de mais $VOICICA para continuar",
       "subtitleWithAmount": "Necessário: {{required}} $VOICICA, Atual: {{current}} $VOICICA",
-      "getFreeCredits": "Minerar $VOICICA",
-      "getFreeCreditsDesc": "Complete tarefas para ganhar $VOICICA grátis",
+      "getFreeCredits": "Resgatar créditos grátis",
+      "getFreeCreditsDesc": "Assista a um anúncio curto para ganhar créditos",
       "subscribe": "Comprar $VOICICA",
       "subscribeDesc": "Recarga instantânea via pagamento seguro"
     },
