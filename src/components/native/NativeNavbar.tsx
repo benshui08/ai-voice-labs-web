@@ -1,14 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useCredits } from '@/contexts/CreditsContext';
 import { useBottomNav } from '@/contexts/BottomNavContext';
-import { useNavigationLoading } from '@/hooks/useNavigationLoading';
-import NativeLoadingOverlay from './common/NativeLoadingOverlay';
 import LoginModal from './LoginModal';
 import NativeDailyTasksModal from './NativeDailyTasksModal';
 import LanguageSelectorSheet from './LanguageSelectorSheet';
@@ -21,7 +18,6 @@ import { getMiningEconomyConfig } from '@/config/appConfig';
  * 支持通过 Context 控制显示/隐藏
  */
 export default function NativeNavbar() {
-  const router = useRouter();
   const { user } = useFirebaseAuth();
   const { refreshCredits } = useCredits();
   const { isTopNavVisible } = useBottomNav();
@@ -29,14 +25,8 @@ export default function NativeNavbar() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDailyTasksOpen, setIsDailyTasksOpen] = useState(false);
   const [isLanguageSelectorOpen, setIsLanguageSelectorOpen] = useState(false);
-  const { navigating, startLoading } = useNavigationLoading();
-
   const isLoggedIn = !!user;
   const { show_navbar_mining } = getMiningEconomyConfig();
-
-  useEffect(() => {
-    router.prefetch('/native/subscribe');
-  }, [router]);
 
   // 通过 Context 控制隐藏
   if (!isTopNavVisible) return null;
@@ -80,20 +70,7 @@ export default function NativeNavbar() {
 
           {/* 右侧区域 */}
           <div className="flex items-center gap-2">
-            {isLoggedIn ? (
-              /* 已登录：Buy 按钮 */
-              <button
-                onClick={() => { startLoading(); router.push('/native/subscribe'); }}
-                className="flex items-center gap-1 px-4 py-1.5 rounded-full text-white text-sm font-bold tracking-wide transition-all active:scale-95 shadow-lg shadow-amber-500/20"
-                style={{ background: 'linear-gradient(90deg, #D97706, #F59E0B, #EAB308)' }}
-              >
-                {t('native.common.buy')}
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            ) : (
-              /* 未登录：显示登录按钮 */
+            {!isLoggedIn && (
               <button
                 onClick={() => setIsLoginModalOpen(true)}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all active:scale-95"
@@ -143,7 +120,6 @@ export default function NativeNavbar() {
         onClose={() => setIsLanguageSelectorOpen(false)}
       />
 
-      <NativeLoadingOverlay visible={navigating} />
     </>
   );
 }
