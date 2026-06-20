@@ -6,7 +6,7 @@
     "postinstall": "patch-package",
     "dev": "next dev --turbopack",
     "prebuild": "node scripts/sync-version.js && node scripts/generate-build-id.js",
-    "build": "next build",
+    "build": "next build --webpack",
     "build:webpack": "next build",
     "build:production": "next build",
     "start": "next start",
