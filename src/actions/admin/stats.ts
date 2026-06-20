@@ -45,7 +45,6 @@ interface StatsResult {
     music: TaskStats;
     video: TaskStats;
     image: TaskStats;
-    cover: TaskStats;
     dialogue: TaskStats;
     download: TaskStats;
   };
@@ -123,7 +122,6 @@ export async function getAdminStats(timeRange: TimeRange): Promise<StatsResult> 
     musicStats,
     videoStats,
     imageStats,
-    coverStats,
     dialogueStats,
     downloadStats,
   ] = await Promise.all([
@@ -154,7 +152,6 @@ export async function getAdminStats(timeRange: TimeRange): Promise<StatsResult> 
     getTaskStats('music_records'),
     getTaskStats('video_records'),
     getTaskStats('image_records'),
-    getTaskStats('cover_records'),
     getTaskStats('dialogue_records'),
     getTaskStats('video_download_records'),
   ]);
@@ -195,7 +192,6 @@ export async function getAdminStats(timeRange: TimeRange): Promise<StatsResult> 
       music: formatTaskStats(musicStats),
       video: formatTaskStats(videoStats),
       image: formatTaskStats(imageStats),
-      cover: formatTaskStats(coverStats),
       dialogue: formatTaskStats(dialogueStats),
       download: formatTaskStats(downloadStats),
     },

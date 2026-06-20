@@ -35,7 +35,6 @@ interface StatsData {
     music: TaskStats;
     video: TaskStats;
     image: TaskStats;
-    cover: TaskStats;
     dialogue: TaskStats;
     download: TaskStats;
   };
@@ -54,7 +53,6 @@ const TASK_TYPES = [
   { key: 'music', label: 'Music', color: 'pink', icon: '🎵' },
   { key: 'video', label: 'Video', color: 'blue', icon: '🎬' },
   { key: 'image', label: 'Image', color: 'purple', icon: '🖼️' },
-  { key: 'cover', label: 'Cover', color: 'orange', icon: '🎙️' },
   { key: 'dialogue', label: 'Dialogue', color: 'cyan', icon: '💬' },
   { key: 'download', label: 'Download', color: 'yellow', icon: '⬇️' },
 ] as const;

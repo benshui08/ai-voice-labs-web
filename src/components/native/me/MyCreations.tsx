@@ -12,7 +12,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useInterstitialAd } from '@/hooks/useInterstitialAd';
 
-import { VoicesTab, MusicTab, DialogueTab, ImageTab, VideoTab, CoverTab } from './tabs';
+import { VoicesTab, MusicTab, DialogueTab, ImageTab, VideoTab } from './tabs';
 
 /**
  * My Creations 区域
@@ -94,7 +94,6 @@ export default function MyCreations({ isActive }: { isActive?: boolean }) {
     voices: 'native.me.tabs.voices',
     dialogues: 'native.me.tabs.dialogues',
     music: 'native.me.tabs.music',
-    cover: 'native.me.tabs.cover',
     video: 'native.me.tabs.video',
     image: 'native.me.tabs.image',
   };
@@ -159,7 +158,6 @@ export default function MyCreations({ isActive }: { isActive?: boolean }) {
           {activeTab === 'dialogues' && <DialogueTab isActive={!!isActive} {...tabProps} />}
           {activeTab === 'image' && <ImageTab isActive={!!isActive} {...tabProps} />}
           {activeTab === 'video' && <VideoTab isActive={!!isActive} {...tabProps} />}
-          {activeTab === 'cover' && <CoverTab isActive={!!isActive} {...tabProps} />}
         </>
       </div>
     </div>

@@ -7,7 +7,7 @@
 export type CreateMenuCategory = 'voiceover' | 'music' | 'image' | 'video' | 'tools';
 
 /** 图标类型 */
-export type CreateMenuIcon = 'music' | 'cover' | 'voice' | 'dialogue' | 'video' | 'clone' | 'video-download' | 'image' | 'image-tools';
+export type CreateMenuIcon = 'music' | 'voice' | 'dialogue' | 'video' | 'clone' | 'video-download' | 'image' | 'image-tools';
 
 /** 类别配置 */
 export interface CategoryConfig {
@@ -95,16 +95,6 @@ export const createMenuItems: CreateMenuItem[] = [
     description: 'Compose music from text descriptions',
     href: '/native/create/music',
     enabled: { development: true, production: true },
-  },
-  {
-    id: 'cover',
-    icon: 'cover',
-    category: 'music',
-    title: 'AI Cover',
-    shortName: 'AI Cover',
-    description: 'Create AI song covers with voice cloning',
-    href: '/native/create/cover',
-    enabled: { development: false, production: false },
   },
 
   // ========== AI Image 类别 ==========

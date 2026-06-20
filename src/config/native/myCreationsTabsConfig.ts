@@ -3,7 +3,7 @@
  * 控制 Me 页面 My Creations 区域显示哪些内容标签
  */
 
-export type MyCreationsTabId = 'voices' | 'dialogues' | 'music' | 'cover' | 'video' | 'image';
+export type MyCreationsTabId = 'voices' | 'dialogues' | 'music' | 'video' | 'image';
 
 export interface MyCreationsTabConfig {
   id: MyCreationsTabId;
@@ -55,16 +55,6 @@ export const myCreationsTabsConfig: MyCreationsTabConfig[] = [
       createLink: '/native/create/music',
     },
     enabled: { development: true, production: true },
-  },
-  {
-    id: 'cover',
-    label: 'Cover',
-    emptyState: {
-      title: 'No content yet.',
-      subtitle: 'Create your first AI cover.',
-      createLink: '/native/create/cover',
-    },
-    enabled: { development: false, production: false },
   },
   {
     id: 'video',
