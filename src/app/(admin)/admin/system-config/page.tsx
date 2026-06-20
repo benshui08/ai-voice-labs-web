@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAllFeatureFlags, updateFeatureFlags, getTtsMaxCharacters, updateTtsMaxCharacters, getCreditsGiftConfig, updateCreditsGiftConfig, type FeatureFlags, type CreditsGiftConfig } from '@/actions/admin/system-config';
+import { getAllFeatureFlags, updateFeatureFlags, getTtsMaxCharacters, updateTtsMaxCharacters, getCreditsGiftConfig, updateCreditsGiftConfig, getImageModelConfig, updateImageModelConfig, type FeatureFlags, type CreditsGiftConfig, type ImageModelConfig } from '@/actions/admin/system-config';
 import { createMenuItems } from '@/config/native/createMenuConfig';
+import { imageModels } from '@/config/native/imageModels';
 
 const FEATURE_LABELS: Record<string, string> = {
   voice: 'Text to Voice',
@@ -105,6 +106,10 @@ export default function SystemConfigPage() {
   const [savingGift, setSavingGift] = useState(false);
   const [savedGift, setSavedGift] = useState(false);
 
+  const [imageModelConfig, setImageModelConfig] = useState<ImageModelConfig | null>(null);
+  const [savingImageModel, setSavingImageModel] = useState(false);
+  const [savedImageModel, setSavedImageModel] = useState(false);
+
   useEffect(() => {
     getAllFeatureFlags().then(({ prod, dev }) => {
       setProdFlags(prod);
@@ -112,7 +117,17 @@ export default function SystemConfigPage() {
     });
     getTtsMaxCharacters().then(setTtsMaxChars);
     getCreditsGiftConfig().then(setGiftConfig);
+    getImageModelConfig().then(setImageModelConfig);
   }, []);
+
+  const handleSaveImageModelConfig = async () => {
+    if (!imageModelConfig) return;
+    setSavingImageModel(true);
+    await updateImageModelConfig(imageModelConfig);
+    setSavingImageModel(false);
+    setSavedImageModel(true);
+    setTimeout(() => setSavedImageModel(false), 2000);
+  };
 
   const handleSaveGiftConfig = async () => {
     setSavingGift(true);
@@ -164,6 +179,52 @@ export default function SystemConfigPage() {
         saving={savingProd}
         saved={savedProd}
       />
+
+      {/* 图片模型启用控制 */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">图片模型</h2>
+          <p className="text-sm text-gray-500 mt-0.5">控制 AI Image 页面显示哪些模型</p>
+        </div>
+        <div className="divide-y divide-gray-100">
+          {imageModelConfig === null ? (
+            <div className="px-6 py-8 flex justify-center">
+              <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            imageModels.map((model) => (
+              <div key={model.id} className="flex items-center justify-between px-6 py-3.5">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{model.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{model.description} · {model.credits} 积分</p>
+                </div>
+                <button
+                  onClick={() => setImageModelConfig(c => c ? { ...c, [model.id]: !c[model.id] } : c)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    imageModelConfig[model.id] !== false ? 'bg-purple-600' : 'bg-gray-200'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    imageModelConfig[model.id] !== false ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+          <span className={`text-sm transition-opacity ${savedImageModel ? 'text-green-600 opacity-100' : 'opacity-0'}`}>
+            ✓ 保存成功
+          </span>
+          <button
+            onClick={handleSaveImageModelConfig}
+            disabled={savingImageModel || imageModelConfig === null}
+            className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+          >
+            {savingImageModel ? '保存中...' : '保存'}
+          </button>
+        </div>
+      </div>
 
       {/* 参数设置 */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

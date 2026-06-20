@@ -13,6 +13,7 @@ import LoginModal from '@/components/native/LoginModal';
 import InsufficientCreditsModal from '@/components/native/common/InsufficientCreditsModal';
 import { createImageTask, getImageTaskStatus, getImageRecordByTaskId, deleteImageRecord, type ImageRecord } from '@/actions/image';
 import { imageModels, type ImageModel, DEFAULT_IMAGE_MODEL_ID } from '@/config/native/imageModels';
+import { getImageModelConfig } from '@/actions/admin/system-config';
 import { adConfig } from '@/config/native/adConfig';
 import { sendLocalNotification } from '@/lib/notifications';
 import { checkCreditsBeforeGenerate } from '@/lib/credits-check';
@@ -141,6 +142,9 @@ export default function NativeImagePage() {
   const [taskId, setTaskId] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<ImageRecord | null>(null);
 
+  // 启用的模型列表（从 system-config 读取）
+  const [enabledModels, setEnabledModels] = useState<ImageModel[]>([]);
+
   // 输入状态 - 初始值固定，避免 SSR hydration 不匹配；mount 后从 localStorage 恢复
   const [prompt, setPrompt] = useState('');
   const [selectedModel, setSelectedModel] = useState<ImageModel>(
@@ -164,18 +168,33 @@ export default function NativeImagePage() {
   const isInitialMount = useRef(true);
   const skipPromptClear = useRef(false);
 
-  // mount 后从 localStorage 恢复（避免 SSR hydration 不匹配）
+  // mount 后：加载启用模型 + 从 localStorage 恢复选择
   useEffect(() => {
-    const savedPrompt = localStorage.getItem(IMAGE_PROMPT_STORAGE_KEY);
-    const savedModelId = localStorage.getItem(IMAGE_MODEL_STORAGE_KEY);
-    if (savedModelId) {
-      const savedModel = imageModels.find(m => m.id === savedModelId);
-      if (savedModel) {
-        skipPromptClear.current = true;
-        setSelectedModel(savedModel);
+    getImageModelConfig().then((config) => {
+      const enabled = imageModels.filter(m => config[m.id] !== false);
+      const list = enabled.length > 0 ? enabled : imageModels;
+      setEnabledModels(list);
+
+      const savedModelId = localStorage.getItem(IMAGE_MODEL_STORAGE_KEY);
+      const savedPrompt = localStorage.getItem(IMAGE_PROMPT_STORAGE_KEY);
+
+      if (savedModelId) {
+        const savedModel = list.find(m => m.id === savedModelId);
+        if (savedModel) {
+          skipPromptClear.current = true;
+          setSelectedModel(savedModel);
+        } else {
+          // 之前保存的模型已被禁用，切到默认
+          const fallback = list.find(m => m.id === DEFAULT_IMAGE_MODEL_ID) || list[0];
+          if (fallback) setSelectedModel(fallback);
+        }
+      } else {
+        const fallback = list.find(m => m.id === DEFAULT_IMAGE_MODEL_ID) || list[0];
+        if (fallback) setSelectedModel(fallback);
       }
-    }
-    if (savedPrompt) setPrompt(savedPrompt);
+
+      if (savedPrompt) setPrompt(savedPrompt);
+    });
   }, []);
 
   // 当模型改变时，重置参数并清空 prompt
@@ -732,7 +751,7 @@ export default function NativeImagePage() {
             </div>
             <h3 className="text-white font-semibold text-lg text-center mb-4">{t('native.createImage.selectModel')}</h3>
             <div className="px-4 space-y-3" style={{ paddingBottom: 'calc(64px + var(--safe-area-inset-bottom, 0px))' }}>
-              {imageModels.map((model) => (
+              {enabledModels.map((model) => (
                 <button
                   key={model.id}
                   onClick={() => {

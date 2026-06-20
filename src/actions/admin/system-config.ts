@@ -121,6 +121,32 @@ export async function updateTtsMaxCharacters(value: number) {
   return updateSystemConfig('tts_max_characters', value, 'TTS 最大输入字符数');
 }
 
+export type ImageModelConfig = Record<string, boolean>;
+
+const DEFAULT_IMAGE_MODEL_CONFIG: ImageModelConfig = {
+  'nano-banana-pro': true,
+  'seedream/4.5-text-to-image': true,
+  'flux-2': true,
+  'z-image': true,
+};
+
+/** 读取图片模型启用状态 */
+export async function getImageModelConfig(): Promise<ImageModelConfig> {
+  try {
+    const db = await getDb();
+    const row = await db.select().from(systemConfigs).where(eq(systemConfigs.key, 'image_model_config')).get();
+    if (!row) return DEFAULT_IMAGE_MODEL_CONFIG;
+    return { ...DEFAULT_IMAGE_MODEL_CONFIG, ...JSON.parse(row.value) };
+  } catch {
+    return DEFAULT_IMAGE_MODEL_CONFIG;
+  }
+}
+
+/** 更新图片模型启用状态 */
+export async function updateImageModelConfig(config: ImageModelConfig) {
+  return updateSystemConfig('image_model_config', config, '图片模型启用/禁用控制');
+}
+
 export async function getAllSystemConfigs() {
   const db = await getDb();
   return db.select().from(systemConfigs).all();
