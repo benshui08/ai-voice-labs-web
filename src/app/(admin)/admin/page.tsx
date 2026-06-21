@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { getDb } from '@/lib/db';
 import { users, anonymousUsers, userSubscriptions, voices } from '@/db/schema';
 import { eq, and, gt, count, sql } from 'drizzle-orm';
@@ -55,7 +56,12 @@ async function getAdminStats() {
  * 管理后台首页
  */
 export default async function AdminPage() {
-  const stats = await getAdminStats();
+  let stats;
+  try {
+    stats = await getAdminStats();
+  } catch {
+    redirect('/login');
+  }
 
   const colorClasses: Record<string, { bg: string; text: string; border: string }> = {
     purple: { bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-200' },
