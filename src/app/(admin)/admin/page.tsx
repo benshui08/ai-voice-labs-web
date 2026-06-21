@@ -60,7 +60,7 @@ export default async function AdminPage() {
   try {
     stats = await getAdminStats();
   } catch {
-    redirect('/login');
+    redirect('/login?returnUrl=/admin');
   }
 
   const colorClasses: Record<string, { bg: string; text: string; border: string }> = {
