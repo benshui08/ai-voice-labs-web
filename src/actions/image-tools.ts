@@ -6,7 +6,7 @@
  */
 import { getDb } from '@/lib/db';
 import { imageToolRecords } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { getUserOrAnonymous } from '@/lib/auth-firebase';
 import { checkCredits, deductCredits, refundCreditsSimple } from '@/lib/credits';
 import { ProductType } from '@/config/productType';
@@ -333,5 +333,46 @@ async function downloadResultToR2(
   } catch (error) {
     console.error(`❌ [R2 Upload] 上传失败:`, error);
     return null;
+  }
+}
+
+export interface ImageToolRecord {
+  id: number;
+  taskId: string;
+  toolType: 'bg-remove' | 'upscale';
+  status: string;
+  originalImageUrl: string;
+  resultImageUrl: string | null;
+  creditsUsed: number;
+  createdAt: string;
+}
+
+export async function getImageToolRecords(limit = 20, offset = 0): Promise<ImageToolRecord[]> {
+  try {
+    const db = await getDb();
+    const { user_id } = await getUserOrAnonymous();
+    if (!user_id) return [];
+
+    const rows = await db
+      .select()
+      .from(imageToolRecords)
+      .where(eq(imageToolRecords.userId, user_id))
+      .orderBy(desc(imageToolRecords.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    return rows.map((r) => ({
+      id: r.id,
+      taskId: r.taskId,
+      toolType: r.toolType as 'bg-remove' | 'upscale',
+      status: r.status,
+      originalImageUrl: r.originalImageUrl,
+      resultImageUrl: r.resultImageUrl ?? null,
+      creditsUsed: r.creditsUsed,
+      createdAt: r.createdAt,
+    }));
+  } catch (error) {
+    console.error('❌ [getImageToolRecords] Error:', error);
+    return [];
   }
 }
