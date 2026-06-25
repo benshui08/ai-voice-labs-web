@@ -6,6 +6,14 @@
 
 ---
 
+## Screenshots
+
+| Home (Native App) | TTS Studio |
+|---|---|
+| ![Home](./docs/home.png) | ![TTS](./docs/tts.png) |
+
+---
+
 ## Features
 
 ### AI Creation Suite
